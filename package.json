@@ -1,0 +1,9 @@
+{
+  "name": "trampo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter trampo-web dev",
+    "dev:api": "pnpm --filter trampo-api dev"
+  }
+}

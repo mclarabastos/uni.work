@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trampo — trabalhou, recebeu, comprovou</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --wall: #2E3B32;
+  --wall-dark: #232E27;
+  --paper: #F1ECDD;
+  --paper-2: #EAE3CE;
+  --ink: #201D17;
+  --ink-soft: #5B564A;
+  --stamp-red: #B23A2E;
+  --stamp-green: #2E6E4E;
+  --tape: #E8B33D;
+  --mint: #CFE0C7;
+  --salmon: #E8C4B0;
+  --sky: #C7D4D6;
+  --radius: 3px;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--wall);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+a{color:inherit;}
+:focus-visible{outline:3px solid var(--tape); outline-offset:2px;}
+
+.display{font-family:'Space Grotesk',sans-serif;}
+.mono{font-family:'IBM Plex Mono',monospace; letter-spacing:0.02em;}
+
+/* ---------- wall texture ---------- */
+.wall-texture{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.04), transparent 40%),
+    radial-gradient(ellipse at 80% 80%, rgba(0,0,0,0.15), transparent 45%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 6px);
+  mix-blend-mode:normal;
+}
+
+.section{
+  position:relative;
+  z-index:1;
+  max-width:1180px;
+  margin:0 auto;
+  padding:0 24px;
+}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:relative;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  max-width:1180px;
+  margin:0 auto;
+  padding:22px 24px 0 24px;
+}
+.logo{
+  font-size:22px;
+  font-weight:700;
+  color:var(--paper);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.logo .dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--tape);
+  display:inline-block;
+}
+.nav-cta{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12.5px;
+  color:var(--wall);
+  background:var(--tape);
+  padding:9px 16px;
+  border-radius:2px;
+  text-decoration:none;
+  font-weight:600;
+  border:1.5px solid rgba(0,0,0,0.15);
+  transform:rotate(-1deg);
+  display:inline-block;
+  transition:transform .15s ease;
+}
+.nav-cta:hover{transform:rotate(0deg) translateY(-1px);}
+
+/* ---------- hero ---------- */
+.hero{
+  padding:70px 24px 60px 24px;
+  text-align:center;
+}
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--tape);
+  margin-bottom:18px;
+}
+.hero h1{
+  font-size:clamp(34px, 6vw, 64px);
+  line-height:1.05;
+  color:var(--paper);
+  margin:0 0 20px 0;
+  font-weight:700;
+}
+.hero h1 .accent{color:var(--tape);}
+.hero p{
+  font-size:17px;
+  color:#D8D3C2;
+  max-width:560px;
+  margin:0 auto 34px auto;
+  line-height:1.6;
+}
+.hero-ctas{
+  display:flex;
+  gap:14px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom:64px;
+}
+.btn{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13.5px;
+  font-weight:600;
+  padding:13px 22px;
+  border-radius:2px;
+  text-decoration:none;
+  display:inline-block;
+  cursor:pointer;
+  border:1.5px solid transparent;
+}
+.btn-primary{background:var(--tape); color:var(--wall-dark);}
+.btn-primary:hover{background:#f0c458;}
+.btn-ghost{background:transparent; color:var(--paper); border-color:rgba(241,236,221,0.4);}
+.btn-ghost:hover{border-color:var(--paper);}
+
+/* ---------- corkboard of flyers ---------- */
+.mural{
+  position:relative;
+  display:flex;
+  gap:26px;
+  justify-content:center;
+  flex-wrap:wrap;
+  padding-bottom:10px;
+}
+.flyer{
+  background:var(--paper);
+  width:250px;
+  padding:20px 18px 22px 18px;
+  border-radius:1px;
+  box-shadow:0 14px 26px rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.05);
+  position:relative;
+  text-align:left;
+  transform:rotate(var(--r,0deg));
+  transition:transform .25s ease;
+}
+.flyer:nth-child(1){--r:-3.5deg;}
+.flyer:nth-child(2){--r:1.8deg; margin-top:22px;}
+.flyer:nth-child(3){--r:-1.2deg;}
+.flyer:hover{transform:rotate(0deg) translateY(-6px);}
+.flyer::before{
+  content:"";
+  position:absolute;
+  top:-10px; left:50%;
+  transform:translateX(-50%) rotate(-3deg);
+  width:56px; height:20px;
+  background:rgba(232,179,61,0.55);
+  border:1px solid rgba(0,0,0,0.05);
+}
+.flyer-tag{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--ink-soft);
+  margin-bottom:10px;
+}
+.flyer h3{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:18px;
+  margin:0 0 8px 0;
+  line-height:1.25;
+}
+.flyer .meta{
+  font-size:13px;
+  color:var(--ink-soft);
+  margin-bottom:14px;
+  line-height:1.5;
+}
+.flyer .price{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:15px;
+  font-weight:600;
+  color:var(--stamp-green);
+}
+.flyer.stamped{position:relative;}
+.stamp{
+  position:absolute;
+  width:92px; height:92px;
+  border:3px solid var(--stamp-red);
+  border-radius:50%;
+  color:var(--stamp-red);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transform:rotate(-16deg);
+  opacity:0.88;
+  right:-14px;
+  bottom:8px;
+  mix-blend-mode:multiply;
+}
+.stamp svg{width:100%;height:100%;}
+.stamp-text{
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:700;
+  font-size:9.5px;
+  fill:var(--stamp-red);
+  letter-spacing:1.5px;
+}
+
+/* ---------- ticket / how it works ---------- */
+.ticket-wrap{
+  background:var(--paper);
+  border-radius:4px;
+  padding:44px 30px;
+  margin:90px auto 90px auto;
+  max-width:980px;
+  position:relative;
+  box-shadow:0 20px 50px rgba(0,0,0,0.35);
+}
+.section-title{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:clamp(24px,3.2vw,32px);
+  font-weight:700;
+  text-align:center;
+  margin:0 0 8px 0;
+}
+.section-sub{
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:14.5px;
+  max-width:480px;
+  margin:0 auto 40px auto;
+}
+.steps{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+}
+.step{
+  padding:0 16px;
+  text-align:center;
+  position:relative;
+  border-right:1px dashed rgba(0,0,0,0.18);
+}
+.step:last-child{border-right:none;}
+.step .num{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px;
+  color:var(--stamp-green);
+  font-weight:600;
+  margin-bottom:10px;
+}
+.step h4{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:15.5px;
+  margin:0 0 8px 0;
+}
+.step p{
+  font-size:12.8px;
+  color:var(--ink-soft);
+  line-height:1.5;
+  margin:0;
+}
+
+/* ---------- two modalities ---------- */
+.modes{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  margin:0 auto 90px auto;
+  max-width:980px;
+}
+.mode-card{
+  background:var(--paper-2);
+  padding:30px 26px;
+  border-radius:3px;
+  box-shadow:0 10px 24px rgba(0,0,0,0.28);
+  border-top:5px solid var(--mode-color, var(--stamp-green));
+}
+.mode-card.remote{--mode-color:#4E7C9E;}
+.mode-card .kicker{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  color:var(--mode-color, var(--stamp-green));
+  margin-bottom:10px;
+  font-weight:600;
+}
+.mode-card h3{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:21px;
+  margin:0 0 12px 0;
+}
+.mode-card p{
+  font-size:14px;
+  color:var(--ink-soft);
+  line-height:1.6;
+  margin:0 0 16px 0;
+}
+.mode-card ul{
+  margin:0; padding-left:18px;
+  font-size:13.3px;
+  color:var(--ink);
+  line-height:1.8;
+}
+
+/* ---------- bulletin stats ---------- */
+.bulletin{
+  margin:0 auto 100px auto;
+  max-width:1080px;
+}
+.bulletin-title{
+  text-align:center;
+  color:var(--paper);
+  font-family:'Space Grotesk',sans-serif;
+  font-size:clamp(22px,3vw,30px);
+  font-weight:700;
+  margin-bottom:6px;
+}
+.bulletin-sub{
+  text-align:center;
+  color:#B9B4A3;
+  font-size:14px;
+  margin-bottom:40px;
+}
+.notes{
+  display:flex;
+  flex-wrap:wrap;
+  gap:22px;
+  justify-content:center;
+}
+.note{
+  width:220px;
+  padding:22px 18px;
+  border-radius:2px;
+  position:relative;
+  box-shadow:0 10px 20px rgba(0,0,0,0.3);
+  transform:rotate(var(--nr,0deg));
+}
+.note:nth-child(1){background:var(--mint); --nr:-2deg;}
+.note:nth-child(2){background:var(--salmon); --nr:1.5deg;}
+.note:nth-child(3){background:var(--sky); --nr:-1deg;}
+.note:nth-child(4){background:#EFE1A8; --nr:2.2deg;}
+.note::before{
+  content:"";
+  position:absolute;
+  top:-7px; left:50%;
+  transform:translateX(-50%);
+  width:11px; height:11px;
+  border-radius:50%;
+  background:#8a8a8a;
+  box-shadow:0 1px 2px rgba(0,0,0,0.4);
+}
+.note .big{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:30px;
+  font-weight:700;
+  color:var(--ink);
+  line-height:1;
+  margin-bottom:10px;
+}
+.note .label{
+  font-size:12.5px;
+  color:var(--ink);
+  line-height:1.45;
+}
+.note .src{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:9.5px;
+  color:var(--ink-soft);
+  margin-top:10px;
+  display:block;
+}
+
+/* ---------- certificate mockup ---------- */
+.cert-section{
+  margin:0 auto 100px auto;
+  max-width:980px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:50px;
+  align-items:center;
+}
+.cert-copy h2{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:clamp(24px,3vw,32px);
+  color:var(--paper);
+  margin:0 0 16px 0;
+  font-weight:700;
+}
+.cert-copy p{
+  color:#D8D3C2;
+  font-size:15px;
+  line-height:1.65;
+  margin-bottom:14px;
+}
+.cert-copy .callout{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12.5px;
+  color:var(--tape);
+  border-left:2px solid var(--tape);
+  padding-left:12px;
+}
+.cert-card{
+  background:var(--paper);
+  border-radius:6px;
+  padding:26px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  position:relative;
+  transform:rotate(1.5deg);
+}
+.cert-card .cert-head{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  border-bottom:1.5px dashed rgba(0,0,0,0.2);
+  padding-bottom:14px; margin-bottom:14px;
+}
+.cert-card .cert-brand{
+  font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+}
+.cert-card .cert-id{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft);
+  text-align:right;
+}
+.cert-row{display:flex; justify-content:space-between; margin-bottom:10px; font-size:13.5px;}
+.cert-row .k{color:var(--ink-soft);}
+.cert-row .v{font-weight:600; text-align:right;}
+.cert-foot{
+  margin-top:18px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.cert-check{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  color:var(--stamp-green);
+  display:flex; align-items:center; gap:6px;
+}
+.cert-check .dot{width:7px;height:7px;border-radius:50%;background:var(--stamp-green);display:inline-block;}
+.cert-stamp-mini{
+  width:56px;height:56px;
+  border:2px solid var(--stamp-green);
+  border-radius:50%;
+  color:var(--stamp-green);
+  display:flex;align-items:center;justify-content:center;
+  transform:rotate(-10deg);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:7px; font-weight:700; text-align:center; line-height:1.2;
+  mix-blend-mode:multiply;
+}
+
+/* ---------- tech note ---------- */
+.tech-note{
+  max-width:640px;
+  margin:0 auto 100px auto;
+  background:var(--paper-2);
+  padding:26px 30px;
+  border-radius:2px;
+  box-shadow:0 12px 26px rgba(0,0,0,0.3);
+  transform:rotate(-0.6deg);
+  position:relative;
+}
+.tech-note::before{
+  content:"";
+  position:absolute; top:-8px; left:24px;
+  width:34px; height:14px;
+  background:rgba(232,179,61,0.5);
+  transform:rotate(-4deg);
+}
+.tech-note h4{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--ink-soft); margin:0 0 12px 0;
+}
+.tech-note p{
+  font-size:13.3px; line-height:1.7; color:var(--ink); margin:0 0 10px 0;
+}
+.tech-note code{
+  font-family:'IBM Plex Mono',monospace;
+  background:rgba(0,0,0,0.06);
+  padding:1px 5px;
+  border-radius:2px;
+  font-size:12px;
+}
+
+/* ---------- tear-off footer ---------- */
+.tearoff{
+  max-width:760px;
+  margin:0 auto 0 auto;
+  background:var(--paper);
+  border-radius:4px 4px 0 0;
+  padding:40px 40px 0 40px;
+  text-align:center;
+  position:relative;
+}
+.tearoff h2{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:clamp(22px,3vw,30px);
+  margin:0 0 10px 0;
+}
+.tearoff p{
+  color:var(--ink-soft);
+  font-size:14px;
+  margin:0 0 26px 0;
+}
+.tabs{
+  display:flex;
+  border-top:1.5px dashed rgba(0,0,0,0.25);
+}
+.tab{
+  flex:1;
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  padding:16px 0;
+  border-right:1.5px dashed rgba(0,0,0,0.25);
+  color:var(--ink-soft);
+  letter-spacing:0.03em;
+}
+.tab:last-child{border-right:none;}
+footer{
+  text-align:center;
+  padding:22px;
+  color:#9C9686;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+}
+
+@media (max-width:760px){
+  .steps{grid-template-columns:1fr 1fr; row-gap:26px;}
+  .step{border-right:none; border-bottom:1px dashed rgba(0,0,0,0.18); padding-bottom:20px;}
+  .step:nth-child(2n){border-right:none;}
+  .modes{grid-template-columns:1fr;}
+  .cert-section{grid-template-columns:1fr;}
+  .flyer{width:88%;}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important; scroll-behavior:auto !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="wall-texture"></div>
+
+<div class="topbar">
+  <div class="logo"><span class="dot"></span>trampo</div>
+  <a href="#tearoff" class="nav-cta">falar com o time</a>
+</div>
+
+<section class="hero section">
+  <div class="eyebrow">MVP conceitual — hackathon superteam · track vida universitária</div>
+  <h1>Trabalhou. <span class="accent">Recebeu.</span> Comprovou.</h1>
+  <p>Trampo conecta universitários a trampos rápidos — staff de evento, monitoria, freela remoto. O pagamento fica garantido até o trabalho ser confirmado, e a cada job concluído sai um comprovante que sua faculdade aceita como hora complementar.</p>
+  <div class="hero-ctas">
+    <a href="#mural" class="btn btn-primary">ver as vagas</a>
+    <a href="#tearoff" class="btn btn-ghost">cadastrar um trampo</a>
+  </div>
+
+  <div class="mural" id="mural">
+    <div class="flyer">
+      <div class="flyer-tag">presencial · zona sul, rio</div>
+      <h3>Staff de credenciamento — evento universitário</h3>
+      <div class="meta">Diária de 6h · Sábado · Uniforme fornecido</div>
+      <div class="price">R$ 150 / diária</div>
+    </div>
+    <div class="flyer stamped">
+      <div class="flyer-tag">presencial · monitoria</div>
+      <h3>Monitor de Cálculo I — 10 vagas</h3>
+      <div class="meta">Encontros semanais · Depto. de Exatas</div>
+      <div class="price">R$ 40 / hora</div>
+      <div class="stamp">
+        <svg viewBox="0 0 100 100">
+          <path id="circlePath" d="M 10,50 A 40,40 0 1,1 90,50 A 40,40 0 1,1 10,50" fill="none"/>
+          <text class="stamp-text"><textPath href="#circlePath" startOffset="2%">• COMPROVADO • TRAMPO •</textPath></text>
+        </svg>
+      </div>
+    </div>
+    <div class="flyer">
+      <div class="flyer-tag">remoto · internacional</div>
+      <h3>Social media freela — startup de fora</h3>
+      <div class="meta">Projeto de 2 semanas · Pago em USDC</div>
+      <div class="price">US$ 80 / projeto</div>
+    </div>
+  </div>
+</section>
+
+<div class="ticket-wrap section">
+  <div class="section-title">Como funciona</div>
+  <div class="section-sub">O mesmo mecanismo por trás de todo trampo publicado na plataforma.</div>
+  <div class="steps">
+    <div class="step">
+      <div class="num">01</div>
+      <h4>Publica ou aceita</h4>
+      <p>Contratante publica a vaga e reserva o pagamento. Estudante aceita o trampo.</p>
+    </div>
+    <div class="step">
+      <div class="num">02</div>
+      <h4>Fica guardado</h4>
+      <p>O valor combinado fica retido até o trabalho ser confirmado — não depende de boa vontade de ninguém.</p>
+    </div>
+    <div class="step">
+      <div class="num">03</div>
+      <h4>Confirma a entrega</h4>
+      <p>Check-in e check-out simples, ou aprovação do contratante ao fim do trabalho.</p>
+    </div>
+    <div class="step">
+      <div class="num">04</div>
+      <h4>Cai na conta</h4>
+      <p>Pagamento liberado na hora, e o comprovante de hora sai junto — automático.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modes section">
+  <div class="mode-card">
+    <div class="kicker">Presencial</div>
+    <h3>Perto de você</h3>
+    <p>Staff de evento, credenciamento, monitoria, tutoria. Trabalho físico, contratante local.</p>
+    <ul>
+      <li>Pagamento liberado no mesmo dia</li>
+      <li>Saque em dinheiro, sem precisar entender nada de conta digital</li>
+      <li>Comprovante de hora pra faculdade a cada trampo</li>
+    </ul>
+  </div>
+  <div class="mode-card remote">
+    <div class="kicker">Remoto / internacional</div>
+    <h3>De qualquer lugar</h3>
+    <p>Design, conteúdo, desenvolvimento. Empresas de fora também publicam vagas por aqui.</p>
+    <ul>
+      <li>Pagamento em dólar digital, direto na conta</li>
+      <li>Sem burocracia de câmbio ou remessa internacional</li>
+      <li>Mesmo comprovante, aceito como portfólio</li>
+    </ul>
+  </div>
+</div>
+
+<div class="bulletin section">
+  <div class="bulletin-title">Por que isso importa</div>
+  <div class="bulletin-sub">Números que mostram o tamanho do problema</div>
+  <div class="notes">
+    <div class="note">
+      <div class="big">72,7%</div>
+      <div class="label">dos universitários de faculdade particular trabalham enquanto estudam</div>
+      <span class="src">fonte: IBGE / PNADC-Educação</span>
+    </div>
+    <div class="note">
+      <div class="big">R$4.800</div>
+      <div class="label">é o quanto o freelancer brasileiro perde, em média por ano, com calote</div>
+      <span class="src">fonte: Workana Brasil, 2024</span>
+    </div>
+    <div class="note">
+      <div class="big">100–300h</div>
+      <div class="label">de atividade complementar são exigidas por curso, segundo o MEC</div>
+      <span class="src">fonte: TCC Solutions Group</span>
+    </div>
+    <div class="note">
+      <div class="big">64,1%</div>
+      <div class="label">dos empregos do setor de eventos no Brasil são temporários</div>
+      <span class="src">fonte: Dimensionamento do Setor de Eventos</span>
+    </div>
+  </div>
+</div>
+
+<div class="cert-section section">
+  <div class="cert-copy">
+    <h2>O comprovante que fica com você</h2>
+    <p>Cada trampo concluído gera um comprovante — carga horária, data, atividade. Não é um PDF solto que se perde no e-mail: é um registro que qualquer coordenação de curso pode conferir sozinha, sem precisar ligar pra ninguém.</p>
+    <p class="callout">Se a plataforma sair do ar um dia, seu comprovante continua existindo e continua verificável.</p>
+  </div>
+  <div class="cert-card">
+    <div class="cert-head">
+      <div class="cert-brand">trampo · comprovante</div>
+      <div class="cert-id">nº 004821</div>
+    </div>
+    <div class="cert-row"><span class="k">Estudante</span><span class="v">Ana Beatriz S.</span></div>
+    <div class="cert-row"><span class="k">Atividade</span><span class="v">Staff de credenciamento</span></div>
+    <div class="cert-row"><span class="k">Carga horária</span><span class="v">6h</span></div>
+    <div class="cert-row"><span class="k">Data</span><span class="v">24/08/2026</span></div>
+    <div class="cert-foot">
+      <div class="cert-check"><span class="dot"></span>verificação automática</div>
+      <div class="cert-stamp-mini">CONFERE<br>SOZINHO</div>
+    </div>
+  </div>
+</div>
+
+<div class="tech-note section">
+  <h4>nota técnica — pra quem quer saber o que tem por baixo</h4>
+  <p>O usuário nunca vê nada disso — mas pros jurados: o pagamento fica retido num contrato de escrow rodando na <code>Solana</code>, e o comprovante é emitido como um token verificável (<code>cNFT</code>) na wallet do estudante, criada automaticamente no cadastro. MVP roda em rede de testes, sem custo real em nenhuma camada.</p>
+</div>
+
+<div class="tearoff section" id="tearoff">
+  <h2>Quer ver o MVP rodando?</h2>
+  <p>Chama o time pra uma demo do fluxo completo.</p>
+  <div class="tabs">
+    <div class="tab">time@trampo · fala com a gente</div>
+    <div class="tab">time@trampo · fala com a gente</div>
+    <div class="tab">time@trampo · fala com a gente</div>
+    <div class="tab">time@trampo · fala com a gente</div>
+    <div class="tab">time@trampo · fala com a gente</div>
+  </div>
+</div>
+<footer>trampo — protótipo conceitual, hackathon superteam brasil, 2026</footer>
+
+<script>
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){ e.target.style.opacity=1; e.target.style.transform = e.target.style.transform.replace('translateY(18px)','translateY(0)'); }
+  });
+},{threshold:0.15});
+document.querySelectorAll('.flyer, .note, .mode-card').forEach(el=>{
+  el.style.opacity=0;
+  el.style.transform = (el.style.transform||'') + ' translateY(18px)';
+  el.style.transition='opacity .5s ease, transform .5s ease';
+  io.observe(el);
+});
+</script>
+
+</body>
+</html>

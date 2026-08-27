@@ -1,0 +1,39 @@
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js (apps/web)
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+
+# Backend (apps/api)
+apps/api/dist/
+
+# Anchor / Solana / Rust
+target/
+.anchor/
+test-ledger/
+**/*.rs.bk
+Cargo.lock
+
+# Wallets locais de teste (nunca commitar chave nenhuma)
+*.json
+!package.json
+!package-lock.json
+!pnpm-workspace.yaml
+!tsconfig.json
+!**/*.config.json
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
