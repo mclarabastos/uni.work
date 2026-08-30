@@ -12,7 +12,7 @@ import {
 } from '@solana/spl-token'
 import {
   planFund, planRelease, planRefund, deriveVaultAuthority,
-  anchorDiscriminator, escrowPda
+  anchorDiscriminator, escrowPda, escrowProgramId
 } from '../src/services/escrow.js'
 import { splitFee, centsToBase } from '../src/lib/money.js'
 
@@ -136,9 +136,11 @@ test('o cofre e deterministico por vaga e diferente entre vagas', async () => {
 })
 
 test('o driver anchor monta a instrucao com o discriminador e o endereco derivado corretos', async () => {
-  const programa = Keypair.generate().publicKey
-  const ambienteAnchor = fakePlatform({ escrowProgramId: programa.toBase58() })
-  process.env.ESCROW_PROGRAM_ID = programa.toBase58()
+  // O program id vem da mesma funcao que o codigo de producao usa. Assim o
+  // teste vale nos dois modos: com o driver vault ele cai no estado da
+  // plataforma, e com ESCROW_DRIVER=anchor ele usa o id configurado.
+  const ambienteAnchor = fakePlatform({ escrowProgramId: Keypair.generate().publicKey.toBase58() })
+  const programa = escrowProgramId()
 
   const contratante = Keypair.generate().publicKey.toBase58()
   const jobId = 'job_anchor'
@@ -185,5 +187,4 @@ test('o driver anchor monta a instrucao com o discriminador e o endereco derivad
     [...anchorDiscriminator('confirm_and_release')]
   )
 
-  delete process.env.ESCROW_PROGRAM_ID
 })

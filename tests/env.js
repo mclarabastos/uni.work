@@ -21,7 +21,16 @@ process.env.SOLANA_CLUSTER = 'devnet'
 // hora em vez de esperar o timeout de um servidor de verdade. E o que faz o
 // caminho de fallback do certificado ser exercitado rapido.
 process.env.SOLANA_RPC_URL = 'http://127.0.0.1:1'
-process.env.ESCROW_DRIVER = 'vault'
+// Por padrao a suite roda no driver vault, que nao precisa de programa
+// deployado. Com UNIWORK_TESTAR_ANCHOR=1 (npm run test:anchor) ela roda no
+// driver anchor, com um program id de teste, para provar que o caminho do
+// programa tambem esta de pe do lado do Node.
+if (process.env.UNIWORK_TESTAR_ANCHOR === '1') {
+  process.env.ESCROW_DRIVER = 'anchor'
+  process.env.ESCROW_PROGRAM_ID = process.env.ESCROW_PROGRAM_ID || 'EscRoW1111111111111111111111111111111111111'
+} else {
+  process.env.ESCROW_DRIVER = 'vault'
+}
 process.env.PLATFORM_FEE_BPS = '500'
 if (contraPostgres) {
   // Os arquivos de teste rodam em processos paralelos. Contra o PGlite cada um

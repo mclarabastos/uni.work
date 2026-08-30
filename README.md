@@ -37,6 +37,8 @@ banco, popula o ecossistema de exemplo e roda o diagnostico.
 | `npm run dev` | sobe a API e a interface em http://localhost:4000 |
 | `npm test` | suite completa, sem tocar a rede |
 | `npm run test:pg` | a mesma suite contra um Postgres de verdade em container |
+| `npm run test:anchor` | a mesma suite com `ESCROW_DRIVER=anchor` |
+| `anchor test` | testes do programa em Rust, contra um validador (precisa do toolchain Anchor) |
 | `npm run migrate` | aplica as migrations pendentes |
 | `npm run migrate:status` | mostra o que ja aplicou e o que falta |
 | `npm run bootstrap` | prepara o ambiente de devnet |
@@ -245,6 +247,16 @@ disponivel, em vez de fingir que confirmou.
 npm test          # suite completa, offline
 npm run test:pg   # a mesma suite contra Postgres de verdade em container
 ```
+
+Cobertura em tres camadas, e as tres sao necessarias:
+
+- `npm test` prova a logica de produto e a montagem das transacoes, offline.
+- `npm run test:anchor` prova que o mesmo fluxo passa pelo driver do programa,
+  e nao so pelo cofre custodial.
+- `anchor test` compila o programa em Rust e o roda contra um validador de
+  verdade. E o unico que prova o que o programa recusa: terceiro tentando
+  liberar, liberacao em dobro, devolucao depois de pago, disputa atropelada.
+  Precisa do toolchain Anchor instalado.
 
 A suite nao toca a rede. Os testes de escrow decodificam a transacao byte a byte
 e provam que a instrucao e `TransferChecked`, com o valor certo, saindo da conta

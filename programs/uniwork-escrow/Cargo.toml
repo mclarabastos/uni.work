@@ -1,12 +1,12 @@
 [package]
-name = "escrow"
+name = "uniwork-escrow"
 version = "0.1.0"
-description = "Programa de escrow do Trampo — trava o pagamento até a confirmação do trabalho"
+description = "Escrow do Uni.work: trava o pagamento ate a confirmacao, com disputa, mediacao e liberacao por prazo"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "escrow"
+name = "uniwork_escrow"
 
 [features]
 no-entrypoint = []
@@ -14,6 +14,8 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"

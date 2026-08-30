@@ -19,7 +19,8 @@
     "reset": "node scripts/reset.js",
     "demo": "node scripts/demo-flow.js",
     "migrate:status": "node scripts/migrate.js --status",
-    "test:pg": "node scripts/test-postgres.js"
+    "test:pg": "node scripts/test-postgres.js",
+    "test:anchor": "node scripts/test-anchor-driver.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.17",
@@ -33,5 +34,8 @@
     "nodemailer": "^9.0.6",
     "pg": "^8.13.1",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.32.1"
   }
 }
