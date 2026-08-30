@@ -9,6 +9,7 @@
 
 import { query } from '../db/index.js'
 import { newId } from '../lib/ids.js'
+import { log } from '../lib/logger.js'
 
 /** Campos que nunca podem entrar no registro, mesmo por acidente. */
 const SEGREDOS = ['secret_cipher', 'secretKey', 'token', 'refresh_token', 'password', 'senha']
@@ -37,7 +38,7 @@ export async function registrarAuditoria ({ actorId = null, action, entity, enti
         ip]
     )
   } catch (err) {
-    console.error(JSON.stringify({ level: 'error', msg: 'auditoria_nao_gravada', action, detail: err.message }))
+    log.error('auditoria_nao_gravada', { acao: action, detalhe: err.message })
   }
 }
 

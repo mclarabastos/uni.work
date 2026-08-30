@@ -11,6 +11,7 @@
 // e-mail; o que ele nunca faz e deixar alguem achar que o e-mail saiu.
 
 import { config } from '../config.js'
+import { log } from '../lib/logger.js'
 
 const REMETENTE_PADRAO = 'Uni.work <nao-responda@uniwork.local>'
 
@@ -53,6 +54,9 @@ async function enviarPeloSmtp ({ para, assunto, html, texto }) {
 }
 
 function imprimirNoTerminal ({ para, assunto, texto }) {
+  // lint-permitido: este bloco existe para ser lido por uma pessoa no terminal.
+  // Passar por JSON estruturado transformaria o link de acesso numa linha
+  // ilegivel, e o objetivo aqui e exatamente que ele seja facil de copiar.
   console.log(`
   ┌─ E-MAIL NAO ENVIADO ────────────────────────────────────────────────────
   │ Nenhum servico de e-mail esta configurado, entao o conteudo abaixo NAO
@@ -91,7 +95,7 @@ export async function enviarEmail ({ para, assunto, html, texto }) {
       explicacao: 'Nenhum servico de e-mail esta configurado neste ambiente.'
     }
   } catch (err) {
-    console.error(JSON.stringify({ level: 'error', msg: 'email_falhou', driver, detail: err.message }))
+    log.error('email_falhou', { driver, detalhe: err.message })
     return { entregue: false, driver, id: null, motivo: 'falha_no_envio', explicacao: err.message }
   }
 }

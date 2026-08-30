@@ -17,6 +17,10 @@ import { certificatesRouter } from './routes/certificates.js'
 import { disputesRouter } from './routes/disputes.js'
 import { notificationsRouter, mePreferencesRouter, pushRouter } from './routes/notifications.js'
 import { uploadsRouter, profilesRouter, mePerfilRouter } from './routes/uploads.js'
+import { healthRouter } from './routes/health.js'
+import { adminRouter } from './routes/admin.js'
+import { logDeRequisicao, log, anotar } from './lib/logger.js'
+import { cabecalhosDeSeguranca, idempotencia } from './lib/seguranca.js'
 import { metricsRouter } from './routes/metrics.js'
 import { chainRouter } from './routes/chain.js'
 import { streamRouter } from './routes/stream.js'
@@ -28,18 +32,22 @@ export function createApp () {
 
   app.use(express.json({ limit: '1mb' }))
 
-  app.use((_req, res, next) => {
-    res.set('x-content-type-options', 'nosniff')
-    res.set('referrer-policy', 'strict-origin-when-cross-origin')
-    next()
-  })
+  app.use(cabecalhosDeSeguranca())
+  app.use(logDeRequisicao())
 
   // O barramento de eventos passa a gerar notificacao aqui, e nao no
   // startServer: quem monta o app sem subir o servidor tambem precisa delas.
   ligarNotificacoes()
 
   app.use(attachUser)
+  // O userId entra no contexto de log assim que a sessao e resolvida, para
+  // toda linha da requisicao ja sair identificada.
+  app.use((req, _res, next) => { if (req.user) anotar({ userId: req.user.id }); next() })
   app.use('/api', limitePorRequisicao())
+
+  // Idempotencia so onde ela importa: nas rotas que movem dinheiro.
+  app.use(['/api/jobs/:id/fund', '/api/jobs/:id/confirm', '/api/jobs/:id/cancel', '/api/disputes/:id/resolve'],
+    idempotencia())
 
   app.use('/api', authRouter)
   app.use('/api/jobs', jobsRouter)
@@ -50,11 +58,15 @@ export function createApp () {
   app.use('/api/uploads', uploadsRouter)
   app.use('/api/perfis', profilesRouter)
   app.use('/api/me', mePerfilRouter)
+  app.use('/api/health', healthRouter)
+  app.use('/api/admin', adminRouter)
   app.use('/api', certificatesRouter)
   app.use('/api/metrics', metricsRouter)
   app.use('/api/chain', chainRouter)
   app.use('/api/stream', streamRouter)
 
+  // Mantida por compatibilidade com quem ja aponta para ca. O detalhe esta
+  // em /api/health/live e /api/health/ready.
   app.get('/api/health', asyncRoute(async (_req, res) => {
     const info = await dbInfo()
     res.json({ ok: true, banco: info.driver, cluster: config.solana.cluster })

@@ -7,6 +7,7 @@
 import { EventEmitter } from 'node:events'
 import { query } from '../db/index.js'
 import { newId } from '../lib/ids.js'
+import { log } from '../lib/logger.js'
 
 const bus = new EventEmitter()
 bus.setMaxListeners(0) // uma conexao SSE por aba aberta, nao ha limite util aqui
@@ -75,7 +76,7 @@ export async function emitEvent (type, { jobId = null, actorId = null, payload =
       [event.id, type, jobId, actorId, JSON.stringify(payload)]
     )
   } catch (err) {
-    console.error(JSON.stringify({ level: 'error', msg: 'evento_nao_gravado', type, detail: err.message }))
+    log.error('evento_nao_gravado', { tipo: type, detalhe: err.message })
   }
   bus.emit('event', event)
   bus.emit(type, event)

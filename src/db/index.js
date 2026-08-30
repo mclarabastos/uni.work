@@ -6,6 +6,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { config } from '../config.js'
+import { log } from '../lib/logger.js'
 
 let handle = null
 let opening = null
@@ -94,7 +95,7 @@ async function openPostgres () {
   // Um pool sem listener de error derruba o processo quando o Postgres fecha
   // uma conexao ociosa. Registramos para degradar em vez de morrer.
   pool.on('error', (err) => {
-    console.error(JSON.stringify({ level: 'error', msg: 'pool_error', detail: err.message }))
+    log.error('pool_com_erro', { detalhe: err.message })
   })
   const host = (() => {
     try { return new URL(config.db.url).host } catch { return 'postgres' }

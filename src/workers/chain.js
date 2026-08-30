@@ -28,8 +28,10 @@ const LOTE = 5
 let temporizador = null
 let rodando = false
 
+import { log as registro, contar, registrarDuracao } from '../lib/logger.js'
+
 function log (nivel, msg, extra = {}) {
-  console.log(JSON.stringify({ level: nivel, worker: 'chain', msg, ...extra }))
+  registro[nivel]?.(msg, { worker: 'chain', ...extra })
 }
 
 async function registrarTx ({ jobId, kind, signature, instructions = [], detail = {}, status = 'confirmada', error = null }) {
@@ -305,7 +307,10 @@ export async function processarUmaRodada ({ limite = LOTE, quem = 'worker' } = {
       continue
     }
     try {
+      const comecou = Date.now()
       const saida = await handler(item)
+      registrarDuracao(`fila.${item.kind}`, Date.now() - comecou)
+      contar(`fila.${item.kind}.${saida?.pulou ? 'desnecessaria' : 'concluida'}`)
       await marcarConcluido(item.id)
       if (saida?.pulou) {
         resultado.pulados += 1
@@ -316,6 +321,7 @@ export async function processarUmaRodada ({ limite = LOTE, quem = 'worker' } = {
       }
     } catch (err) {
       const { desistiu, tentativas, proximaTentativaEm } = await marcarFalha(item, err)
+      contar(`fila.${item.kind}.${desistiu ? 'desistida' : 'falhou'}`)
       resultado.falhas += 1
       if (desistiu) {
         resultado.desistencias += 1

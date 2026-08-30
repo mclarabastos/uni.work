@@ -4,6 +4,7 @@
 import { ZodError } from 'zod'
 import { AppError, unauthorized } from '../lib/errors.js'
 import { userForToken } from '../domain/auth.js'
+import { log, contextoAtual } from '../lib/logger.js'
 
 export function bearerToken (req) {
   const header = req.get('authorization') ?? ''
@@ -51,23 +52,22 @@ export function errorHandler (err, req, res, _next) {
   }
   if (err instanceof AppError) {
     if (err.technicalDetail) {
-      console.error(JSON.stringify({
-        level: 'warn', msg: 'falha_traduzida', codigo: err.codigo,
-        detail: err.technicalDetail, path: req.path
-      }))
+      log.warn('falha_traduzida', { codigo: err.codigo, detalhe: err.technicalDetail, rota: req.path })
     }
     return res.status(err.status).json(err.toJSON())
   }
 
-  console.error(JSON.stringify({
-    level: 'error', msg: 'erro_nao_tratado', path: req.path,
-    detail: err?.message, stack: err?.stack?.split('\n').slice(0, 4).join(' | ')
-  }))
+  log.error('erro_nao_tratado', {
+    rota: req.path,
+    detalhe: err?.message,
+    pilha: err?.stack?.split('\n').slice(0, 4).join(' | ')
+  })
 
   // O usuario nunca le o erro cru. Nem quando o erro cru veio da rede.
+  // O requestId vai junto: e o que liga a queixa dele a linha do log.
   return res.status(500).json({
     error: 'Nao conseguimos concluir agora, ja estamos tentando de novo.',
     codigo: 'tentando_novamente',
-    detalhes: null
+    detalhes: contextoAtual().requestId ? { referencia: contextoAtual().requestId } : null
   })
 }

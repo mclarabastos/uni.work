@@ -30,6 +30,9 @@ const estado = {
   vagaAberta: null,
   contestacoes: [],
   perfilAberto: null,
+  minhasVagas: [],
+  cursorMinhas: null,
+  temMaisMinhas: false,
   notificacoes: [],
   naoLidas: 0,
   preferencias: null,
@@ -106,7 +109,8 @@ async function chamar (caminho, { method = 'GET', body, silencioso = false } = {
 
   const headers = {}
   if (body !== undefined) headers['content-type'] = 'application/json'
-  if (estado.token) headers.authorization = `Bearer ${estado.token}`
+  const tokenUsado = estado.token
+  if (tokenUsado) headers.authorization = `Bearer ${tokenUsado}`
 
   let resposta
   try {
@@ -129,7 +133,10 @@ async function chamar (caminho, { method = 'GET', body, silencioso = false } = {
     err.codigo = dados.codigo
     err.detalhes = dados.detalhes
     err.status = resposta.status
-    if (resposta.status === 401) sair(true)
+    // So encerra a sessao se a chamada FOI feita com credencial e ela foi
+    // recusada, e se essa credencial ainda e a atual. Sem as duas condicoes,
+    // uma resposta atrasada da sessao anterior derruba a sessao de agora.
+    if (resposta.status === 401 && tokenUsado && tokenUsado === estado.token) sair(true)
     if (!silencioso) avisar(err.message, primeiroDetalhe(err), 'erro')
     throw err
   }
@@ -212,8 +219,20 @@ function lerSessao () {
 
 function sair (silencioso = false) {
   if (!silencioso) chamar('/logout', { method: 'POST', silencioso: true }).catch(() => {})
+  desligarEventos()
   estado.usuario = null
   estado.token = null
+  // Limpar o que era da sessao anterior. Sem isto, um render pendente ainda
+  // tentaria desenhar o detalhe de uma vaga com estado.usuario ja nulo.
+  estado.view = 'feed'
+  estado.vagaAberta = null
+  estado.perfilAberto = null
+  estado.notificacoes = []
+  estado.naoLidas = 0
+  estado.preferencias = null
+  estado.contestacoes = []
+  estado.minhasVagas = []
+  estado.cursorMinhas = null
   try { localStorage.removeItem(CHAVE_SESSAO) } catch { /* nada a limpar */ }
   mostrarPorta()
 }
@@ -380,9 +399,10 @@ function telaFeed () {
 
 function telaMinhas () {
   const ehEstudante = estado.usuario?.perfil === 'student'
-  const minhas = estado.vagas.filter((v) => (
-    ehEstudante ? v.estudante?.id === estado.usuario.id : v.contratante?.id === estado.usuario.id
-  ))
+  // Lista propria, vinda de /jobs/minhas. Filtrar o resultado da busca publica
+  // nao funciona: ela so traz vaga aberta ou garantida, entao um trampo em
+  // andamento, entregue ou concluido nunca apareceria aqui.
+  const minhas = estado.minhasVagas
 
   const grupos = [
     { titulo: 'Precisam de voce', filtro: (v) => ['aberta', 'garantida', 'aceita', 'em_andamento', 'entregue'].includes(v.status) },
@@ -405,7 +425,10 @@ function telaMinhas () {
       if (!lista.length) return ''
       return `<div class="secao-topo"><h2>${g.titulo}</h2><span class="conta">${lista.length}</span></div>
         <div class="grade">${lista.map(cartaoVaga).join('')}</div>`
-    }).join('')}`
+    }).join('')}
+    ${estado.temMaisMinhas
+      ? '<div style="display:flex;justify-content:center"><button class="btn btn-linha" data-acao="mais-minhas">Ver mais</button></div>'
+      : ''}`
 }
 
 function telaCertificados () {
@@ -479,6 +502,9 @@ const ETAPAS_ROTULO = [
 
 function acoesDaVaga (vaga) {
   const u = estado.usuario
+  // Sem sessao nao ha acao possivel. Acontece quando um render pendente roda
+  // logo depois de sair.
+  if (!u) return []
   const souContratante = vaga.contratante?.id === u.id
   const souEstudante = vaga.estudante?.id === u.id
   const botoes = []
@@ -1353,6 +1379,17 @@ async function carregarContestacoes () {
   if (fila) estado.contestacoes = fila.contestacoes
 }
 
+async function carregarMinhasVagas ({ mais = false } = {}) {
+  if (!estado.usuario) return
+  const parametros = new URLSearchParams()
+  if (mais && estado.cursorMinhas) parametros.set('cursor', estado.cursorMinhas)
+  const saida = await chamar(`/jobs/minhas?${parametros}`, { silencioso: true }).catch(() => null)
+  if (!saida) return
+  estado.minhasVagas = mais ? [...estado.minhasVagas, ...saida.vagas] : saida.vagas
+  estado.cursorMinhas = saida.proximoCursor
+  estado.temMaisMinhas = saida.temMais
+}
+
 async function carregarNotificacoes () {
   const dados = await chamar('/notifications', { silencioso: true }).catch(() => null)
   if (dados) {
@@ -1568,6 +1605,7 @@ async function recarregar () {
   const resumo = await chamar('/me/dashboard', { silencioso: true }).catch(() => null)
   if (resumo) estado.resumo = resumo
 
+  await carregarMinhasVagas()
   await carregarNotificacoes()
   await carregarContestacoes()
 
@@ -1647,6 +1685,12 @@ function renderCamadaTecnica (dados) {
 // ─── eventos ao vivo ─────────────────────────────────────────────────────────
 
 let fonteEventos = null
+
+function desligarEventos () {
+  fonteEventos?.close()
+  fonteEventos = null
+  estado.feed = []
+}
 
 function ligarEventos () {
   if (estado.modo === 'simulacao' || fonteEventos) return
@@ -1751,6 +1795,12 @@ function mostrarPorta () {
   $('#porta').classList.remove('escondida')
   $('#app').classList.remove('ativo')
   $('#verificacao').hidden = true
+  // A porta sempre abre em "Entrar": quem acabou de sair quase sempre volta
+  // para entrar de novo, e nao para criar outra conta.
+  $('#aba-entrar').setAttribute('aria-selected', 'true')
+  $('#aba-criar').setAttribute('aria-selected', 'false')
+  $('#form-entrar').hidden = false
+  $('#form-criar').hidden = true
   carregarPrevia()
 }
 
@@ -1800,7 +1850,7 @@ function ligarInterface () {
 
   let perfilEscolhido = 'student'
   $$('#escolha-perfil button').forEach((b) => b.addEventListener('click', () => {
-    perfilEscolhido = b.dataset.perfil
+    perfilEscolhido = b.dataset.tipoDeConta
     $$('#escolha-perfil button').forEach((o) => o.setAttribute('aria-pressed', String(o === b)))
     $('#campos-estudante').style.display = perfilEscolhido === 'student' ? '' : 'none'
   }))
@@ -1886,8 +1936,12 @@ function ligarInterface () {
       return
     }
 
+    // data-perfil abre a pagina de alguem. O formulario de cadastro usa
+    // data-tipo-de-conta, que e outra coisa: escolher entre estudante e
+    // contratante. Os dois ja compartilharam o mesmo atributo, e a delegacao
+    // daqui sequestrava os botoes do cadastro.
     const perfil = alvo('[data-perfil]')
-    if (perfil) return void abrirPerfil(perfil.dataset.perfil)
+    if (perfil?.dataset.perfil) return void abrirPerfil(perfil.dataset.perfil)
 
     const enviar = alvo('[data-enviar]')
     if (enviar) {
@@ -1987,6 +2041,9 @@ function ligarInterface () {
           .then(() => carregarNotificacoes())
           .then(() => render())
           .catch(() => {})
+      }
+      if (acao.dataset.acao === 'mais-minhas') {
+        carregarMinhasVagas({ mais: true }).then(render)
       }
       if (acao.dataset.acao === 'mais-vagas') {
         render()

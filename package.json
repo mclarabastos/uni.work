@@ -21,7 +21,10 @@
     "migrate:status": "node scripts/migrate.js --status",
     "test:pg": "node scripts/test-postgres.js",
     "test:anchor": "node scripts/test-anchor-driver.js",
-    "admin": "node scripts/promote-admin.js"
+    "admin": "node scripts/promote-admin.js",
+    "lint": "node scripts/lint.js",
+    "test:e2e": "node scripts/e2e.js",
+    "build:artifact": "node scripts/build-artifact.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.17",
@@ -39,6 +42,7 @@
   },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.32.1",
-    "bs58": "^6.0.0"
+    "bs58": "^6.0.0",
+    "playwright": "^1.62.1"
   }
 }

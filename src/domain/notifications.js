@@ -22,6 +22,7 @@ import { enviarEmail, modeloGenerico, modeloPagamentoLiberado, emailConfigurado 
 import { enviarPush, pushConfigurado } from '../services/push.js'
 import { formatBRL } from '../lib/money.js'
 import { onEvent } from './events.js'
+import { log } from '../lib/logger.js'
 
 export const preferenciasSchema = z.object({
   email: z.boolean().optional(),
@@ -308,9 +309,7 @@ export function ligarNotificacoes () {
   if (desligar) return { jaEstava: true }
   desligar = onEvent((evento) => {
     processarEvento(evento).catch((err) => {
-      console.error(JSON.stringify({
-        level: 'error', msg: 'notificacao_falhou', tipo: evento.type, detail: err.message
-      }))
+      log.error('notificacao_falhou', { tipo: evento.type, detalhe: err.message })
     })
   })
   return { jaEstava: false }

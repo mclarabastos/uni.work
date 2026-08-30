@@ -9,6 +9,7 @@ import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } f
 import { getAccount, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { config } from '../config.js'
 import { platformKeypair, readPlatformState } from './platform.js'
+import { contar, registrarDuracao } from '../lib/logger.js'
 
 let connection = null
 
@@ -76,13 +77,22 @@ export async function buildTransaction (instructions, extraSigners = []) {
 
 export async function sendTransaction (instructions, extraSigners = []) {
   const conn = getConnection()
-  const { transaction, lastValidBlockHeight, blockhash } = await buildTransaction(instructions, extraSigners)
-  const signature = await conn.sendRawTransaction(transaction.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3
-  })
-  await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
-  return { signature, transaction }
+  const comecou = Date.now()
+  try {
+    const { transaction, lastValidBlockHeight, blockhash } = await buildTransaction(instructions, extraSigners)
+    const signature = await conn.sendRawTransaction(transaction.serialize(), {
+      skipPreflight: false,
+      maxRetries: 3
+    })
+    contar('rede.enviadas')
+    await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
+    contar('rede.confirmadas')
+    registrarDuracao('rede.ateConfirmar', Date.now() - comecou)
+    return { signature, transaction }
+  } catch (err) {
+    contar('rede.falhas')
+    throw err
+  }
 }
 
 /** Descreve as instrucoes de uma transacao para a gaveta "camada tecnica". */

@@ -31,3 +31,6 @@ test-ledger/
 .DS_Store
 .vscode/
 .idea/
+
+# Capturas do teste de navegador
+test-results/

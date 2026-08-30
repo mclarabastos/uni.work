@@ -120,13 +120,17 @@ export async function userForToken (token) {
     [token]
   )
   if (!row) return null
-  if (row.session_revoked) return null
-  if (new Date(row.session_expires).getTime() < Date.now()) return null
+
+  // A suspensao e conferida antes da sessao, de proposito. Suspender uma conta
+  // encerra as sessoes dela, e sem esta ordem a pessoa receberia "voce nao esta
+  // logado" em vez de saber que a conta foi suspensa e por que procurar alguem.
   if (row.blocked_at) {
     throw new AppError('Esta conta esta suspensa. Fale com o suporte.', {
       status: 403, codigo: 'conta_suspensa'
     })
   }
+  if (row.session_revoked) return null
+  if (new Date(row.session_expires).getTime() < Date.now()) return null
   // Marcar uso serve para a pessoa reconhecer as proprias sessoes na lista.
   // Sem await de proposito: nao vale atrasar toda requisicao por causa disso.
   query('update sessions set last_used_at = now() where token = $1', [token]).catch(() => {})
