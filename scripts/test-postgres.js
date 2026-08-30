@@ -89,7 +89,7 @@ console.log('  Postgres pronto. Rodando a suite contra ele…\n')
 
 const suite = spawn(
   process.execPath,
-  ['--test', 'tests/**/*.test.js'],
+  ['--test', '--test-concurrency=4', 'tests/**/*.test.js'],
   {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: URL, UNIWORK_FORCA_POSTGRES: '1' },

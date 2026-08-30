@@ -67,7 +67,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: suite contra Postgres de verdade
-        run: node --test "tests/**/*.test.js"
+        run: node --test --test-concurrency=4 "tests/**/*.test.js"
         env:
           DATABASE_URL: postgresql://postgres:uniwork@127.0.0.1:5432/postgres
           UNIWORK_FORCA_POSTGRES: '1'

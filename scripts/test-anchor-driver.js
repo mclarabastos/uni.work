@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process'
 
 console.log('\n  suite com ESCROW_DRIVER=anchor\n')
 
-const suite = spawn(process.execPath, ['--test', 'tests/**/*.test.js'], {
+const suite = spawn(process.execPath, ['--test', '--test-concurrency=4', 'tests/**/*.test.js'], {
   stdio: 'inherit',
   env: { ...process.env, UNIWORK_TESTAR_ANCHOR: '1' }
 })

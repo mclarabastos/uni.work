@@ -1,5 +1,13 @@
 // Ambiente da suite.
 //
+// Nota sobre concorrencia: o package.json roda a suite com
+// --test-concurrency=4 em vez do padrao (um processo por nucleo). Cada arquivo
+// sobe um PGlite proprio, que e Postgres compilado para WASM, e um deles carrega
+// dez mil vagas. Sem limite, a maquina fica sem folga e um arquivo qualquer
+// morre por pressao de memoria, com "test failed" e nenhum teste individual
+// falhando. Nao e defeito do produto, e o custo de subir onze bancos ao mesmo
+// tempo.
+//
 // Este arquivo nao importa nada de proposito. Em ESM as importacoes sao
 // avaliadas antes de qualquer statement do modulo, entao se estas atribuicoes
 // morassem em helpers.js elas rodariam DEPOIS de config.js ja ter lido o

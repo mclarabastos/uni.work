@@ -11,7 +11,7 @@
     "setup": "node scripts/setup.js",
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --test --test-concurrency=4 \"tests/**/*.test.js\"",
     "migrate": "node scripts/migrate.js",
     "bootstrap": "node scripts/bootstrap.js",
     "seed": "node scripts/seed.js",

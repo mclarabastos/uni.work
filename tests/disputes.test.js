@@ -215,11 +215,21 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
   assert.equal(detalheDaRede.resolucaoDeDisputa, true)
   assert.deepEqual(detalheDaRede.divisao, divisao, 'o registro da rede bate com a resposta da API')
 
-  // Tres transferencias: estudante, plataforma, contratante.
+  // Como o valor se divide na rede depende do driver, e os dois estao certos:
+  //   vault  -> tres transferencias, uma para cada destino, montadas aqui
+  //   anchor -> uma instrucao so, e a divisao acontece dentro do programa
+  // O que precisa bater nos dois casos e o valor de cada parte, ja conferido
+  // acima. Aqui so se confirma que a forma corresponde ao driver em uso.
   const instrucoes = typeof naRede.instructions === 'string'
     ? JSON.parse(naRede.instructions) : naRede.instructions
+  const { escrowDriverName } = await import('../src/services/escrow.js')
   const transferencias = instrucoes.filter((i) => i.dataLength > 1)
-  assert.equal(transferencias.length, 3, 'estudante, taxa e contratante')
+
+  if (escrowDriverName() === 'anchor') {
+    assert.equal(transferencias.length, 1, 'no programa, a divisao e uma instrucao so')
+  } else {
+    assert.equal(transferencias.length, 3, 'no cofre, uma transferencia por destino')
+  }
 
   // ─── a vaga fecha e sai da contestacao ────────────────────────────────────
   const final = await one('select status, disputed_at, completed_at from jobs where id = $1', [vaga.id])
