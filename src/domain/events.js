@@ -28,7 +28,8 @@ export const EVENT_LABELS = {
   'conta.criada': 'Conta criada',
   'conta.entrou': 'Entrou na conta',
   'rede.operacao': 'Operacao registrada na rede',
-  'rede.enfileirada': 'Operacao aguardando nova tentativa'
+  'rede.enfileirada': 'Operacao aguardando nova tentativa',
+  'rede.desistiu': 'Operacao precisa de atencao da equipe'
 }
 
 export function labelFor (type) {

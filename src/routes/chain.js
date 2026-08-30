@@ -13,6 +13,8 @@ import { escrowDriverName } from '../services/escrow.js'
 import { indexerAvailable } from '../services/das.js'
 import { asyncRoute, requireAuth } from './helpers.js'
 import { accountKeyFor } from '../domain/auth.js'
+import { estadoDaFila, listarFila, reenfileirar, enfileirar } from '../domain/chain-queue.js'
+import { processarUmaRodada } from '../workers/chain.js'
 
 export const chainRouter = Router()
 
@@ -32,8 +34,11 @@ chainRouter.get('/status', asyncRoute(async (req, res) => {
        from chain_tx order by created_at desc limit 25`
   )
 
+  const fila = await estadoDaFila()
+
   res.json({
     cluster: config.solana.cluster,
+    fila,
     rpc: config.solana.rpcUrl.replace(/api-key=[^&]+/, 'api-key=***'),
     rede,
     plataforma: platform,
@@ -95,4 +100,58 @@ chainRouter.post('/faucet', requireAuth, asyncRoute(async (req, res) => {
   }
   const out = await requestAirdrop(platform.publicKey, Number(req.body?.sol ?? 2))
   res.status(out.ok ? 200 : 502).json(out)
+}))
+
+// ─── fila ────────────────────────────────────────────────────────────────────
+
+chainRouter.get('/queue', asyncRoute(async (req, res) => {
+  res.json({
+    resumo: await estadoDaFila(),
+    itens: await listarFila({ apenasFalhas: req.query.falhas === '1' })
+  })
+}))
+
+/**
+ * Reprocessar.
+ * Nao tenta na hora: coloca na fila e devolve na hora. Quem tenta e o worker,
+ * que sabe esperar entre as tentativas. Uma rota HTTP que fica presa esperando
+ * a rede e exatamente o que esta fila existe para evitar.
+ */
+chainRouter.post('/retry', requireAuth, asyncRoute(async (req, res) => {
+  const { id, vagaId, tipo } = req.body ?? {}
+
+  if (id) {
+    const voltou = await reenfileirar(id)
+    if (!voltou) {
+      return res.status(404).json({
+        error: 'Nao encontramos essa operacao na fila.',
+        codigo: 'nao_encontrado',
+        detalhes: null
+      })
+    }
+    return res.json({ ok: true, enfileirado: id, mensagem: 'Vamos tentar de novo em instantes.' })
+  }
+
+  if (vagaId && tipo) {
+    const item = await enfileirar(tipo, { jobId: vagaId })
+    return res.json({
+      ok: true,
+      enfileirado: item.id,
+      jaEstava: item.jaEstava,
+      mensagem: item.jaEstava
+        ? 'Esta operacao ja estava na fila.'
+        : 'Colocamos na fila. Vamos tentar de novo em instantes.'
+    })
+  }
+
+  res.status(400).json({
+    error: 'Diga qual operacao reprocessar.',
+    codigo: 'requisicao_invalida',
+    detalhes: { esperado: 'id, ou vagaId com tipo' }
+  })
+}))
+
+/** Roda a fila agora, sem esperar o proximo ciclo. Util na demonstracao. */
+chainRouter.post('/queue/run', requireAuth, asyncRoute(async (_req, res) => {
+  res.json(await processarUmaRodada())
 }))

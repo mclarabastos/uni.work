@@ -14,9 +14,10 @@ import { z } from 'zod'
 import { query, one, many, transaction } from '../db/index.js'
 import { newId, newVerificationCode } from '../lib/ids.js'
 import { config } from '../config.js'
-import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
+import { badRequest, conflict, forbidden, notFound, networkTrouble } from '../lib/errors.js'
 import { splitFee } from '../lib/money.js'
 import { emitEvent } from './events.js'
+import { enfileirar } from './chain-queue.js'
 import { accountKeyFor, publicUser } from './auth.js'
 import { openAccount } from '../services/wallet.js'
 import { fundEscrow, releaseEscrow, refundEscrow } from '../services/escrow.js'
@@ -101,6 +102,18 @@ export const messageSchema = z.object({
 
 // ─── leitura ─────────────────────────────────────────────────────────────────
 
+/**
+ * Rotulo do status para a tela.
+ * "Entregue" e "entregue e ja confirmado, esperando o pagamento sair" sao
+ * momentos diferentes para quem esta olhando, mesmo sendo o mesmo status.
+ */
+export function rotuloDe (row) {
+  if (row.confirmed_at && row.status !== 'concluida' && row.status !== 'cancelada') {
+    return 'Confirmada, liberando o pagamento'
+  }
+  return STATUS_LABELS[row.status] ?? row.status
+}
+
 export function publicJob (row, extras = {}) {
   if (!row) return null
   return {
@@ -113,7 +126,10 @@ export function publicJob (row, extras = {}) {
     valorCentavos: Number(row.amount_cents),
     horas: Number(row.hours),
     status: row.status,
-    statusRotulo: STATUS_LABELS[row.status] ?? row.status,
+    statusRotulo: rotuloDe(row),
+    // Confirmada mas ainda nao paga: o contratante ja disse sim e a liberacao
+    // esta na fila. A tela precisa saber a diferenca.
+    pagamentoEmProcessamento: Boolean(row.confirmed_at) && row.status !== 'concluida' && row.status !== 'cancelada',
     trilha: trailProgress(row.status),
     pagamentoGarantido: ['garantida', 'aceita', 'em_andamento', 'entregue', 'concluida'].includes(row.status),
     contratante: row.company_name ? { id: row.company_id, nome: row.company_name } : { id: row.company_id },
@@ -261,14 +277,25 @@ export async function fundJob (company, jobId) {
   const account = await accountKeyFor(company.id)
   const keypair = await openAccount(account.secret_cipher)
 
-  const result = await fundEscrow({
-    jobId,
-    companyPubkey: account.public_key,
-    companyKeypair: keypair,
-    amountCents: Number(job.amount_cents),
-    feeBps: Number(job.fee_bps),
-    deadlineUnix: job.deadline_at ? Math.floor(new Date(job.deadline_at).getTime() / 1000) : 0
-  })
+  let result
+  try {
+    result = await fundEscrow({
+      jobId,
+      companyPubkey: account.public_key,
+      companyKeypair: keypair,
+      amountCents: Number(job.amount_cents),
+      feeBps: Number(job.fee_bps),
+      deadlineUnix: job.deadline_at ? Math.floor(new Date(job.deadline_at).getTime() / 1000) : 0
+    })
+  } catch (err) {
+    await recordChainTx({
+      jobId, kind: 'escrow_fund', signature: null, status: 'falhou',
+      error: String(err.message).slice(0, 500), detail: { enfileirado: true }
+    })
+    await enfileirar('escrow_fund', { jobId })
+    await emitEvent('rede.enfileirada', { jobId, actorId: company.id, payload: { tipo: 'escrow_fund' } })
+    throw networkTrouble(err.message)
+  }
 
   await query(
     "update jobs set status = 'garantida', funded_at = now(), escrow_address = $2 where id = $1",
@@ -368,18 +395,45 @@ export async function confirmJob (company, jobId) {
   assertTransition(job.status, 'concluida')
   if (!job.student_id) throw conflict('Esta vaga ainda nao tem estudante.', 'sem_estudante')
 
+  // A intencao do contratante e registrada antes de qualquer chamada de rede.
+  // Se a rede recusar, essa marca e o que permite a fila terminar o servico
+  // depois sem precisar pedir nada de novo para ninguem.
+  await query('update jobs set confirmed_at = now() where id = $1', [jobId])
+
   const companyAccount = await accountKeyFor(company.id)
   const studentAccount = await accountKeyFor(job.student_id)
   const companyKeypair = await openAccount(companyAccount.secret_cipher)
 
-  const payment = await releaseEscrow({
-    jobId,
-    studentPubkey: studentAccount.public_key,
-    companyPubkey: companyAccount.public_key,
-    companyKeypair,
-    amountCents: Number(job.amount_cents),
-    feeBps: Number(job.fee_bps)
-  })
+  let payment
+  try {
+    payment = await releaseEscrow({
+      jobId,
+      studentPubkey: studentAccount.public_key,
+      companyPubkey: companyAccount.public_key,
+      companyKeypair,
+      amountCents: Number(job.amount_cents),
+      feeBps: Number(job.fee_bps)
+    })
+  } catch (err) {
+    // Erro de rede nao bloqueia o fluxo de produto: a operacao entra na fila e
+    // a tela segue. O contratante nao precisa clicar de novo, e o estudante nao
+    // perde nem o pagamento nem o certificado.
+    await recordChainTx({
+      jobId, kind: 'escrow_release', signature: null, status: 'falhou',
+      error: String(err.message).slice(0, 500), detail: { enfileirado: true }
+    })
+    await enfileirar('escrow_release', { jobId })
+    await emitEvent('rede.enfileirada', { jobId, actorId: company.id, payload: { tipo: 'escrow_release' } })
+
+    return {
+      vaga: await getJobDetail(jobId, company),
+      pagamento: {
+        emProcessamento: true,
+        mensagem: 'Recebemos a sua confirmacao. O pagamento esta sendo liberado e o certificado sai em seguida.'
+      },
+      certificado: null
+    }
+  }
 
   await query("update jobs set status = 'concluida', completed_at = now() where id = $1", [jobId])
   await recordChainTx({
@@ -393,7 +447,11 @@ export async function confirmJob (company, jobId) {
   })
 
   const certificate = await issueCertificateForJob({ job, studentPubkey: studentAccount.public_key })
-  return { vaga: await getJobDetail(jobId, company), certificado: certificate }
+  return {
+    vaga: await getJobDetail(jobId, company),
+    pagamento: { emProcessamento: false, recebidoCentavos: payment.split.studentCents },
+    certificado: certificate
+  }
 }
 
 /** Emite o certificado da vaga. Idempotente: uma vaga tem um certificado so. */
@@ -442,6 +500,10 @@ export async function issueCertificateForJob ({ job, studentPubkey }) {
     payload: { codigo: code, horas: Number(job.hours) }
   })
 
+  // Um certificado que nao virou cNFT ainda nao terminou de nascer. A fila
+  // termina o servico, com espera crescente entre as tentativas.
+  if (issued.pending) await enfileirar('cert_mint', { jobId: job.id })
+
   return {
     codigo: code,
     horas: Number(job.hours),
@@ -457,23 +519,38 @@ export async function cancelJob (company, jobId, motivo = null) {
   if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
   assertTransition(job.status, 'cancelada')
 
+  // A vaga e cancelada de qualquer jeito. A devolucao do valor pode demorar,
+  // mas nao pode ficar dependendo de o contratante clicar de novo: se a rede
+  // recusar agora, a fila devolve depois.
+  await query(
+    "update jobs set status = 'cancelada', cancelled_at = now(), cancelled_reason = $2 where id = $1",
+    [jobId, motivo]
+  )
+
   let refund = null
   if (job.funded_at) {
     const account = await accountKeyFor(company.id)
     const keypair = await openAccount(account.secret_cipher)
-    refund = await refundEscrow({
-      jobId,
-      companyPubkey: account.public_key,
-      companyKeypair: keypair,
-      amountCents: Number(job.amount_cents)
-    })
-    await recordChainTx({
-      jobId, kind: 'escrow_refund', signature: refund.signature,
-      instructions: refund.instructionsDescribed, detail: { driver: refund.driver }
-    })
+    try {
+      refund = await refundEscrow({
+        jobId,
+        companyPubkey: account.public_key,
+        companyKeypair: keypair,
+        amountCents: Number(job.amount_cents)
+      })
+      await recordChainTx({
+        jobId, kind: 'escrow_refund', signature: refund.signature,
+        instructions: refund.instructionsDescribed, detail: { driver: refund.driver }
+      })
+    } catch (err) {
+      await recordChainTx({
+        jobId, kind: 'escrow_refund', signature: null, status: 'falhou',
+        error: String(err.message).slice(0, 500), detail: { enfileirado: true }
+      })
+      await enfileirar('escrow_refund', { jobId })
+      await emitEvent('rede.enfileirada', { jobId, actorId: company.id, payload: { tipo: 'escrow_refund' } })
+    }
   }
-
-  await query("update jobs set status = 'cancelada', cancelled_at = now() where id = $1", [jobId])
   await emitEvent('vaga.cancelada', { jobId, actorId: company.id, payload: { motivo } })
   return getJobDetail(jobId, company)
 }

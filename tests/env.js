@@ -15,6 +15,12 @@ const contraPostgres = process.env.UNIWORK_FORCA_POSTGRES === '1' && process.env
 process.env.WALLET_MASTER_KEY = process.env.WALLET_MASTER_KEY ?? 'chave-de-teste-fixa-para-a-suite-0123456789'
 process.env.PUBLIC_BASE_URL = 'https://uniwork.test'
 process.env.SOLANA_CLUSTER = 'devnet'
+
+// A suite roda offline. Um RPC que nao existe garante isso na marra: se algum
+// codigo tentar sair para a rede sem passar por setConnection(), ele falha na
+// hora em vez de esperar o timeout de um servidor de verdade. E o que faz o
+// caminho de fallback do certificado ser exercitado rapido.
+process.env.SOLANA_RPC_URL = 'http://127.0.0.1:1'
 process.env.ESCROW_DRIVER = 'vault'
 process.env.PLATFORM_FEE_BPS = '500'
 if (contraPostgres) {

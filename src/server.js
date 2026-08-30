@@ -9,6 +9,7 @@ import { getDb, dbInfo } from './db/index.js'
 import { migrar, versaoDoSchema } from './db/migrate.js'
 import { attachUser, errorHandler, asyncRoute } from './routes/helpers.js'
 import { limitePorRequisicao } from './lib/ratelimit.js'
+import { iniciarWorker } from './workers/chain.js'
 import { authRouter } from './routes/auth.js'
 import { jobsRouter } from './routes/jobs.js'
 import { certificatesRouter } from './routes/certificates.js'
@@ -71,6 +72,8 @@ export async function startServer () {
   const info = await dbInfo()
   const schema = await versaoDoSchema()
   const app = createApp()
+  // O worker sobe junto com o servidor: a fila so serve se alguem tirar dela.
+  iniciarWorker()
   return new Promise((resolve) => {
     const server = app.listen(config.port, () => {
       console.log(`\n  Uni.work no ar em http://localhost:${config.port}`)

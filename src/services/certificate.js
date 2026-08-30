@@ -222,9 +222,12 @@ export async function issueCertificate ({ code, content, hash, metadata, student
       }
     }
   }
+  // Driver memo escolhido de proposito. Ainda assim o resultado fica pendente:
+  // um memo prova que o hash existia naquele bloco, mas nao e um certificado
+  // que um terceiro consegue achar sozinho. Ele sobe para cNFT pela fila.
   try {
     const out = await issueViaMemo({ code, hash, studentPubkey })
-    return { ...out, fallback: false }
+    return { ...out, fallback: false, pending: true }
   } catch (err) {
     return { driver: 'nenhum', signature: null, assetId: null, pending: true, fallback: true, fallbackReason: err.message }
   }
