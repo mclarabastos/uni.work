@@ -471,6 +471,7 @@ function telaConta () {
   </section>
   <div class="banner-acoes" style="margin-bottom:4px">
     <button class="btn btn-linha" data-acao="meu-perfil">Ver meu perfil publico</button>
+    <button class="btn btn-fantasma" data-acao="rever-guia">Rever como funciona</button>
   </div>
   <div class="grade">
     <div class="cartao" style="cursor:default">
@@ -632,10 +633,10 @@ function telaDetalhe () {
       ${vaga.anexos ? `<div class="painel">
         <h4>ARQUIVOS DA VAGA</h4>
         ${vaga.anexos.length
-          ? vaga.anexos.map((a) => `<div class="dado-linha">
+          ? `<dl class="dados">${vaga.anexos.map((a) => `<div class="dado-linha">
               <dt><a href="${escapar(a.url)}" target="_blank" rel="noopener">${escapar(a.nome)}</a></dt>
               <dd class="mono">${Math.round(a.tamanho / 1024)} KB</dd>
-            </div>`).join('')
+            </div>`).join('')}</dl>`
           : '<p style="font-size:13px;color:var(--ink-4)">Nenhum arquivo por enquanto.</p>'}
         <button class="btn btn-linha btn-mini btn-bloco" style="margin-top:12px" data-enviar="delivery">Anexar arquivo</button>
       </div>` : ''}
@@ -645,10 +646,12 @@ function telaDetalhe () {
         <p style="font-size:13.5px;font-weight:700;margin-bottom:6px">${escapar(vaga.contestacao.statusRotulo)}</p>
         <p style="font-size:13px;color:var(--ink-2);margin-bottom:10px">${escapar(vaga.contestacao.motivoRotulo)}</p>
         <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap;margin-bottom:12px">${escapar(vaga.contestacao.detalhe)}</p>
-        <div class="dado-linha"><dt>Aberta por</dt><dd>${escapar(vaga.contestacao.abertaPor.nome ?? '-')}</dd></div>
-        <div class="dado-linha"><dt>Prazo da analise</dt><dd class="mono">${
-          new Date(vaga.contestacao.prazoEm).toLocaleDateString('pt-BR')
-        }</dd></div>
+        <dl class="dados">
+          <div class="dado-linha"><dt>Aberta por</dt><dd>${escapar(vaga.contestacao.abertaPor.nome ?? '-')}</dd></div>
+          <div class="dado-linha"><dt>Prazo da analise</dt><dd class="mono">${
+            new Date(vaga.contestacao.prazoEm).toLocaleDateString('pt-BR')
+          }</dd></div>
+        </dl>
         ${vaga.contestacao.resolucao ? `
           <p style="font-size:12px;letter-spacing:1px;color:var(--ink-4);margin:14px 0 6px">DECISAO</p>
           <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap">${escapar(vaga.contestacao.resolucao)}</p>
@@ -1030,9 +1033,9 @@ function renderLateral () {
 
     ${estado.metricas?.porCategoria?.length ? `<div class="widget">
       <h3>CATEGORIAS</h3>
-      ${estado.metricas.porCategoria.map((c) => `<div class="dado-linha">
+      <dl class="dados">${estado.metricas.porCategoria.map((c) => `<div class="dado-linha">
         <dt style="color:var(--ink-2)">${escapar(c.categoria)}</dt><dd class="mono">${c.total}</dd>
-      </div>`).join('')}
+      </div>`).join('')}</dl>
     </div>` : ''}
   `
 }
@@ -1059,6 +1062,160 @@ function render () {
   if (estado.view === 'detalhe' && estado.vagaAberta) carregarConversa(estado.vagaAberta.id)
 }
 
+// ─── onboarding ──────────────────────────────────────────────────────────────
+
+/**
+ * Tres passos na primeira sessao, diferentes para cada perfil.
+ *
+ * Nao e tour de interface apontando botao: e a explicacao das tres coisas que
+ * mudam a forma de usar o produto, e que ninguem descobre sozinho olhando a
+ * tela. Aparece uma vez e nunca mais.
+ */
+const GUIAS = {
+  student: [
+    {
+      arte: '\\u{1F512}',
+      titulo: 'O pagamento vem antes de voce aceitar',
+      corpo: 'O contratante reserva o valor no ato de publicar. Quando voce ve "pagamento garantido" num cartao, o dinheiro ja saiu da conta dele e esta separado. Voce so aceita sabendo que vai receber.'
+    },
+    {
+      arte: '\\u{1F393}',
+      titulo: 'Todo trampo concluido vira certificado',
+      corpo: 'Quando o contratante confirma a entrega, o pagamento sai e o certificado com a carga horaria e emitido no mesmo instante. Ele tem codigo publico: a coordenacao do seu curso confere sem precisar de conta.'
+    },
+    {
+      arte: '\\u{1F91D}',
+      titulo: 'Se algo der errado, ha para quem recorrer',
+      corpo: 'Entregou e o contratante sumiu? Voce abre uma contestacao e o valor fica parado ate alguem da equipe analisar, com prazo. E se ninguem confirmar nem contestar, o pagamento sai sozinho depois de sete dias.'
+    }
+  ],
+  company: [
+    {
+      arte: '\\u{1F512}',
+      titulo: 'Reservar o valor e o que atrai gente boa',
+      corpo: 'Publicar e reservar sao dois passos. Enquanto voce nao reserva, sua vaga aparece como "aguardando reserva" e nao da para escolher ninguem. Com o valor reservado, o estudante ve a garantia e a vaga fica muito mais atraente.'
+    },
+    {
+      arte: '\\u2713',
+      titulo: 'Confirmar a entrega paga e certifica de uma vez',
+      corpo: 'Um clique faz as duas coisas: libera o valor para o estudante e emite o certificado com a carga horaria. Voce nao precisa fazer mais nada depois.'
+    },
+    {
+      arte: '\\u23F1',
+      titulo: 'O prazo corre para os dois lados',
+      corpo: 'Voce tem sete dias para confirmar ou contestar uma entrega. Passado o prazo sem resposta, o sistema confirma sozinho. Sua taxa de confirmacao fica visivel no seu perfil, e e o que o estudante olha antes de aceitar.'
+    }
+  ]
+}
+
+const CHAVE_GUIA = 'uniwork.guia-vista'
+
+function jaViuOGuia (perfil) {
+  try {
+    return (localStorage.getItem(CHAVE_GUIA) ?? '').split(',').includes(perfil)
+  } catch {
+    // Sem armazenamento, mostrar o guia toda vez seria pior do que nao mostrar.
+    return true
+  }
+}
+
+function marcarGuiaComoVisto (perfil) {
+  try {
+    const vistos = new Set((localStorage.getItem(CHAVE_GUIA) ?? '').split(',').filter(Boolean))
+    vistos.add(perfil)
+    localStorage.setItem(CHAVE_GUIA, [...vistos].join(','))
+  } catch { /* sem armazenamento: o guia volta na proxima sessao */ }
+}
+
+function mostrarGuia (perfil, { forcado = false } = {}) {
+  const passos = GUIAS[perfil]
+  if (!passos || (!forcado && jaViuOGuia(perfil))) return
+
+  let atual = 0
+  const raiz = document.createElement('div')
+  raiz.className = 'guia'
+  raiz.setAttribute('role', 'dialog')
+  raiz.setAttribute('aria-modal', 'true')
+  raiz.setAttribute('aria-label', 'Como o Uni.work funciona')
+
+  const desenhar = () => {
+    const passo = passos[atual]
+    const ultimo = atual === passos.length - 1
+    raiz.innerHTML = `<div class="guia-cartao">
+      <div class="guia-arte"><span aria-hidden="true">${passo.arte}</span></div>
+      <div class="guia-corpo">
+        <h2>${escapar(passo.titulo)}</h2>
+        <p>${escapar(passo.corpo)}</p>
+      </div>
+      <div class="guia-rodape">
+        <div class="guia-pontos" role="img" aria-label="Passo ${atual + 1} de ${passos.length}">
+          ${passos.map((_, i) => `<span class="guia-ponto ${i === atual ? 'atual' : ''}"></span>`).join('')}
+        </div>
+        <button class="btn btn-fantasma btn-mini" style="margin-left:auto" data-guia="pular">
+          ${ultimo ? '' : 'Pular'}
+        </button>
+        <button class="btn btn-marca" data-guia="proximo">
+          ${ultimo ? 'Entendi, vamos la' : 'Proximo'}
+        </button>
+      </div>
+    </div>`
+    raiz.querySelector('[data-guia="proximo"]').focus()
+  }
+
+  const fechar = () => {
+    marcarGuiaComoVisto(perfil)
+    raiz.remove()
+    document.removeEventListener('keydown', aoTeclar)
+    $('#conteudo')?.focus()
+  }
+
+  const aoTeclar = (e) => {
+    if (e.key === 'Escape') fechar()
+    if (e.key === 'ArrowRight' && atual < passos.length - 1) { atual += 1; desenhar() }
+    if (e.key === 'ArrowLeft' && atual > 0) { atual -= 1; desenhar() }
+    prenderFoco(e, raiz)
+  }
+
+  raiz.addEventListener('click', (e) => {
+    const acao = e.target.closest('[data-guia]')?.dataset.guia
+    if (acao === 'pular') return fechar()
+    if (acao === 'proximo') {
+      if (atual === passos.length - 1) return fechar()
+      atual += 1
+      desenhar()
+    }
+  })
+
+  document.addEventListener('keydown', aoTeclar)
+  document.body.append(raiz)
+  desenhar()
+}
+
+/**
+ * Mantem o foco dentro do dialogo aberto.
+ * Sem isto, quem navega por teclado sai do modal para a pagina atras dele e nao
+ * encontra o caminho de volta.
+ */
+function prenderFoco (evento, raiz) {
+  if (evento.key !== 'Tab') return
+  const focaveis = [...raiz.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((el) => el.offsetParent !== null)
+  if (!focaveis.length) return
+
+  const primeiro = focaveis[0]
+  const ultimo = focaveis[focaveis.length - 1]
+
+  if (evento.shiftKey && document.activeElement === primeiro) {
+    evento.preventDefault()
+    ultimo.focus()
+  } else if (!evento.shiftKey && document.activeElement === ultimo) {
+    evento.preventDefault()
+    primeiro.focus()
+  }
+}
+
+
 // ─── modal ───────────────────────────────────────────────────────────────────
 
 function abrirModal ({ titulo, corpo, rodape = '', aoMontar }) {
@@ -1079,7 +1236,11 @@ function abrirModal ({ titulo, corpo, rodape = '', aoMontar }) {
   $('input,textarea,select,button', $('.modal-corpo', raiz))?.focus()
 }
 
-function escFecha (e) { if (e.key === 'Escape') fecharModal() }
+function escFecha (e) {
+  if (e.key === 'Escape') return fecharModal()
+  const fundo = $('.modal-fundo')
+  if (fundo) prenderFoco(e, fundo)
+}
 function fecharModal () {
   $('#modal-raiz').innerHTML = ''
   document.removeEventListener('keydown', escFecha)
@@ -1762,10 +1923,12 @@ async function telaVerificacao (codigo) {
     <div class="grade">
       <div class="painel">
         <h4>O QUE FOI CONFERIDO</h4>
-        <div class="dado-linha"><dt>Conteudo integro</dt><dd style="color:${dados.integridade.confere ? 'var(--verde)' : 'var(--vermelho)'}">${dados.integridade.confere ? 'sim' : 'nao'}</dd></div>
-        <div class="dado-linha"><dt>Registro publico</dt><dd style="color:${conf.confirmado ? 'var(--verde)' : 'var(--amarelo)'}">${conf.confirmado ? 'confirmado' : 'aguardando'}</dd></div>
-        <div class="dado-linha"><dt>Emitido em</dt><dd class="mono">${new Date(c.emitidoEm).toLocaleDateString('pt-BR')}</dd></div>
-        <div class="dado-linha"><dt>Codigo</dt><dd class="mono">${escapar(c.codigo)}</dd></div>
+        <dl class="dados">
+          <div class="dado-linha"><dt>Conteudo integro</dt><dd style="color:${dados.integridade.confere ? 'var(--verde)' : 'var(--vermelho)'}">${dados.integridade.confere ? 'sim' : 'nao'}</dd></div>
+          <div class="dado-linha"><dt>Registro publico</dt><dd style="color:${conf.confirmado ? 'var(--verde)' : 'var(--amarelo)'}">${conf.confirmado ? 'confirmado' : 'aguardando'}</dd></div>
+          <div class="dado-linha"><dt>Emitido em</dt><dd class="mono">${new Date(c.emitidoEm).toLocaleDateString('pt-BR')}</dd></div>
+          <div class="dado-linha"><dt>Codigo</dt><dd class="mono">${escapar(c.codigo)}</dd></div>
+        </dl>
         <p style="font-size:12.5px;color:var(--ink-4);margin-top:12px">
           ${conf.confirmado
             ? 'A confirmacao veio de um servico independente, nao do banco de dados da Uni.work.'
@@ -1776,10 +1939,12 @@ async function telaVerificacao (codigo) {
       </div>
       <div class="painel">
         <h4>DETALHES DA ATIVIDADE</h4>
-        <div class="dado-linha"><dt>Categoria</dt><dd>${escapar(c.categoria)}</dd></div>
-        <div class="dado-linha"><dt>Modalidade</dt><dd>${escapar(c.modalidade)}</dd></div>
-        <div class="dado-linha"><dt>Carga horaria</dt><dd class="mono">${c.horas}h</dd></div>
-        <div class="dado-linha"><dt>Contratante</dt><dd>${escapar(c.contratante)}</dd></div>
+        <dl class="dados">
+          <div class="dado-linha"><dt>Categoria</dt><dd>${escapar(c.categoria)}</dd></div>
+          <div class="dado-linha"><dt>Modalidade</dt><dd>${escapar(c.modalidade)}</dd></div>
+          <div class="dado-linha"><dt>Carga horaria</dt><dd class="mono">${c.horas}h</dd></div>
+          <div class="dado-linha"><dt>Contratante</dt><dd>${escapar(c.contratante)}</dd></div>
+        </dl>
       </div>
     </div>
 
@@ -1826,6 +1991,8 @@ async function mostrarApp () {
   $('#verificacao').hidden = true
   $('#app').classList.add('ativo')
   await recarregar()
+  // Depois do primeiro render, para o guia nao aparecer sobre uma tela vazia.
+  if (estado.usuario?.perfil) mostrarGuia(estado.usuario.perfil)
   if (estado.perfilPendente) {
     await abrirPerfil(estado.perfilPendente)
     estado.perfilPendente = null
@@ -2034,6 +2201,7 @@ function ligarInterface () {
     if (acao) {
       if (acao.dataset.acao === 'publicar') modalPublicar()
       if (acao.dataset.acao === 'voltar') { estado.view = 'feed'; render() }
+      if (acao.dataset.acao === 'rever-guia') mostrarGuia(estado.usuario.perfil, { forcado: true })
       if (acao.dataset.acao === 'editar-perfil') modalEditarPerfil()
       if (acao.dataset.acao === 'meu-perfil') abrirPerfil(estado.usuario.id)
       if (acao.dataset.acao === 'marcar-lidas') {

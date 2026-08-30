@@ -22,8 +22,8 @@
 
   --ink:#f5f5f7;
   --ink-2:#b9b9c4;
-  --ink-3:#8b8b96;
-  --ink-4:#6e6e78;
+  --ink-3:#8b8b96;   /* 5.9:1 sobre a superficie */
+  --ink-4:#86868f;   /* 5.5:1. Era #6e6e78, que dava 3.9:1 e reprovava em AA */
 
   --violeta:#7c5cff;
   --magenta:#c04cf0;
@@ -63,6 +63,21 @@ a{color:inherit}
 ::selection{background:rgba(124,92,255,.35)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* Atalho para quem navega por teclado: primeiro foco da pagina, e so aparece
+   quando recebe foco. Sem ele, chegar ao conteudo exige passar por toda a
+   navegacao a cada troca de tela. */
+.pular{
+  position:absolute;left:12px;top:-60px;z-index:100;
+  padding:10px 18px;border-radius:0 0 var(--r-md) var(--r-md);
+  background:var(--ink);color:#000;font-weight:700;text-decoration:none;
+  transition:top .15s;
+}
+.pular:focus{top:0}
+
+/* Listas de dado com rotulo e valor. O par dt/dd precisa de um dl em volta,
+   senao o leitor de tela nao entende a relacao entre os dois. */
+.dados{margin:0}
 
 /* ─── marca ─────────────────────────────────────────────────────────────── */
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none}
@@ -356,6 +371,31 @@ a{color:inherit}
 .vazio p{font-size:13.5px;color:var(--ink-3);max-width:44ch}
 
 /* ─── modal ─────────────────────────────────────────────────────────────── */
+/* ─── onboarding ────────────────────────────────────────────────────────── */
+.guia{
+  position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.86);
+  backdrop-filter:blur(8px);display:grid;place-items:center;padding:22px;
+}
+.guia-cartao{
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-xl);
+  width:min(560px,100%);overflow:hidden;box-shadow:var(--shadow);
+}
+.guia-arte{
+  position:relative;height:132px;display:grid;place-items:center;font-size:44px;
+  border-bottom:1px solid var(--line);
+}
+.guia-arte::before{content:'';position:absolute;inset:0;background:var(--marca);opacity:.16}
+.guia-arte span{position:relative}
+.guia-corpo{padding:28px}
+.guia-corpo h2{font-size:23px;font-weight:800;margin-bottom:10px}
+.guia-corpo p{font-size:15px;color:var(--ink-2);line-height:1.6}
+.guia-rodape{
+  display:flex;align-items:center;gap:12px;padding:18px 28px;border-top:1px solid var(--line);
+}
+.guia-pontos{display:flex;gap:7px}
+.guia-ponto{width:7px;height:7px;border-radius:50%;background:var(--line-strong)}
+.guia-ponto.atual{background:var(--marca);width:22px;border-radius:4px}
+
 .modal-fundo{
   position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.76);
   backdrop-filter:blur(6px);display:grid;place-items:center;padding:22px;
@@ -554,6 +594,8 @@ a{color:inherit}
 </style>
 </head>
 <body>
+
+<a class="pular" href="#conteudo">Pular para o conteudo</a>
 
 <div class="faixa-offline" id="faixa-offline" role="status">
   <span aria-hidden="true">⚠</span>

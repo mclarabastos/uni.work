@@ -38,6 +38,11 @@ banco, popula o ecossistema de exemplo e roda o diagnostico.
 | `npm test` | suite completa, sem tocar a rede |
 | `npm run test:pg` | a mesma suite contra um Postgres de verdade em container |
 | `npm run test:anchor` | a mesma suite com `ESCROW_DRIVER=anchor` |
+| `npm run test:e2e` | o fluxo inteiro num navegador, com captura em cada passo |
+| `npm run test:a11y` | auditoria de acessibilidade (axe, WCAG 2.1 AA) em doze telas |
+| `npm run lint` | sintaxe, import quebrado, console solto e segredo commitado |
+| `npm run build:artifact` | prova que um clone limpo sobe e responde |
+| `npm run admin -- email` | promove uma conta a mediadora |
 | `anchor test` | testes do programa em Rust, contra um validador (precisa do toolchain Anchor) |
 | `npm run migrate` | aplica as migrations pendentes |
 | `npm run migrate:status` | mostra o que ja aplicou e o que falta |
@@ -248,7 +253,7 @@ npm test          # suite completa, offline
 npm run test:pg   # a mesma suite contra Postgres de verdade em container
 ```
 
-Cobertura em tres camadas, e as tres sao necessarias:
+Cobertura em cinco camadas, e as cinco pegam coisas diferentes:
 
 - `npm test` prova a logica de produto e a montagem das transacoes, offline.
 - `npm run test:anchor` prova que o mesmo fluxo passa pelo driver do programa,
@@ -257,6 +262,13 @@ Cobertura em tres camadas, e as tres sao necessarias:
   verdade. E o unico que prova o que o programa recusa: terceiro tentando
   liberar, liberacao em dobro, devolucao depois de pago, disputa atropelada.
   Precisa do toolchain Anchor instalado.
+- `npm run test:e2e` roda o fluxo inteiro em Chromium. Ele pega o que nenhum
+  teste de logica pega: a tela realmente montando, os cliques ligados, e
+  qualquer erro que so acontece quando o navegador executa o arquivo. Achou
+  cinco defeitos reais que a suite offline nao via.
+- `npm run test:a11y` audita doze telas com o axe, incluindo modal aberto e
+  gaveta tecnica. Zero violacao critica ou seria e requisito, e uma tela que
+  nao abriu conta como reprovada, nao como aprovada.
 
 A suite nao toca a rede. Os testes de escrow decodificam a transacao byte a byte
 e provam que a instrucao e `TransferChecked`, com o valor certo, saindo da conta

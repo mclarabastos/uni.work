@@ -96,6 +96,21 @@ async function capturar (nome) {
   console.log(`  ${String(passo).padStart(2)}. ${nome}`)
 }
 
+/**
+ * Fecha o guia de primeira sessao, como um usuario faria.
+ * Ele aparece depois do primeiro carregamento, e nao junto com a tela, entao
+ * nao adianta so olhar se ele ja esta la: e preciso esperar um pouco por ele.
+ */
+async function fecharGuia () {
+  await pagina.waitForSelector('.guia', { timeout: 3000 }).catch(() => null)
+  const guia = pagina.locator('.guia')
+  for (let i = 0; i < 4 && await guia.count() > 0; i += 1) {
+    await pagina.click('[data-guia="proximo"]').catch(() => {})
+    await pagina.waitForTimeout(200)
+  }
+  await pagina.waitForSelector('.guia', { state: 'detached', timeout: 3000 }).catch(() => null)
+}
+
 function conferir (condicao, mensagem) {
   if (!condicao) problemas.push(mensagem)
 }
@@ -116,6 +131,7 @@ try {
   await capturar('cadastro-do-contratante')
   await pagina.click('#form-criar button[type="submit"]')
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  await fecharGuia()
   await capturar('contratante-entrou')
 
   // ─── 3. publicar a vaga ────────────────────────────────────────────────────
@@ -156,6 +172,7 @@ try {
   await pagina.fill('#criar-curso', 'Design')
   await pagina.click('#form-criar button[type="submit"]')
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  await fecharGuia()
   await capturar('estudante-entrou')
 
   // A estudante ve a garantia antes de aceitar. E a promessa do produto.
@@ -180,6 +197,7 @@ try {
   await pagina.fill('#entrar-email', `empresa.${marca}@xpto.com.br`)
   await pagina.click('#form-entrar button[type="submit"]')
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  await fecharGuia()
 
   await pagina.goto(enderecoDaVaga.includes('/vaga/') ? enderecoDaVaga : base, { waitUntil: 'networkidle' })
   if (!enderecoDaVaga.includes('/vaga/')) {
@@ -199,6 +217,7 @@ try {
   await pagina.fill('#entrar-email', `marina.${marca}@usp.br`)
   await pagina.click('#form-entrar button[type="submit"]')
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  await fecharGuia()
   // Uma vaga ja aceita sai da lista publica: o caminho do estudante agora e
   // "Meus trampos".
   await pagina.click('[data-view="minhas"]')
@@ -224,6 +243,7 @@ try {
   await pagina.fill('#entrar-email', `empresa.${marca}@xpto.com.br`)
   await pagina.click('#form-entrar button[type="submit"]')
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  await fecharGuia()
   await pagina.click('[data-view="minhas"]')
   await pagina.waitForSelector('.cartao:has-text("Staff de credenciamento")', { timeout: 15000 })
   await pagina.click('.cartao:has-text("Staff de credenciamento")')
