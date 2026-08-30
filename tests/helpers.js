@@ -6,7 +6,8 @@
 import './env.js'
 import { Keypair } from '@solana/web3.js'
 import { clearPlatformStateCache } from '../src/services/platform.js'
-import { applySchema, query, closeDb } from '../src/db/index.js'
+import { query, closeDb } from '../src/db/index.js'
+import { migrar } from '../src/db/migrate.js'
 
 /**
  * Estado de plataforma falso, em memoria, para as funcoes que precisam de uma
@@ -33,7 +34,7 @@ export function fakePlatform ({ escrowProgramId = null } = {}) {
 }
 
 export async function prepararBanco () {
-  await applySchema()
+  await migrar()
   return { query, closeDb }
 }
 

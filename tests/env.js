@@ -7,10 +7,22 @@
 
 process.env.NODE_ENV = 'test'
 process.env.PGLITE_DIR = 'memory://'
+
+// Por padrao a suite roda no PGlite em memoria, sem tocar disco nem rede.
+// Com UNIWORK_FORCA_POSTGRES=1 (o que npm run test:pg faz) ela roda contra o
+// Postgres apontado por DATABASE_URL, para provar que os dois drivers passam.
+const contraPostgres = process.env.UNIWORK_FORCA_POSTGRES === '1' && process.env.DATABASE_URL
 process.env.WALLET_MASTER_KEY = process.env.WALLET_MASTER_KEY ?? 'chave-de-teste-fixa-para-a-suite-0123456789'
 process.env.PUBLIC_BASE_URL = 'https://uniwork.test'
 process.env.SOLANA_CLUSTER = 'devnet'
 process.env.ESCROW_DRIVER = 'vault'
 process.env.PLATFORM_FEE_BPS = '500'
-delete process.env.DATABASE_URL
+if (contraPostgres) {
+  // Os arquivos de teste rodam em processos paralelos. Contra o PGlite cada um
+  // ganha um banco proprio em memoria; contra um Postgres compartilhado eles
+  // pisariam uns nos outros, entao cada processo ganha um schema so seu.
+  process.env.UNIWORK_TEST_SCHEMA = `teste_${process.pid}_${Math.random().toString(36).slice(2, 8)}`
+} else {
+  delete process.env.DATABASE_URL
+}
 delete process.env.HELIUS_API_KEY

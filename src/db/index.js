@@ -5,7 +5,6 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { config } from '../config.js'
 
 let handle = null
@@ -72,10 +71,22 @@ async function openPostgres () {
   const pgModule = await import('pg')
   const { Pool } = pgModule.default ?? pgModule
   const needsSsl = /supabase\.|neon\.|render\.com|amazonaws\.com/.test(config.db.url)
+
+  // Isolamento por schema, usado so pela suite contra Postgres de verdade:
+  // cada processo de teste trabalha no proprio schema e nao ve os outros.
+  const schemaIsolado = process.env.UNIWORK_TEST_SCHEMA
+  if (schemaIsolado) {
+    if (!/^[a-z0-9_]{1,60}$/.test(schemaIsolado)) throw new Error('UNIWORK_TEST_SCHEMA invalido')
+    const inicial = new Pool({ connectionString: config.db.url, max: 1, ssl: needsSsl ? { rejectUnauthorized: false } : undefined })
+    await inicial.query(`create schema if not exists ${schemaIsolado}`)
+    await inicial.end()
+  }
+
   const pool = new Pool({
     connectionString: config.db.url,
     max: config.db.poolMax,
     ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+    options: schemaIsolado ? `-c search_path=${schemaIsolado},public` : undefined,
     statement_timeout: config.db.statementTimeoutMs,
     idle_in_transaction_session_timeout: config.db.idleTxTimeoutMs,
     connectionTimeoutMillis: 10000
@@ -170,8 +181,12 @@ export async function dbInfo () {
   return { driver: db.driver, label: db.label }
 }
 
-/** Aplica o schema base. Idempotente: todo objeto usa "if not exists". */
+/**
+ * Aplica o schema aplicando as migrations pendentes.
+ * Mantido com o nome antigo porque e o ponto de entrada que o servidor e a
+ * suite usam; o schema unico virou migrations/0001_init.sql.
+ */
 export async function applySchema () {
-  const file = path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema.sql')
-  await exec(fs.readFileSync(file, 'utf8'))
+  const { migrar } = await import('./migrate.js')
+  return migrar()
 }

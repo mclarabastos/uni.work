@@ -5,7 +5,8 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import express from 'express'
 import { config, rootDir } from './config.js'
-import { getDb, dbInfo, applySchema } from './db/index.js'
+import { getDb, dbInfo } from './db/index.js'
+import { migrar, versaoDoSchema } from './db/migrate.js'
 import { attachUser, errorHandler, asyncRoute } from './routes/helpers.js'
 import { authRouter } from './routes/auth.js'
 import { jobsRouter } from './routes/jobs.js'
@@ -59,13 +60,14 @@ export function createApp () {
 
 export async function startServer () {
   await getDb()
-  await applySchema()
+  await migrar({ log: (m) => console.log(`  migration: ${m}`) })
   const info = await dbInfo()
+  const schema = await versaoDoSchema()
   const app = createApp()
   return new Promise((resolve) => {
     const server = app.listen(config.port, () => {
       console.log(`\n  Uni.work no ar em http://localhost:${config.port}`)
-      console.log(`  banco:   ${info.label}`)
+      console.log(`  banco:   ${info.label} (schema ${schema})`)
       console.log(`  rede:    ${config.solana.cluster}`)
       console.log(`  escrow:  ${config.escrow.driver}   certificado: ${config.certificate.driver}\n`)
       resolve(server)
