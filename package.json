@@ -38,6 +38,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@coral-xyz/anchor": "^0.32.1"
+    "@coral-xyz/anchor": "^0.32.1",
+    "bs58": "^6.0.0"
   }
 }

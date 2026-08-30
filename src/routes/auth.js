@@ -32,33 +32,16 @@ authRouter.get('/me/dashboard', requireAuth, asyncRoute(async (req, res) => {
 }))
 
 authRouter.get('/me/certificates', requireAuth, asyncRoute(async (req, res) => {
-  const rows = await many(
-    `select c.code, c.title, c.hours, c.issuer_name, c.issued_at, c.asset_id, c.content_hash,
-            j.category, j.modality
-       from certificates c join jobs j on j.id = c.job_id
-      where c.student_id = $1
-      order by c.issued_at desc`,
+  const { meusCertificados } = await import('../domain/search.js')
+  const pagina = await meusCertificados(req.user, { cursor: req.query.cursor, limite: req.query.limite })
+
+  // O total de horas e do perfil inteiro, nao so da pagina atual: seria
+  // estranho o numero mudar conforme a pessoa rola a lista.
+  const totais = await many(
+    'select coalesce(sum(hours), 0)::float as horas from certificates where student_id = $1',
     [req.user.id]
   )
-  res.json({
-    certificados: rows.map((r) => ({
-      codigo: r.code,
-      titulo: r.title,
-      horas: Number(r.hours),
-      contratante: r.issuer_name,
-      categoria: r.category,
-      modalidade: r.modality,
-      emitidoEm: r.issued_at,
-      registrado: Boolean(r.asset_id),
-      emProcessamento: !r.asset_id,
-      hash: r.content_hash,
-      links: {
-        verificacao: `/verificar/${r.code}`,
-        imagem: `/api/certificates/${r.code}/image.svg`
-      }
-    })),
-    horasTotais: rows.reduce((sum, r) => sum + Number(r.hours), 0)
-  })
+  res.json({ ...pagina, horasTotais: Number(totais[0]?.horas ?? 0) })
 }))
 
 // ─── autenticacao por link no e-mail ─────────────────────────────────────────

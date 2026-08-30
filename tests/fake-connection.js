@@ -9,6 +9,8 @@
 // recuperacao, nao a rede.
 
 import crypto from 'node:crypto'
+import { PublicKey } from '@solana/web3.js'
+import bs58 from 'bs58'
 
 export class FakeConnection {
   constructor ({ noAr = true } = {}) {
@@ -32,7 +34,11 @@ export class FakeConnection {
     this.chamadas.getLatestBlockhash += 1
     this.#conferir('getLatestBlockhash')
     return {
-      blockhash: crypto.randomBytes(32).toString('base64').replace(/[^1-9A-HJ-NP-Za-km-z]/g, 'A').slice(0, 43),
+      // Precisa ser base58 de exatamente 32 bytes: a montagem da transacao
+      // decodifica isto de volta. Uma primeira versao deste arquivo devolvia
+      // uma string base58 de tamanho aproximado, o que funcionava quase sempre
+      // e falhava de vez em quando, que e o pior tipo de teste.
+      blockhash: new PublicKey(crypto.randomBytes(32)).toBase58(),
       lastValidBlockHeight: 1000
     }
   }
@@ -40,8 +46,8 @@ export class FakeConnection {
   async sendRawTransaction (bytes) {
     this.chamadas.sendRawTransaction += 1
     this.#conferir('sendRawTransaction')
-    const assinatura = crypto.randomBytes(64).toString('base64')
-      .replace(/[^1-9A-HJ-NP-Za-km-z]/g, 'A').slice(0, 88)
+    // Assinatura tem 64 bytes em base58.
+    const assinatura = bs58.encode(crypto.randomBytes(64))
     this.enviadas.push({ assinatura, bytes: bytes.length })
     return assinatura
   }

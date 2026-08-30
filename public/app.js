@@ -22,7 +22,11 @@ const estado = {
   feed: [],
   registros: [],
   view: 'feed',
-  filtros: { modalidade: null, status: null, busca: '' },
+  filtros: { modalidade: null, status: null, busca: '', ordem: null, categoria: null },
+  proximoCursor: null,
+  temMais: false,
+  buscando: false,
+  facetas: null,
   vagaAberta: null,
   contestacoes: [],
   perfilAberto: null,
@@ -311,14 +315,10 @@ function vazio (icone, titulo, texto, acao = '') {
 // ─── telas ───────────────────────────────────────────────────────────────────
 
 function telaFeed () {
-  const termo = estado.filtros.busca.trim().toLowerCase()
-  const lista = estado.vagas.filter((v) => {
-    if (estado.filtros.modalidade && v.modalidade !== estado.filtros.modalidade) return false
-    if (estado.filtros.status && v.status !== estado.filtros.status) return false
-    if (termo && !`${v.titulo} ${v.descricao} ${v.categoria}`.toLowerCase().includes(termo)) return false
-    return true
-  })
-
+  // A filtragem acontece no banco, com indice. Aqui so exibimos o que voltou:
+  // filtrar dez mil vagas no navegador seria baixar dez mil vagas primeiro.
+  const lista = estado.vagas
+  const termo = estado.filtros.busca.trim()
   const ehEstudante = estado.usuario?.perfil === 'student'
 
   return `
@@ -343,12 +343,35 @@ function telaFeed () {
       <button class="chip" data-filtro-modalidade="presencial" aria-pressed="${estado.filtros.modalidade === 'presencial'}">Presencial</button>
       <button class="chip" data-filtro-modalidade="remoto" aria-pressed="${estado.filtros.modalidade === 'remoto'}">Remoto</button>
       <button class="chip" data-filtro-status="garantida" aria-pressed="${estado.filtros.status === 'garantida'}">Garantidas</button>
+      ${estado.ordensDisponiveis?.length > 1 ? `
+        <label class="sr" for="ordenar">Ordenar por</label>
+        <select id="ordenar" class="chip" style="padding:6px 10px">
+          ${estado.ordensDisponiveis.map((o) => `
+            <option value="${escapar(o.valor)}" ${estado.filtros.ordem === o.valor || (!estado.filtros.ordem && estado.ordemAtual === o.valor) ? 'selected' : ''}>
+              ${escapar(o.rotulo)}
+            </option>`).join('')}
+        </select>` : ''}
     </div>
   </div>
 
+  ${estado.facetas?.categorias?.length ? `<div class="filtros" style="margin:-8px 0 0">
+    <button class="chip" data-categoria="" aria-pressed="${!estado.filtros.categoria}">Todas as categorias</button>
+    ${estado.facetas.categorias.slice(0, 8).map((c) => `
+      <button class="chip" data-categoria="${escapar(c.nome)}" aria-pressed="${estado.filtros.categoria === c.nome}">
+        ${escapar(c.nome)} <span style="opacity:.6">${c.total}</span>
+      </button>`).join('')}
+  </div>` : ''}
+
   ${lista.length
-    ? `<div class="grade">${lista.map(cartaoVaga).join('')}</div>`
-    : vazio('🔍', 'Nenhuma vaga por aqui', termo || estado.filtros.modalidade || estado.filtros.status
+    ? `<div class="grade">${lista.map(cartaoVaga).join('')}</div>
+       ${estado.temMais
+         ? `<div style="display:flex;justify-content:center;padding:8px 0 4px">
+              <button class="btn btn-linha" data-acao="mais-vagas" ${estado.buscando ? 'disabled' : ''}>
+                ${estado.buscando ? 'Carregando...' : 'Ver mais vagas'}
+              </button>
+            </div>`
+         : ''}`
+    : vazio('🔍', 'Nenhuma vaga por aqui', termo || estado.filtros.modalidade || estado.filtros.status || estado.filtros.categoria
         ? 'Nenhuma vaga bate com esse filtro. Tente afrouxar a busca.'
         : 'Ainda nao ha vagas publicadas. Volte daqui a pouco.',
       '<button class="btn btn-linha" data-acao="limpar-filtros">Limpar filtros</button>')}
@@ -1499,13 +1522,44 @@ async function enviarMensagem (vagaId, texto) {
 
 // ─── carregamento ────────────────────────────────────────────────────────────
 
+/**
+ * Pergunta ao banco, e nao ao navegador.
+ * `mais` continua de onde parou usando o cursor que veio na resposta anterior.
+ */
+async function buscar ({ mais = false } = {}) {
+  estado.buscando = true
+  if (!mais) { estado.proximoCursor = null; estado.temMais = false }
+
+  const parametros = new URLSearchParams()
+  if (estado.filtros.busca.trim()) parametros.set('termo', estado.filtros.busca.trim())
+  if (estado.filtros.modalidade) parametros.set('modalidade', estado.filtros.modalidade)
+  if (estado.filtros.categoria) parametros.set('categoria', estado.filtros.categoria)
+  if (estado.filtros.status === 'garantida') parametros.set('garantidas', '1')
+  if (estado.filtros.ordem) parametros.set('ordem', estado.filtros.ordem)
+  if (mais && estado.proximoCursor) parametros.set('cursor', estado.proximoCursor)
+
+  try {
+    const saida = await chamar(`/jobs/search?${parametros}`, { silencioso: true })
+    estado.vagas = mais ? [...estado.vagas, ...saida.vagas] : saida.vagas
+    estado.proximoCursor = saida.proximoCursor
+    estado.temMais = saida.temMais
+    estado.ordemAtual = saida.ordem
+    estado.ordensDisponiveis = saida.ordensDisponiveis
+  } catch {
+    if (!mais) estado.vagas = []
+  } finally {
+    estado.buscando = false
+  }
+}
+
 async function recarregar () {
-  const [vagas, metricas] = await Promise.all([
-    chamar('/jobs', { silencioso: true }).catch(() => ({ vagas: estado.vagas })),
-    chamar('/metrics', { silencioso: true }).catch(() => estado.metricas)
+  const [, metricas, facetasDaBusca] = await Promise.all([
+    buscar(),
+    chamar('/metrics', { silencioso: true }).catch(() => estado.metricas),
+    chamar('/jobs/facetas', { silencioso: true }).catch(() => estado.facetas)
   ])
-  estado.vagas = vagas.vagas ?? []
   estado.metricas = metricas ?? estado.metricas
+  estado.facetas = facetasDaBusca ?? estado.facetas
 
   if (estado.usuario?.perfil === 'student') {
     const certs = await chamar('/me/certificates', { silencioso: true }).catch(() => null)
@@ -1801,11 +1855,23 @@ function ligarInterface () {
   let debounce
   $('#busca').addEventListener('input', (e) => {
     clearTimeout(debounce)
-    debounce = setTimeout(() => {
+    debounce = setTimeout(async () => {
       estado.filtros.busca = e.target.value
+      // Buscar por relevancia so faz sentido com termo; ao limpar a busca, a
+      // ordenacao volta para o padrao em vez de ficar numa opcao inexistente.
+      if (!e.target.value.trim() && estado.filtros.ordem === 'relevancia') estado.filtros.ordem = null
       if (estado.view !== 'feed') estado.view = 'feed'
+      await buscar()
       render()
-    }, 180)
+    }, 220)
+  })
+
+  document.addEventListener('change', async (e) => {
+    if (e.target.id === 'ordenar') {
+      estado.filtros.ordem = e.target.value
+      await buscar()
+      render()
+    }
   })
 
   // delegacao: um ouvinte para toda a aplicacao
@@ -1851,7 +1917,14 @@ function ligarInterface () {
     const modalidade = alvo('[data-filtro-modalidade]')
     if (modalidade) {
       estado.filtros.modalidade = modalidade.dataset.filtroModalidade || null
-      render()
+      buscar().then(render)
+      return
+    }
+
+    const categoria = alvo('[data-categoria]')
+    if (categoria) {
+      estado.filtros.categoria = categoria.dataset.categoria || null
+      buscar().then(render)
       return
     }
 
@@ -1859,7 +1932,7 @@ function ligarInterface () {
     if (status) {
       estado.filtros.status = estado.filtros.status === status.dataset.filtroStatus ? null : status.dataset.filtroStatus
       estado.view = 'feed'
-      render()
+      buscar().then(render)
       return
     }
 
@@ -1915,10 +1988,14 @@ function ligarInterface () {
           .then(() => render())
           .catch(() => {})
       }
-      if (acao.dataset.acao === 'limpar-filtros') {
-        estado.filtros = { modalidade: null, status: null, busca: '' }
-        $('#busca').value = ''
+      if (acao.dataset.acao === 'mais-vagas') {
         render()
+        buscar({ mais: true }).then(render)
+      }
+      if (acao.dataset.acao === 'limpar-filtros') {
+        estado.filtros = { modalidade: null, status: null, busca: '', ordem: null, categoria: null }
+        $('#busca').value = ''
+        buscar().then(render)
       }
       return
     }

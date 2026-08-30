@@ -5,6 +5,7 @@ import {
 } from '../domain/jobs.js'
 import { asyncRoute, requireAuth } from './helpers.js'
 import { registrarRotaDeAbertura } from './disputes.js'
+import { buscarVagas, facetas, minhasVagas, meusCertificados } from '../domain/search.js'
 
 export const jobsRouter = Router()
 
@@ -27,6 +28,20 @@ jobsRouter.get('/', asyncRoute(async (req, res) => {
 
 jobsRouter.post('/', requireAuth, asyncRoute(async (req, res) => {
   res.status(201).json({ vaga: await createJob(req.user, req.body) })
+}))
+
+// Busca e listagens vem antes de "/:id" para nao serem capturadas por ele.
+
+jobsRouter.get('/search', asyncRoute(async (req, res) => {
+  res.json(await buscarVagas(req.query))
+}))
+
+jobsRouter.get('/facetas', asyncRoute(async (_req, res) => {
+  res.json(await facetas())
+}))
+
+jobsRouter.get('/minhas', requireAuth, asyncRoute(async (req, res) => {
+  res.json(await minhasVagas(req.user, { cursor: req.query.cursor, limite: req.query.limite }))
 }))
 
 // Aceitar candidatura vem antes de "/:id" para nao ser capturada por ele.
