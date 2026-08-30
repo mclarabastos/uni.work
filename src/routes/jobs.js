@@ -4,8 +4,13 @@ import {
   startJob, deliverJob, confirmJob, cancelJob, listMessages, sendMessage, reviewJob
 } from '../domain/jobs.js'
 import { asyncRoute, requireAuth } from './helpers.js'
+import { registrarRotaDeAbertura } from './disputes.js'
 
 export const jobsRouter = Router()
+
+// A contestacao nasce a partir da vaga, entao a rota mora no router de vagas
+// mesmo que a logica esteja em disputes.
+registrarRotaDeAbertura(jobsRouter)
 
 jobsRouter.get('/', asyncRoute(async (req, res) => {
   const vagas = await listJobs({

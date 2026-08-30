@@ -251,6 +251,72 @@ export async function planRelease ({
   }
 }
 
+// ─── plano: dividir o valor (resolucao de disputa) ───────────────────────────
+
+/**
+ * Divide o cofre entre estudante e contratante.
+ * splitBps e a parte do estudante: 10000 e tudo para ele, 0 e tudo de volta.
+ * A taxa incide so sobre a parte do estudante, porque e ela que remunera
+ * trabalho feito. O que sobra vai para o contratante, calculado por subtracao,
+ * para nao ficar poeira presa no cofre.
+ */
+export async function planResolve ({
+  jobId, studentPubkey, companyPubkey, amountCents, splitBps, mint,
+  feeBps = config.escrow.feeBps, driver = escrowDriverName()
+}) {
+  const mintKey = new PublicKey(mint)
+  const student = new PublicKey(studentPubkey)
+  const company = new PublicKey(companyPubkey)
+  const platform = platformKeypair().publicKey
+
+  const total = Math.round(Number(amountCents))
+  const bps = Math.max(0, Math.min(10000, Math.round(Number(splitBps))))
+  const brutoEstudante = Math.floor((total * bps) / 10000)
+  const { studentCents: liquidoEstudante, feeCents } = splitFee(brutoEstudante, feeBps)
+  const paraContratante = total - brutoEstudante
+
+  const divisao = { studentCents: liquidoEstudante, feeCents, companyCents: paraContratante, totalCents: total }
+
+  const studentAta = await getAssociatedTokenAddress(mintKey, student, true)
+  const companyAta = await getAssociatedTokenAddress(mintKey, company, true)
+  const platformAta = await getAssociatedTokenAddress(mintKey, platform, true)
+
+  if (driver === 'anchor') {
+    const programId = escrowProgramId()
+    const [escrow] = escrowPda(jobId, programId)
+    const vault = await getAssociatedTokenAddress(mintKey, escrow, true)
+    const instruction = new TransactionInstruction({
+      programId,
+      keys: [
+        { pubkey: escrow, isSigner: false, isWritable: true },
+        { pubkey: vault, isSigner: false, isWritable: true },
+        { pubkey: platform, isSigner: true, isWritable: false }, // a plataforma e o mediador
+        { pubkey: studentAta, isSigner: false, isWritable: true },
+        { pubkey: companyAta, isSigner: false, isWritable: true },
+        { pubkey: platformAta, isSigner: false, isWritable: true },
+        { pubkey: mintKey, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }
+      ],
+      data: Buffer.concat([anchorDiscriminator('resolve_dispute'), u16(bps)])
+    })
+    return { driver, instructions: [instruction], divisao, escrow: escrow.toBase58(), vault: vault.toBase58() }
+  }
+
+  const { authority, address } = await vaultAddress(jobId, mintKey)
+  const instructions = []
+  const transferir = (destino, cents) => createTransferCheckedInstruction(
+    address, mintKey, destino, authority.publicKey, centsToBase(cents), TOKEN_DECIMALS
+  )
+  if (liquidoEstudante > 0) instructions.push(transferir(studentAta, liquidoEstudante))
+  if (feeCents > 0) instructions.push(transferir(platformAta, feeCents))
+  if (paraContratante > 0) instructions.push(transferir(companyAta, paraContratante))
+
+  return {
+    driver: 'vault', instructions, divisao, signers: [authority],
+    escrow: address.toBase58(), vault: address.toBase58()
+  }
+}
+
 // ─── plano: devolver o valor ─────────────────────────────────────────────────
 
 export async function planRefund ({ jobId, companyPubkey, amountCents, mint, driver = escrowDriverName() }) {
@@ -333,6 +399,20 @@ export async function refundEscrow ({ jobId, companyPubkey, companyKeypair, amou
   const plan = await planRefund({ jobId, companyPubkey, amountCents, mint })
   const instructions = await withTokenAccounts([companyPubkey], plan.instructions)
   const extra = plan.driver === 'vault' ? plan.signers : [companyKeypair]
+  const { signature, transaction } = await sendTransaction(instructions, extra.filter(Boolean))
+  return { ...plan, signature, instructionsDescribed: describeInstructions(transaction) }
+}
+
+export async function resolveEscrow ({ jobId, studentPubkey, companyPubkey, amountCents, splitBps, feeBps }) {
+  const mint = paymentMint()
+  const plan = await planResolve({
+    jobId, studentPubkey, companyPubkey, amountCents, splitBps, mint, feeBps
+  })
+  const instructions = await withTokenAccounts(
+    [studentPubkey, companyPubkey, platformKeypair().publicKey.toBase58()],
+    plan.instructions
+  )
+  const extra = plan.driver === 'vault' ? plan.signers : []
   const { signature, transaction } = await sendTransaction(instructions, extra.filter(Boolean))
   return { ...plan, signature, instructionsDescribed: describeInstructions(transaction) }
 }

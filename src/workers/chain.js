@@ -57,6 +57,32 @@ async function liberarPagamento (item) {
   if (vaga.status === 'cancelada') return { pulou: 'a vaga foi cancelada' }
   if (!vaga.confirmed_at) return { pulou: 'o contratante ainda nao confirmou' }
   if (!vaga.student_id) return { pulou: 'a vaga nao tem estudante' }
+  if (vaga.disputed_at) return { pulou: 'a vaga esta em contestacao' }
+
+  // Quando a liberacao vem de uma resolucao de disputa, o destino do valor e a
+  // divisao que o mediador decidiu, e nao o pagamento integral.
+  if (item.payload?.resolucaoDeDisputa) {
+    const { resolveEscrow } = await import('../services/escrow.js')
+    const contaC = await accountKeyFor(vaga.company_id)
+    const contaE = await accountKeyFor(vaga.student_id)
+    const divisao = await resolveEscrow({
+      jobId,
+      studentPubkey: contaE.public_key,
+      companyPubkey: contaC.public_key,
+      amountCents: Number(vaga.amount_cents),
+      splitBps: Number(item.payload.divisaoBps),
+      feeBps: Number(vaga.fee_bps)
+    })
+    await query("update jobs set status = 'concluida', completed_at = now() where id = $1", [jobId])
+    await registrarTx({
+      jobId, kind: 'escrow_release', signature: divisao.signature,
+      instructions: divisao.instructionsDescribed,
+      detail: { resolucaoDeDisputa: true, divisao: divisao.divisao, pelaFila: true }
+    })
+    await emitEvent('vaga.concluida', { jobId, payload: { porDisputa: true } })
+    if (Number(item.payload.divisaoBps) > 0) await enfileirar('cert_mint', { jobId })
+    return { assinatura: divisao.signature }
+  }
 
   const contaContratante = await accountKeyFor(vaga.company_id)
   const contaEstudante = await accountKeyFor(vaga.student_id)
@@ -248,6 +274,16 @@ const HANDLERS = {
  * so, sem depender de temporizador.
  */
 export async function processarUmaRodada ({ limite = LOTE, quem = 'worker' } = {}) {
+  // Antes de tirar da fila, ve se alguma entrega passou do prazo de confirmacao.
+  // Uma entrega esquecida vira uma liberacao enfileirada como qualquer outra.
+  try {
+    const { confirmarEntregasVencidas } = await import('../domain/disputes.js')
+    const auto = await confirmarEntregasVencidas()
+    if (auto.confirmadas) log('info', 'auto_confirmacao', auto)
+  } catch (err) {
+    log('error', 'auto_confirmacao_falhou', { detail: err.message })
+  }
+
   const itens = await reservarLote(limite, quem)
   const resultado = { processados: 0, concluidos: 0, falhas: 0, desistencias: 0, pulados: 0 }
 

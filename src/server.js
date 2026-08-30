@@ -13,6 +13,7 @@ import { iniciarWorker } from './workers/chain.js'
 import { authRouter } from './routes/auth.js'
 import { jobsRouter } from './routes/jobs.js'
 import { certificatesRouter } from './routes/certificates.js'
+import { disputesRouter } from './routes/disputes.js'
 import { metricsRouter } from './routes/metrics.js'
 import { chainRouter } from './routes/chain.js'
 import { streamRouter } from './routes/stream.js'
@@ -35,6 +36,7 @@ export function createApp () {
 
   app.use('/api', authRouter)
   app.use('/api/jobs', jobsRouter)
+  app.use('/api/disputes', disputesRouter)
   app.use('/api', certificatesRouter)
   app.use('/api/metrics', metricsRouter)
   app.use('/api/chain', chainRouter)

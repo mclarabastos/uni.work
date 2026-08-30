@@ -46,6 +46,7 @@ export function publicUser (row) {
     curso: row.course ?? null,
     cor: row.accent ?? 'violeta',
     emailVerificado: Boolean(row.verified_email),
+    mediador: Boolean(row.is_admin),
     criadoEm: row.created_at
   }
 }

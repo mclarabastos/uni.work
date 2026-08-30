@@ -108,6 +108,7 @@ export const messageSchema = z.object({
  * momentos diferentes para quem esta olhando, mesmo sendo o mesmo status.
  */
 export function rotuloDe (row) {
+  if (row.disputed_at) return 'Em contestacao'
   if (row.confirmed_at && row.status !== 'concluida' && row.status !== 'cancelada') {
     return 'Confirmada, liberando o pagamento'
   }
@@ -137,11 +138,14 @@ export function publicJob (row, extras = {}) {
     comecaEm: row.starts_at ?? null,
     prazoEm: row.deadline_at ?? null,
     entregaObservacao: row.delivery_note ?? null,
+    emContestacao: Boolean(row.disputed_at),
+    autoConfirmaEm: row.auto_confirm_at ?? null,
     criadoEm: row.created_at,
     concluidoEm: row.completed_at ?? null,
     candidaturas: extras.candidaturas,
     timeline: extras.timeline,
     certificado: extras.certificado,
+    contestacao: extras.contestacao,
     minhaCandidatura: extras.minhaCandidatura
   }
 }
@@ -210,7 +214,11 @@ export async function getJobDetail (jobId, viewer = null) {
     'select code, hours, issued_at, asset_id, driver, signature from certificates where job_id = $1', [jobId]
   )
 
+  const { disputaDaVaga } = await import('./disputes.js')
+  const contestacao = await disputaDaVaga(jobId, viewer)
+
   return publicJob(row, {
+    contestacao,
     candidaturas,
     timeline: (isCompany || isStudent) ? await timelineForJob(jobId) : undefined,
     minhaCandidatura: minhaCandidatura
@@ -372,9 +380,16 @@ export async function deliverJob (student, jobId, input) {
   if (!job) throw notFound('Nao encontramos essa vaga.')
   if (job.student_id !== student.id) throw forbidden('Esta vaga nao e sua.')
   assertTransition(job.status, 'entregue')
+  // O relogio da auto confirmacao comeca aqui. Se o contratante nao confirmar
+  // nem contestar dentro do prazo, o sistema confirma por ele: o estudante nao
+  // pode ficar esperando para sempre por causa de inercia.
+  const { DIAS_ATE_AUTO_CONFIRMAR } = await import('./disputes.js')
   await query(
-    "update jobs set status = 'entregue', delivered_at = now(), delivery_note = $2 where id = $1",
-    [jobId, data.observacao ?? null]
+    `update jobs
+        set status = 'entregue', delivered_at = now(), delivery_note = $2,
+            auto_confirm_at = now() + make_interval(days => $3)
+      where id = $1`,
+    [jobId, data.observacao ?? null, DIAS_ATE_AUTO_CONFIRMAR]
   )
   await emitEvent('vaga.entregue', { jobId, actorId: student.id, payload: {} })
   return getJobDetail(jobId, student)
@@ -394,6 +409,12 @@ export async function confirmJob (company, jobId) {
   if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
   assertTransition(job.status, 'concluida')
   if (!job.student_id) throw conflict('Esta vaga ainda nao tem estudante.', 'sem_estudante')
+  if (job.disputed_at) {
+    throw conflict(
+      'Esta vaga esta em contestacao. A liberacao fica travada ate a mediacao decidir.',
+      'vaga_em_contestacao'
+    )
+  }
 
   // A intencao do contratante e registrada antes de qualquer chamada de rede.
   // Se a rede recusar, essa marca e o que permite a fila terminar o servico
@@ -518,6 +539,12 @@ export async function cancelJob (company, jobId, motivo = null) {
   if (!job) throw notFound('Nao encontramos essa vaga.')
   if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
   assertTransition(job.status, 'cancelada')
+  if (job.disputed_at) {
+    throw conflict(
+      'Esta vaga esta em contestacao e nao pode ser cancelada ate a mediacao decidir.',
+      'vaga_em_contestacao'
+    )
+  }
 
   // A vaga e cancelada de qualquer jeito. A devolucao do valor pode demorar,
   // mas nao pode ficar dependendo de o contratante clicar de novo: se a rede

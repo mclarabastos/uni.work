@@ -24,6 +24,8 @@ const estado = {
   view: 'feed',
   filtros: { modalidade: null, status: null, busca: '' },
   vagaAberta: null,
+  contestacoes: [],
+  motivosDeContestacao: [],
   carregando: false,
   online: true
 }
@@ -212,7 +214,8 @@ const ICONE = {
   feed: 'M4 6h16M4 12h16M4 18h10',
   minhas: 'M4 7h16v13H4zM9 7V4h6v3',
   certificados: 'M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z',
-  conta: 'M12 12a4 4 0 100-8 4 4 0 000 8zM5 20a7 7 0 0114 0'
+  conta: 'M12 12a4 4 0 100-8 4 4 0 000 8zM5 20a7 7 0 0114 0',
+  mediacao: 'M12 3v18M3 8h18M6 8l-3 6a3.5 3.5 0 006 0zM18 8l-3 6a3.5 3.5 0 006 0z'
 }
 
 function itensNav () {
@@ -223,7 +226,18 @@ function itensNav () {
     { grupo: 'MEU' },
     { id: 'minhas', rotulo: ehEstudante ? 'Meus trampos' : 'Minhas vagas', icone: ICONE.minhas },
     ...(ehEstudante ? [{ id: 'certificados', rotulo: 'Meus certificados', icone: ICONE.certificados, badge: estado.certificados.length }] : []),
-    { id: 'conta', rotulo: 'Minha conta', icone: ICONE.conta }
+    { id: 'conta', rotulo: 'Minha conta', icone: ICONE.conta },
+    ...(estado.usuario?.mediador
+      ? [
+          { grupo: 'MEDIACAO' },
+          {
+            id: 'mediacao',
+            rotulo: 'Contestacoes',
+            icone: ICONE.mediacao,
+            badge: estado.contestacoes.filter((c) => ['open', 'in_review'].includes(c.status)).length
+          }
+        ]
+      : [])
   ]
 }
 
@@ -455,6 +469,12 @@ function acoesDaVaga (vaga) {
   if (vaga.status === 'concluida' && (souContratante || souEstudante)) {
     botoes.push(['avaliar', 'Avaliar', 'btn-linha'])
   }
+  // Contestar so aparece quando ha trabalho combinado, valor reservado e o
+  // dinheiro ainda nao saiu. Fora dessa janela nao ha o que contestar.
+  if ((souContratante || souEstudante) && !vaga.contestacao &&
+      ['aceita', 'em_andamento', 'entregue'].includes(vaga.status)) {
+    botoes.push(['contestar', 'Abrir contestacao', 'btn-linha'])
+  }
   return botoes
 }
 
@@ -548,6 +568,35 @@ function telaDetalhe () {
         </div>
       </div>
 
+      ${vaga.contestacao ? `<div class="painel" style="border-color:rgba(255,197,85,.32)">
+        <h4 style="color:var(--amarelo)">CONTESTACAO</h4>
+        <p style="font-size:13.5px;font-weight:700;margin-bottom:6px">${escapar(vaga.contestacao.statusRotulo)}</p>
+        <p style="font-size:13px;color:var(--ink-2);margin-bottom:10px">${escapar(vaga.contestacao.motivoRotulo)}</p>
+        <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap;margin-bottom:12px">${escapar(vaga.contestacao.detalhe)}</p>
+        <div class="dado-linha"><dt>Aberta por</dt><dd>${escapar(vaga.contestacao.abertaPor.nome ?? '-')}</dd></div>
+        <div class="dado-linha"><dt>Prazo da analise</dt><dd class="mono">${
+          new Date(vaga.contestacao.prazoEm).toLocaleDateString('pt-BR')
+        }</dd></div>
+        ${vaga.contestacao.resolucao ? `
+          <p style="font-size:12px;letter-spacing:1px;color:var(--ink-4);margin:14px 0 6px">DECISAO</p>
+          <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap">${escapar(vaga.contestacao.resolucao)}</p>
+          ${vaga.contestacao.divisaoBps !== null ? `<p style="font-size:12.5px;color:var(--ink-3);margin-top:8px">Divisao: ${
+            Math.round(vaga.contestacao.divisaoBps / 100)
+          }% para o estudante</p>` : ''}
+        ` : `<p style="font-size:12.5px;color:var(--ink-4);margin-top:10px">
+          Enquanto a contestacao estiver aberta, o valor fica parado. Nem o pagamento sai, nem volta.
+        </p>`}
+      </div>` : ''}
+
+      ${vaga.autoConfirmaEm && vaga.status === 'entregue' && !vaga.contestacao && !vaga.pagamentoEmProcessamento ? `<div class="painel">
+        <h4>PRAZO DE CONFIRMACAO</h4>
+        <p style="font-size:13px;color:var(--ink-2)">
+          Se ninguem confirmar nem contestar ate
+          <strong style="color:var(--ink)">${new Date(vaga.autoConfirmaEm).toLocaleDateString('pt-BR')}</strong>,
+          o pagamento e liberado automaticamente para o estudante.
+        </p>
+      </div>` : ''}
+
       ${vaga.certificado ? `<div class="painel">
         <h4>CERTIFICADO</h4>
         <p style="font-size:13.5px">${vaga.certificado.horas}h certificadas</p>
@@ -556,6 +605,54 @@ function telaDetalhe () {
       </div>` : ''}
     </div>
   </div>`
+}
+
+function telaMediacao () {
+  const abertas = estado.contestacoes.filter((c) => ['open', 'in_review'].includes(c.status))
+  const resolvidas = estado.contestacoes.filter((c) => !['open', 'in_review'].includes(c.status))
+
+  const cartao = (c) => `<div class="cartao" style="cursor:default;border-color:${
+    c.atrasada ? 'rgba(255,90,90,.35)' : 'var(--line)'
+  }">
+    <div class="cartao-topo">
+      <span class="avatar ${corDe(c.vagaTitulo)}" aria-hidden="true">${iniciais(c.vagaTitulo)}</span>
+      <div style="min-width:0;flex:1">
+        <div class="cartao-titulo">${escapar(c.vagaTitulo ?? c.vagaId)}</div>
+        <div class="cartao-sub">${escapar(c.motivoRotulo)} · aberta por ${escapar(c.abertaPor.nome ?? '-')}</div>
+      </div>
+      <div class="valor" style="font-size:16px">${reais(c.valorCentavos ?? 0)}</div>
+    </div>
+    <p class="cartao-desc" style="-webkit-line-clamp:4">${escapar(c.detalhe)}</p>
+    <div class="tags">
+      <span class="tag">${escapar(c.statusRotulo)}</span>
+      <span class="tag" style="${c.atrasada ? 'color:var(--vermelho)' : ''}">
+        prazo ${new Date(c.prazoEm).toLocaleDateString('pt-BR')}${c.atrasada ? ' · atrasada' : ''}
+      </span>
+    </div>
+    ${c.resolucao ? `<p style="font-size:12.5px;color:var(--ink-3);white-space:pre-wrap">${escapar(c.resolucao)}</p>` : ''}
+    ${['open', 'in_review'].includes(c.status)
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${c.status === 'open' ? `<button class="btn btn-linha btn-mini" data-assumir="${c.id}">Assumir analise</button>` : ''}
+          <button class="btn btn-marca btn-mini" data-resolver="${c.id}">Decidir</button>
+          <a class="btn btn-fantasma btn-mini" href="#" data-vaga="${c.vagaId}">Ver a vaga</a>
+        </div>`
+      : ''}
+  </div>`
+
+  return `<section class="banner">
+    <h1>Contestacoes</h1>
+    <p>Quando as duas partes discordam, o valor fica parado ate alguem decidir. Cada caso tem prazo, e o que voce decide aqui move dinheiro de verdade.</p>
+  </section>
+
+  <div class="secao-topo"><h2>Aguardando decisao</h2><span class="conta">${abertas.length}</span></div>
+  ${abertas.length
+    ? `<div class="grade">${abertas.map(cartao).join('')}</div>`
+    : vazio('✓', 'Nenhuma contestacao aberta', 'Quando alguem contestar uma vaga, o caso aparece aqui com o prazo de analise.')}
+
+  ${resolvidas.length
+    ? `<div class="secao-topo"><h2>Resolvidas</h2><span class="conta">${resolvidas.length}</span></div>
+       <div class="grade">${resolvidas.map(cartao).join('')}</div>`
+    : ''}`
 }
 
 // ─── painel lateral ──────────────────────────────────────────────────────────
@@ -601,7 +698,7 @@ function render () {
   renderNav()
   const telas = {
     feed: telaFeed, minhas: telaMinhas, certificados: telaCertificados,
-    conta: telaConta, detalhe: telaDetalhe
+    conta: telaConta, detalhe: telaDetalhe, mediacao: telaMediacao
   }
   $('#conteudo').innerHTML = (telas[estado.view] ?? telaFeed)()
   renderLateral()
@@ -808,6 +905,7 @@ async function executarAcao (acao, vaga) {
   }
 
   if (acao === 'avaliar') return modalAvaliar(vaga.id)
+  if (acao === 'contestar') return modalContestar(vaga)
 
   if (acao === 'cancelar') {
     return modalTexto({
@@ -896,6 +994,15 @@ async function recarregar () {
   const resumo = await chamar('/me/dashboard', { silencioso: true }).catch(() => null)
   if (resumo) estado.resumo = resumo
 
+  await carregarContestacoes()
+
+  // Os motivos alimentam o formulario de contestacao das duas partes, e nao so
+  // o painel de mediacao.
+  if (!estado.motivosDeContestacao.length) {
+    const motivos = await chamar('/disputes/motivos', { silencioso: true }).catch(() => null)
+    if (motivos) estado.motivosDeContestacao = motivos.motivos
+  }
+
   render()
 }
 
@@ -973,12 +1080,14 @@ function ligarEventos () {
   fonteEventos.onmessage = () => {}
   ;['vaga.publicada', 'vaga.garantida', 'vaga.candidatura', 'vaga.aceita', 'vaga.iniciada',
     'vaga.entregue', 'vaga.concluida', 'vaga.cancelada', 'certificado.emitido',
-    'certificado.pendente', 'conta.criada', 'avaliacao.registrada'].forEach((tipo) => {
+    'certificado.pendente', 'conta.criada', 'avaliacao.registrada',
+    'disputa.aberta', 'disputa.resolvida', 'vaga.auto_confirmada'].forEach((tipo) => {
     fonteEventos.addEventListener(tipo, (e) => {
       const evento = JSON.parse(e.data)
       estado.feed.unshift(evento)
       estado.feed = estado.feed.slice(0, 40)
       renderLateral()
+      if (tipo.startsWith('disputa.')) carregarContestacoes().then(() => render()).catch(() => {})
       if (['vaga.publicada', 'vaga.garantida', 'vaga.concluida', 'vaga.cancelada'].includes(tipo)) {
         recarregar().catch(() => {})
         carregarCamadaTecnica()
@@ -1210,6 +1319,26 @@ function ligarInterface () {
 
     const acaoVaga = alvo('[data-acao-vaga]')
     if (acaoVaga && estado.vagaAberta) return void executarAcao(acaoVaga.dataset.acaoVaga, estado.vagaAberta)
+
+    const assumir = alvo('[data-assumir]')
+    if (assumir) {
+      assumir.disabled = true
+      chamar(`/disputes/${assumir.dataset.assumir}/assumir`, { method: 'POST' })
+        .then(async () => {
+          avisar('Analise assumida', 'A contestacao aparece como em analise para as duas partes.', 'ok')
+          await carregarContestacoes()
+          render()
+        })
+        .catch(() => { assumir.disabled = false })
+      return
+    }
+
+    const resolver = alvo('[data-resolver]')
+    if (resolver) {
+      const contestacao = estado.contestacoes.find((c) => c.id === resolver.dataset.resolver)
+      if (contestacao) modalResolver(contestacao)
+      return
+    }
 
     const aceitar = alvo('[data-aceitar]')
     if (aceitar) {
