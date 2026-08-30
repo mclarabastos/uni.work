@@ -13,6 +13,7 @@ import { statusDasMigrations } from '../src/db/migrate.js'
 import { platformSummary, SCHEMA_VERSION, platformStatePath } from '../src/services/platform.js'
 import { getConnection, getSolBalance, getPaymentBalance } from '../src/services/solana.js'
 import { indexerAvailable } from '../src/services/das.js'
+import { driverDeEmail, emailConfigurado } from '../src/services/mailer.js'
 
 const OK = 'ok  '
 const AVISO = 'aviso'
@@ -191,6 +192,13 @@ if (config.certificate.driver === 'bubblegum' && !plataforma.merkleTree) {
   registrar(AVISO, 'certificado', 'driver bubblegum sem arvore: vai cair no fallback de memo')
 } else {
   registrar(OK, 'certificado', `driver ${config.certificate.driver}`)
+}
+
+if (emailConfigurado()) {
+  registrar(OK, 'e-mail', `envio por ${driverDeEmail()}`)
+} else {
+  registrar(AVISO, 'e-mail', 'nenhum servico de e-mail configurado: o link de acesso sai no terminal',
+    'configure RESEND_API_KEY (https://resend.com) ou SMTP_URL no .env')
 }
 
 if (indexerAvailable()) {

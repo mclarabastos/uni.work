@@ -26,6 +26,7 @@ export const EVENT_LABELS = {
   'mensagem.enviada': 'Mensagem enviada',
   'avaliacao.registrada': 'Avaliacao registrada',
   'conta.criada': 'Conta criada',
+  'conta.entrou': 'Entrou na conta',
   'rede.operacao': 'Operacao registrada na rede',
   'rede.enfileirada': 'Operacao aguardando nova tentativa'
 }

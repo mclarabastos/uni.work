@@ -1,6 +1,10 @@
 import { Router } from 'express'
 import { many } from '../db/index.js'
 import { signup, login, logout, publicUser, accountSummary } from '../domain/auth.js'
+import {
+  pedirMagicLink, verificarMagicLink, renovarSessao,
+  listarSessoes, revogarSessao, revogarOutrasSessoes
+} from '../domain/sessions.js'
 import { asyncRoute, requireAuth } from './helpers.js'
 
 export const authRouter = Router()
@@ -55,4 +59,34 @@ authRouter.get('/me/certificates', requireAuth, asyncRoute(async (req, res) => {
     })),
     horasTotais: rows.reduce((sum, r) => sum + Number(r.hours), 0)
   })
+}))
+
+// ─── autenticacao por link no e-mail ─────────────────────────────────────────
+// Sem senha para lembrar, sem senha para vazar. O link vale por poucos minutos
+// e funciona uma vez so.
+
+authRouter.post('/auth/magic-link', asyncRoute(async (req, res) => {
+  res.json(await pedirMagicLink(req.body, { ip: req.ip }))
+}))
+
+authRouter.post('/auth/verify', asyncRoute(async (req, res) => {
+  const out = await verificarMagicLink(req.body, { ip: req.ip, userAgent: req.get('user-agent') })
+  res.json(out)
+}))
+
+authRouter.post('/auth/refresh', asyncRoute(async (req, res) => {
+  res.json({ sessao: await renovarSessao(req.body, { ip: req.ip }) })
+}))
+
+authRouter.get('/auth/sessions', requireAuth, asyncRoute(async (req, res) => {
+  res.json({ sessoes: await listarSessoes(req.user.id, req.token) })
+}))
+
+authRouter.delete('/auth/sessions/:id', requireAuth, asyncRoute(async (req, res) => {
+  res.json(await revogarSessao(req.user.id, req.params.id))
+}))
+
+// O botao de "perdi meu celular": encerra tudo menos a sessao atual.
+authRouter.post('/auth/sessions/revoke-others', requireAuth, asyncRoute(async (req, res) => {
+  res.json(await revogarOutrasSessoes(req.user.id, req.token))
 }))

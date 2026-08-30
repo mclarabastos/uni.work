@@ -6,8 +6,7 @@
 
 import { z } from 'zod'
 import { query, one, transaction } from '../db/index.js'
-import { newId, newToken } from '../lib/ids.js'
-import { config } from '../config.js'
+import { newId } from '../lib/ids.js'
 import { AppError, conflict, notFound, unauthorized } from '../lib/errors.js'
 import { createAccount } from '../services/wallet.js'
 import { emitEvent } from './events.js'
@@ -46,6 +45,7 @@ export function publicUser (row) {
     universidade: row.university ?? null,
     curso: row.course ?? null,
     cor: row.accent ?? 'violeta',
+    emailVerificado: Boolean(row.verified_email),
     criadoEm: row.created_at
   }
 }
@@ -90,11 +90,14 @@ export async function login (input) {
   return { usuario: publicUser(user), sessao: session }
 }
 
-export async function createSession (userId, ttlHours = config.security.sessionTtlHours) {
-  const token = newToken()
-  const expiresAt = new Date(Date.now() + ttlHours * 3600_000)
-  await query('insert into sessions (token, user_id, expires_at) values ($1, $2, $3)', [token, userId, expiresAt])
-  return { token, expiraEm: expiresAt.toISOString() }
+/**
+ * Abre sessao. Delega para sessions.js, que e quem sabe sobre refresh e
+ * revogacao. O import e dinamico porque sessions.js importa publicUser daqui:
+ * carregar sob demanda quebra o ciclo sem precisar mover codigo de lugar.
+ */
+export async function createSession (userId, opcoes = {}) {
+  const { abrirSessao } = await import('./sessions.js')
+  return abrirSessao(userId, opcoes)
 }
 
 export async function logout (token) {
@@ -102,20 +105,30 @@ export async function logout (token) {
   await query('delete from sessions where token = $1', [token])
 }
 
-/** Resolve o portador do token. Sessao vencida e apagada na hora. */
+/**
+ * Resolve o portador do token.
+ * Devolve null para sessao inexistente, vencida ou revogada, e lanca para
+ * conta suspensa: sao situacoes diferentes e merecem respostas diferentes.
+ */
 export async function userForToken (token) {
   if (!token) return null
   const row = await one(
-    `select u.*, s.expires_at as session_expires
+    `select u.*, s.expires_at as session_expires, s.revoked_at as session_revoked
        from sessions s join users u on u.id = s.user_id
       where s.token = $1`,
     [token]
   )
   if (!row) return null
-  if (new Date(row.session_expires).getTime() < Date.now()) {
-    await query('delete from sessions where token = $1', [token])
-    return null
+  if (row.session_revoked) return null
+  if (new Date(row.session_expires).getTime() < Date.now()) return null
+  if (row.blocked_at) {
+    throw new AppError('Esta conta esta suspensa. Fale com o suporte.', {
+      status: 403, codigo: 'conta_suspensa'
+    })
   }
+  // Marcar uso serve para a pessoa reconhecer as proprias sessoes na lista.
+  // Sem await de proposito: nao vale atrasar toda requisicao por causa disso.
+  query('update sessions set last_used_at = now() where token = $1', [token]).catch(() => {})
   return row
 }
 

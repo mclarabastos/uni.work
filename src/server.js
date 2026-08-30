@@ -8,6 +8,7 @@ import { config, rootDir } from './config.js'
 import { getDb, dbInfo } from './db/index.js'
 import { migrar, versaoDoSchema } from './db/migrate.js'
 import { attachUser, errorHandler, asyncRoute } from './routes/helpers.js'
+import { limitePorRequisicao } from './lib/ratelimit.js'
 import { authRouter } from './routes/auth.js'
 import { jobsRouter } from './routes/jobs.js'
 import { certificatesRouter } from './routes/certificates.js'
@@ -29,6 +30,7 @@ export function createApp () {
   })
 
   app.use(attachUser)
+  app.use('/api', limitePorRequisicao())
 
   app.use('/api', authRouter)
   app.use('/api/jobs', jobsRouter)
@@ -47,6 +49,11 @@ export function createApp () {
   // A verificacao publica e uma rota de leitura da interface: qualquer pessoa
   // abre o link e ve o certificado, sem conta.
   app.get('/verificar/:code', (_req, res) => {
+    res.sendFile(path.join(rootDir, 'public', 'index.html'))
+  })
+
+  // O link do e-mail cai aqui. A interface le o token da URL e troca por sessao.
+  app.get('/entrar', (_req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'index.html'))
   })
 
