@@ -25,6 +25,11 @@ const estado = {
   filtros: { modalidade: null, status: null, busca: '' },
   vagaAberta: null,
   contestacoes: [],
+  notificacoes: [],
+  naoLidas: 0,
+  preferencias: null,
+  pushDisponivel: false,
+  entregaDeEmail: null,
   motivosDeContestacao: [],
   carregando: false,
   online: true
@@ -655,6 +660,67 @@ function telaMediacao () {
     : ''}`
 }
 
+function telaNotificacoes () {
+  const p = estado.preferencias
+  const naoLidas = estado.notificacoes.filter((n) => !n.lida).length
+
+  return `<section class="banner">
+    <h1>Notificacoes</h1>
+    <p>${naoLidas ? `${naoLidas} nova${naoLidas === 1 ? '' : 's'}.` : 'Tudo em dia por aqui.'} Voce escolhe por onde quer ser avisado.</p>
+    ${naoLidas ? '<div class="banner-acoes"><button class="btn btn-linha" data-acao="marcar-lidas">Marcar todas como lidas</button></div>' : ''}
+  </section>
+
+  <div class="detalhe-grade">
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+      ${estado.notificacoes.length
+        ? estado.notificacoes.map((n) => `<button class="aviso-item ${n.lida ? '' : 'nova'}" data-notificacao="${escapar(n.id)}" data-link="${escapar(n.link ?? '')}">
+            <div style="flex:1;min-width:0">
+              <h4>${escapar(n.titulo)}</h4>
+              <p>${escapar(n.corpo)}</p>
+            </div>
+            <time>${quando(n.quando)}</time>
+          </button>`).join('')
+        : vazio('\u{1F514}', 'Nada por aqui ainda', 'Quando alguem se candidatar, entregar ou confirmar uma vaga sua, o aviso aparece aqui.')}
+    </div>
+
+    <div class="painel">
+      <h4>COMO VOCE QUER SER AVISADO</h4>
+      <div class="opcao">
+        <div class="opcao-texto">
+          <strong>No aplicativo</strong>
+          <span>Sempre ligado: e o seu historico</span>
+        </div>
+        <button class="interruptor" aria-pressed="true" disabled aria-label="No aplicativo, sempre ligado"></button>
+      </div>
+      <div class="opcao">
+        <div class="opcao-texto">
+          <strong>Por e-mail</strong>
+          <span>Nas novidades importantes</span>
+        </div>
+        <button class="interruptor" data-pref="email" aria-pressed="${Boolean(p?.email)}" aria-label="Por e-mail"></button>
+      </div>
+      <div class="opcao">
+        <div class="opcao-texto">
+          <strong>No navegador</strong>
+          <span>${estado.pushDisponivel ? 'Mesmo com a aba fechada' : 'Indisponivel neste ambiente'}</span>
+        </div>
+        <button class="interruptor" data-pref="push" aria-pressed="${Boolean(p?.push)}" ${estado.pushDisponivel ? '' : 'disabled'} aria-label="No navegador"></button>
+      </div>
+
+      <h4 style="margin-top:20px">QUANDO</h4>
+      <div class="escolha" style="grid-template-columns:1fr">
+        ${[['instant', 'Na hora', 'Assim que acontece'],
+           ['daily', 'Resumo diario', 'Um e-mail por dia com tudo'],
+           ['off', 'Desligado', 'So dentro do aplicativo']].map(([valor, titulo, sub]) => `
+          <button type="button" data-digest="${valor}" aria-pressed="${p?.digest === valor}">
+            <strong>${titulo}</strong><span>${sub}</span>
+          </button>`).join('')}
+      </div>
+    </div>
+  </div>`
+}
+
+
 // ─── painel lateral ──────────────────────────────────────────────────────────
 
 function renderLateral () {
@@ -698,11 +764,18 @@ function render () {
   renderNav()
   const telas = {
     feed: telaFeed, minhas: telaMinhas, certificados: telaCertificados,
-    conta: telaConta, detalhe: telaDetalhe, mediacao: telaMediacao
+    conta: telaConta, detalhe: telaDetalhe, mediacao: telaMediacao,
+    notificacoes: telaNotificacoes
   }
   $('#conteudo').innerHTML = (telas[estado.view] ?? telaFeed)()
   renderLateral()
   $('#btn-publicar').hidden = estado.usuario?.perfil !== 'company'
+
+  const contador = $('#sino-contador')
+  if (contador) {
+    contador.hidden = estado.naoLidas === 0
+    contador.textContent = estado.naoLidas > 9 ? '9+' : String(estado.naoLidas)
+  }
   if (estado.view === 'detalhe' && estado.vagaAberta) carregarConversa(estado.vagaAberta.id)
 }
 
@@ -866,6 +939,222 @@ function modalAvaliar (vagaId) {
   })
 }
 
+function modalContestar (vaga) {
+  const motivos = estado.motivosDeContestacao.length
+    ? estado.motivosDeContestacao
+    : [{ valor: 'outro', rotulo: 'Outro motivo' }]
+  let motivoEscolhido = motivos[0].valor
+
+  abrirModal({
+    titulo: 'Abrir contestacao',
+    corpo: `<p style="font-size:13.5px;color:var(--ink-2);margin-bottom:18px">
+        Enquanto a contestacao estiver aberta, o valor de
+        <strong style="color:var(--ink)">${reaisExato(vaga.valorCentavos)}</strong> fica parado:
+        nem sai para o estudante, nem volta para o contratante. Uma pessoa da equipe analisa
+        e decide, com prazo.
+      </p>
+      <div class="campo">
+        <label for="c-motivo">Qual e o problema?</label>
+        <select id="c-motivo">
+          ${motivos.map((m) => `<option value="${escapar(m.valor)}">${escapar(m.rotulo)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="c-detalhe">Conte o que aconteceu</label>
+        <textarea id="c-detalhe" placeholder="Datas, o que foi combinado, o que aconteceu de fato. Quanto mais concreto, mais rapido a analise."></textarea>
+        <span class="dica">Minimo de 20 caracteres. As duas partes leem o que voce escrever.</span>
+      </div>`,
+    rodape: `<button class="btn btn-fantasma" data-fechar>Voltar</button>
+             <button class="btn btn-marca" id="c-ok">Abrir contestacao</button>`,
+    aoMontar (raiz) {
+      $('#c-motivo', raiz).addEventListener('change', (e) => { motivoEscolhido = e.target.value })
+      $('#c-ok', raiz).addEventListener('click', async () => {
+        const detalhe = $('#c-detalhe', raiz).value.trim()
+        if (detalhe.length < 20) {
+          avisar('Explique um pouco mais', 'Escreva pelo menos 20 caracteres.', 'erro')
+          return
+        }
+        const botao = $('#c-ok', raiz)
+        botao.disabled = true
+        botao.textContent = 'Abrindo...'
+        try {
+          await chamar(`/jobs/${vaga.id}/dispute`, {
+            method: 'POST', body: { motivo: motivoEscolhido, detalhe }
+          })
+          fecharModal()
+          avisar('Contestacao aberta', 'O valor ficou parado e a equipe vai analisar dentro do prazo.', 'ok')
+          await abrirVaga(vaga.id)
+        } catch {
+          botao.disabled = false
+          botao.textContent = 'Abrir contestacao'
+        }
+      })
+    }
+  })
+}
+
+function modalResolver (contestacao) {
+  let resultado = 'split'
+  let divisao = 50
+
+  abrirModal({
+    titulo: 'Decidir a contestacao',
+    corpo: `<p style="font-size:13.5px;color:var(--ink-2);margin-bottom:16px">
+        <strong style="color:var(--ink)">${escapar(contestacao.vagaTitulo ?? '')}</strong><br>
+        ${reaisExato(contestacao.valorCentavos ?? 0)} - ${escapar(contestacao.motivoRotulo)}
+      </p>
+      <div class="painel" style="margin-bottom:18px">
+        <h4>O QUE FOI ALEGADO</h4>
+        <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap">${escapar(contestacao.detalhe)}</p>
+      </div>
+      <div class="campo">
+        <label>Decisao</label>
+        <div class="escolha" id="r-resultado" style="grid-template-columns:1fr">
+          <button type="button" data-resultado="split" aria-pressed="true">
+            <strong>Dividir o valor</strong><span>Houve trabalho parcial</span>
+          </button>
+          <button type="button" data-resultado="resolved_student" aria-pressed="false">
+            <strong>Tudo para o estudante</strong><span>A entrega procede</span>
+          </button>
+          <button type="button" data-resultado="resolved_company" aria-pressed="false">
+            <strong>Tudo de volta para o contratante</strong><span>Nao houve entrega</span>
+          </button>
+        </div>
+      </div>
+      <div class="campo" id="r-divisao-campo">
+        <label for="r-divisao">Quanto vai para o estudante: <span id="r-divisao-valor">50%</span></label>
+        <input id="r-divisao" type="range" min="5" max="95" step="5" value="50" style="padding:0">
+        <span class="dica" id="r-previa"></span>
+      </div>
+      <div class="campo">
+        <label for="r-resolucao">Explique a decisao</label>
+        <textarea id="r-resolucao" placeholder="As duas partes leem isto. Diga no que voce se baseou."></textarea>
+      </div>`,
+    rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
+             <button class="btn btn-marca" id="r-ok">Confirmar decisao</button>`,
+    aoMontar (raiz) {
+      const campoDivisao = $('#r-divisao-campo', raiz)
+      const previa = $('#r-previa', raiz)
+
+      const atualizarPrevia = () => {
+        const total = contestacao.valorCentavos ?? 0
+        const bps = resultado === 'resolved_student' ? 10000
+          : resultado === 'resolved_company' ? 0 : divisao * 100
+        const bruto = Math.floor((total * bps) / 10000)
+        const taxa = Math.floor((bruto * 500) / 10000)
+        previa.textContent =
+          `Estudante recebe ${reaisExato(bruto - taxa)}, contratante recebe ${reaisExato(total - bruto)}.`
+      }
+
+      $$('#r-resultado button', raiz).forEach((b) => b.addEventListener('click', () => {
+        resultado = b.dataset.resultado
+        $$('#r-resultado button', raiz).forEach((o) => o.setAttribute('aria-pressed', String(o === b)))
+        campoDivisao.style.display = resultado === 'split' ? '' : 'none'
+        atualizarPrevia()
+      }))
+
+      $('#r-divisao', raiz).addEventListener('input', (e) => {
+        divisao = Number(e.target.value)
+        $('#r-divisao-valor', raiz).textContent = `${divisao}%`
+        atualizarPrevia()
+      })
+      atualizarPrevia()
+
+      $('#r-ok', raiz).addEventListener('click', async () => {
+        const resolucao = $('#r-resolucao', raiz).value.trim()
+        if (resolucao.length < 20) {
+          avisar('Explique a decisao', 'Escreva pelo menos 20 caracteres: as duas partes vao ler.', 'erro')
+          return
+        }
+        const botao = $('#r-ok', raiz)
+        botao.disabled = true
+        botao.textContent = 'Confirmando...'
+        try {
+          const saida = await chamar(`/disputes/${contestacao.id}/resolve`, {
+            method: 'POST',
+            body: { resultado, divisaoBps: resultado === 'split' ? divisao * 100 : null, resolucao }
+          })
+          fecharModal()
+          avisar(
+            'Contestacao resolvida',
+            saida.pagamentoEmProcessamento
+              ? 'A decisao foi registrada e o valor esta sendo movimentado.'
+              : 'A decisao foi registrada e o valor ja foi movimentado.',
+            'ok'
+          )
+          await carregarContestacoes()
+          render()
+        } catch {
+          botao.disabled = false
+          botao.textContent = 'Confirmar decisao'
+        }
+      })
+    }
+  })
+}
+
+async function carregarContestacoes () {
+  if (!estado.usuario?.mediador) return
+  const fila = await chamar('/disputes', { silencioso: true }).catch(() => null)
+  if (fila) estado.contestacoes = fila.contestacoes
+}
+
+async function carregarNotificacoes () {
+  const dados = await chamar('/notifications', { silencioso: true }).catch(() => null)
+  if (dados) {
+    estado.notificacoes = dados.notificacoes
+    estado.naoLidas = dados.naoLidas
+  }
+  if (!estado.preferencias) {
+    const prefs = await chamar('/me/notification-preferences', { silencioso: true }).catch(() => null)
+    if (prefs) {
+      estado.preferencias = prefs.preferencias
+      estado.pushDisponivel = Boolean(prefs.disponivel?.push)
+    }
+  }
+}
+
+/**
+ * Ligar o aviso no navegador precisa de tres coisas, nesta ordem: a permissao
+ * do navegador, o service worker registrado e a inscricao guardada no servidor.
+ * Se qualquer uma falhar, a preferencia nao e ligada: dizer que esta ligado sem
+ * conseguir entregar seria mentir para a pessoa.
+ */
+async function ligarPushDoNavegador () {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    avisar('Este navegador nao suporta avisos', 'Voce continua recebendo dentro do aplicativo.', 'info')
+    return false
+  }
+  const permissao = await Notification.requestPermission()
+  if (permissao !== 'granted') {
+    avisar('Permissao negada', 'Voce pode mudar isso nas configuracoes do navegador.', 'info')
+    return false
+  }
+  try {
+    const { chave } = await chamar('/push/key')
+    const registro = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+    const inscricao = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: chaveParaBytes(chave)
+    })
+    await chamar('/push/subscribe', { method: 'POST', body: { inscricao: inscricao.toJSON() } })
+    return true
+  } catch {
+    avisar('Nao conseguimos ligar os avisos', 'Tente de novo em instantes.', 'erro')
+    return false
+  }
+}
+
+/** A chave VAPID vem em base64url e o navegador exige bytes. */
+function chaveParaBytes (base64url) {
+  const preenchimento = '='.repeat((4 - (base64url.length % 4)) % 4)
+  const base64 = (base64url + preenchimento).replace(/-/g, '+').replace(/_/g, '/')
+  const cru = atob(base64)
+  return Uint8Array.from([...cru].map((c) => c.charCodeAt(0)))
+}
+
+
 // ─── acoes ───────────────────────────────────────────────────────────────────
 
 async function executarAcao (acao, vaga) {
@@ -994,6 +1283,7 @@ async function recarregar () {
   const resumo = await chamar('/me/dashboard', { silencioso: true }).catch(() => null)
   if (resumo) estado.resumo = resumo
 
+  await carregarNotificacoes()
   await carregarContestacoes()
 
   // Os motivos alimentam o formulario de contestacao das duas partes, e nao so
@@ -1088,6 +1378,10 @@ function ligarEventos () {
       estado.feed = estado.feed.slice(0, 40)
       renderLateral()
       if (tipo.startsWith('disputa.')) carregarContestacoes().then(() => render()).catch(() => {})
+      carregarNotificacoes().then(() => {
+        const c = $('#sino-contador')
+        if (c) { c.hidden = estado.naoLidas === 0; c.textContent = estado.naoLidas > 9 ? '9+' : String(estado.naoLidas) }
+      }).catch(() => {})
       if (['vaga.publicada', 'vaga.garantida', 'vaga.concluida', 'vaga.cancelada'].includes(tipo)) {
         recarregar().catch(() => {})
         carregarCamadaTecnica()
@@ -1254,6 +1548,13 @@ function ligarInterface () {
     } finally { botao.disabled = false }
   })
 
+  $('#btn-sino').addEventListener('click', async () => {
+    estado.view = 'notificacoes'
+    render()
+    await carregarNotificacoes()
+    render()
+  })
+
   $('#btn-sair').addEventListener('click', () => sair())
   $('#btn-publicar').addEventListener('click', modalPublicar)
   $('#ir-inicio').addEventListener('click', (e) => {
@@ -1305,10 +1606,56 @@ function ligarInterface () {
       return
     }
 
+    const notificacao = alvo('[data-notificacao]')
+    if (notificacao) {
+      const id = notificacao.dataset.notificacao
+      const link = notificacao.dataset.link
+      // Otimista: marca como lida na tela antes da resposta.
+      const item = estado.notificacoes.find((n) => n.id === id)
+      if (item && !item.lida) {
+        item.lida = true
+        estado.naoLidas = Math.max(0, estado.naoLidas - 1)
+        render()
+        chamar('/notifications/read', { method: 'POST', body: { ids: [id] }, silencioso: true })
+          .catch(() => { item.lida = false; estado.naoLidas += 1; render() })
+      }
+      if (link?.startsWith('/vaga/')) abrirVaga(link.slice(6))
+      else if (link) window.location.href = link
+      return
+    }
+
+    const interruptor = alvo('[data-pref]')
+    if (interruptor && !interruptor.disabled) {
+      const campo = interruptor.dataset.pref
+      const ligando = interruptor.getAttribute('aria-pressed') !== 'true'
+      ;(async () => {
+        if (campo === 'push' && ligando && !(await ligarPushDoNavegador())) return
+        const saida = await chamar('/me/notification-preferences', {
+          method: 'PUT', body: { [campo]: ligando }
+        }).catch(() => null)
+        if (saida) { estado.preferencias = saida.preferencias; render() }
+      })()
+      return
+    }
+
+    const digest = alvo('[data-digest]')
+    if (digest) {
+      chamar('/me/notification-preferences', { method: 'PUT', body: { digest: digest.dataset.digest } })
+        .then((saida) => { estado.preferencias = saida.preferencias; render() })
+        .catch(() => {})
+      return
+    }
+
     const acao = alvo('[data-acao]')
     if (acao) {
       if (acao.dataset.acao === 'publicar') modalPublicar()
       if (acao.dataset.acao === 'voltar') { estado.view = 'feed'; render() }
+      if (acao.dataset.acao === 'marcar-lidas') {
+        chamar('/notifications/read', { method: 'POST', body: {} })
+          .then(() => carregarNotificacoes())
+          .then(() => render())
+          .catch(() => {})
+      }
       if (acao.dataset.acao === 'limpar-filtros') {
         estado.filtros = { modalidade: null, status: null, busca: '' }
         $('#busca').value = ''

@@ -284,6 +284,15 @@ export async function processarUmaRodada ({ limite = LOTE, quem = 'worker' } = {
     log('error', 'auto_confirmacao_falhou', { detail: err.message })
   }
 
+  // Resumo diario de quem escolheu receber assim.
+  try {
+    const { enviarResumosDiarios } = await import('../domain/notifications.js')
+    const resumo = await enviarResumosDiarios()
+    if (resumo.enviados) log('info', 'resumos_enviados', resumo)
+  } catch (err) {
+    log('error', 'resumo_diario_falhou', { detail: err.message })
+  }
+
   const itens = await reservarLote(limite, quem)
   const resultado = { processados: 0, concluidos: 0, falhas: 0, desistencias: 0, pulados: 0 }
 

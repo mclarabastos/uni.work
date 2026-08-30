@@ -102,6 +102,50 @@ a{color:inherit}
 
 .topo-acoes{margin-left:auto;display:flex;align-items:center;gap:10px}
 
+.sino{
+  position:relative;width:34px;height:34px;flex:none;
+  display:grid;place-items:center;border-radius:10px;cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);
+  transition:color .14s,border-color .14s;
+}
+.sino:hover{color:var(--ink);border-color:var(--line-strong)}
+.sino-contador{
+  position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:999px;background:var(--marca);color:#000;
+  font-size:10.5px;font-weight:800;display:grid;place-items:center;
+  border:2px solid var(--bg);
+}
+
+.aviso-item{
+  display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
+  padding:14px 16px;border-radius:var(--r-md);cursor:pointer;font:inherit;color:inherit;
+  background:var(--surface);border:1px solid var(--line);transition:border-color .14s;
+}
+.aviso-item:hover{border-color:var(--line-strong)}
+.aviso-item.nova{border-left:3px solid var(--violeta)}
+.aviso-item h4{font-size:14px;font-weight:700;margin-bottom:3px}
+.aviso-item p{font-size:13px;color:var(--ink-2);line-height:1.45}
+.aviso-item time{font-size:11.5px;color:var(--ink-4);font-family:var(--mono);white-space:nowrap}
+
+.opcao{
+  display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);
+}
+.opcao:last-child{border-bottom:0}
+.opcao-texto{flex:1}
+.opcao-texto strong{display:block;font-size:14px;margin-bottom:2px}
+.opcao-texto span{font-size:12.5px;color:var(--ink-3)}
+.interruptor{
+  width:44px;height:25px;flex:none;border-radius:999px;cursor:pointer;position:relative;
+  background:var(--surface-3);border:1px solid var(--line-strong);transition:background .16s;
+}
+.interruptor[aria-pressed="true"]{background:var(--violeta);border-color:var(--violeta)}
+.interruptor::after{
+  content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;
+  background:var(--ink);transition:transform .16s;
+}
+.interruptor[aria-pressed="true"]::after{transform:translateX(19px);background:#fff}
+.interruptor:disabled{opacity:.4;cursor:not-allowed}
+
 .corpo{
   flex:1;display:grid;
   grid-template-columns:var(--nav-w) minmax(0,1fr) var(--side-w);
@@ -604,6 +648,12 @@ a{color:inherit}
       <input id="busca" type="search" placeholder="Buscar por titulo, categoria ou descricao">
     </div>
     <div class="topo-acoes">
+      <button class="sino" id="btn-sino" aria-label="Notificacoes">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/>
+        </svg>
+        <span class="sino-contador" id="sino-contador" hidden></span>
+      </button>
       <button class="btn btn-marca btn-mini" id="btn-publicar" hidden>Publicar vaga</button>
       <button class="btn btn-fantasma btn-mini" id="btn-sair">Sair</button>
     </div>

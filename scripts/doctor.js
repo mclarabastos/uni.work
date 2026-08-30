@@ -14,6 +14,7 @@ import { platformSummary, SCHEMA_VERSION, platformStatePath } from '../src/servi
 import { getConnection, getSolBalance, getPaymentBalance } from '../src/services/solana.js'
 import { indexerAvailable } from '../src/services/das.js'
 import { driverDeEmail, emailConfigurado } from '../src/services/mailer.js'
+import { pushConfigurado } from '../src/services/push.js'
 
 const OK = 'ok  '
 const AVISO = 'aviso'
@@ -199,6 +200,13 @@ if (emailConfigurado()) {
 } else {
   registrar(AVISO, 'e-mail', 'nenhum servico de e-mail configurado: o link de acesso sai no terminal',
     'configure RESEND_API_KEY (https://resend.com) ou SMTP_URL no .env')
+}
+
+if (pushConfigurado()) {
+  registrar(OK, 'push', 'avisos no navegador configurados')
+} else {
+  registrar(AVISO, 'push', 'sem VAPID: os avisos no navegador ficam indisponiveis',
+    'gere um par com npx web-push generate-vapid-keys e coloque VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY no .env')
 }
 
 if (indexerAvailable()) {

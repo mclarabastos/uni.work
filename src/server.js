@@ -10,10 +10,12 @@ import { migrar, versaoDoSchema } from './db/migrate.js'
 import { attachUser, errorHandler, asyncRoute } from './routes/helpers.js'
 import { limitePorRequisicao } from './lib/ratelimit.js'
 import { iniciarWorker } from './workers/chain.js'
+import { ligarNotificacoes } from './domain/notifications.js'
 import { authRouter } from './routes/auth.js'
 import { jobsRouter } from './routes/jobs.js'
 import { certificatesRouter } from './routes/certificates.js'
 import { disputesRouter } from './routes/disputes.js'
+import { notificationsRouter, mePreferencesRouter, pushRouter } from './routes/notifications.js'
 import { metricsRouter } from './routes/metrics.js'
 import { chainRouter } from './routes/chain.js'
 import { streamRouter } from './routes/stream.js'
@@ -31,12 +33,19 @@ export function createApp () {
     next()
   })
 
+  // O barramento de eventos passa a gerar notificacao aqui, e nao no
+  // startServer: quem monta o app sem subir o servidor tambem precisa delas.
+  ligarNotificacoes()
+
   app.use(attachUser)
   app.use('/api', limitePorRequisicao())
 
   app.use('/api', authRouter)
   app.use('/api/jobs', jobsRouter)
   app.use('/api/disputes', disputesRouter)
+  app.use('/api/notifications', notificationsRouter)
+  app.use('/api/me', mePreferencesRouter)
+  app.use('/api/push', pushRouter)
   app.use('/api', certificatesRouter)
   app.use('/api/metrics', metricsRouter)
   app.use('/api/chain', chainRouter)
