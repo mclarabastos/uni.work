@@ -88,7 +88,15 @@ test('nenhum arquivo servido usa jargao de rede fora da gaveta tecnica', () => {
 
 test('o texto que o usuario le fala de conta, garantia e certificado, nunca de rede', () => {
   const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
-  const visivel = textoVisivel(semCamadaTecnica(html, 'index.html')).toLowerCase()
+  const script = fs.readFileSync(path.join(PUBLIC_DIR, 'app.js'), 'utf8')
+
+  // O index.html e so o esqueleto: quase todo texto que a pessoa le e montado
+  // pelo app.js. Conferir apenas o HTML deixaria a regra sem dente, entao os
+  // dois entram, cada um sem a sua parte de camada tecnica.
+  const visivel = [
+    textoVisivel(semCamadaTecnica(html, 'index.html')),
+    semCamadaTecnica(script, 'app.js')
+  ].join(' ').toLowerCase()
 
   const problemas = []
   for (const palavra of PROIBIDAS_NO_TEXTO) {

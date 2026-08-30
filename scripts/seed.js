@@ -20,25 +20,12 @@ import { readPlatformState } from '../src/services/platform.js'
 import { getConnection } from '../src/services/solana.js'
 import { TOKEN_DECIMALS } from '../src/lib/money.js'
 import { config } from '../src/config.js'
+import { ESTUDANTES, CONTRATANTES } from '../src/domain/personas.js'
 
 const ok = (t) => console.log(`  ok   ${t}`)
 const passo = (t) => console.log(`  ${t}`)
 const aviso = (t) => console.log(`  !    ${t}`)
 
-const ESTUDANTES = [
-  { nome: 'Marina Alves', email: 'marina@usp.br', universidade: 'USP', curso: 'Design', headline: 'Design de produto e pesquisa com usuario' },
-  { nome: 'Rafael Souza', email: 'rafael@unicamp.br', universidade: 'Unicamp', curso: 'Engenharia de Computacao', headline: 'Desenvolvimento web e automacao' },
-  { nome: 'Beatriz Lima', email: 'beatriz@ufmg.br', universidade: 'UFMG', curso: 'Letras', headline: 'Traducao PT/EN e revisao de texto' },
-  { nome: 'Caio Mendes', email: 'caio@ufrj.br', universidade: 'UFRJ', curso: 'Publicidade', headline: 'Producao de evento e conteudo' },
-  { nome: 'Larissa Prado', email: 'larissa@puc-rio.br', universidade: 'PUC-Rio', curso: 'Matematica', headline: 'Monitoria de calculo e estatistica' }
-]
-
-const CONTRATANTES = [
-  { nome: 'Produtora XPTO', email: 'contato@xpto.com.br', headline: 'Producao de eventos corporativos' },
-  { nome: 'Instituto Beta', email: 'projetos@institutobeta.org', headline: 'Pesquisa aplicada e extensao' },
-  { nome: 'Faculdade Gama', email: 'coordenacao@gama.edu.br', headline: 'Ensino superior' },
-  { nome: 'Estudio Delta', email: 'oi@estudiodelta.co', headline: 'Design e produto digital' }
-]
 
 const VAGAS = [
   {

@@ -300,6 +300,13 @@ test('o limite de escrita por conta protege as rotas que mudam estado', async ()
     horas: 1
   }
 
+  // A janela do limitador e fixa e alinhada ao relogio. Se ela virar no meio
+  // do laco, o contador zera e mais de trinta passam: o teste falhava de vez
+  // em quando por causa do horario, e nao do codigo. Esperar a borda passar,
+  // quando ela esta perto, custa menos do que afrouxar a asserção.
+  const restanteNaJanela = 60000 - (Date.now() % 60000)
+  if (restanteNaJanela < 15000) await new Promise((r) => setTimeout(r, restanteNaJanela + 50))
+
   const respostas = []
   for (let i = 0; i < 33; i += 1) {
     respostas.push(await pedir('/api/jobs', { method: 'POST', token, body: corpo }))

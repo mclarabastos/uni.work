@@ -102,15 +102,16 @@ const pagina = await contexto.newPage()
 
 async function entrar (email) {
   // A sessao sobrevive ao recarregamento, entao entrar como outra pessoa
-  // exige limpar antes: senao a porta nem aparece.
+  // exige limpar antes: senao a tela de entrada nem aparece.
   await pagina.goto(base, { waitUntil: 'domcontentloaded' })
   await pagina.evaluate(() => { try { localStorage.clear() } catch { /* sem armazenamento */ } })
   await pagina.goto(base, { waitUntil: 'networkidle' })
-  await pagina.waitForSelector('#porta:not(.escondida)', { timeout: 15000 })
-  await pagina.click('#aba-entrar')
+  await pagina.waitForSelector('#form-entrar', { timeout: 15000 })
   await pagina.fill('#entrar-email', email)
   await pagina.click('#form-entrar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
+  // O esqueleto fica montado com ou sem sessao: o sinal de que entrou e o
+  // botao de sair, que so existe logado.
+  await pagina.waitForSelector('#btn-sair', { timeout: 15000 })
 }
 
 const achados = { critical: [], serious: [], moderate: [], minor: [] }
@@ -129,6 +130,12 @@ async function fecharGuia () {
     await pagina.waitForTimeout(200)
   }
   await pagina.waitForSelector('.guia', { state: 'detached', timeout: 3000 }).catch(() => null)
+}
+
+async function fecharModal () {
+  if (await pagina.locator('.modal-fundo').count() === 0) return
+  await pagina.click('.modal-topo [data-fechar]')
+  await pagina.waitForSelector('.modal-fundo', { state: 'detached', timeout: 5000 })
 }
 
 async function passo (nome, fn) {
@@ -171,8 +178,14 @@ async function auditar (nome) {
 console.log('\n  auditoria de acessibilidade\n')
 
 try {
-  await passo('porta de entrada', () => pagina.goto(base, { waitUntil: 'networkidle' }))
-  await passo('criar conta', () => pagina.click('#aba-criar'))
+  await passo('porta de entrada', async () => {
+    await pagina.goto(base, { waitUntil: 'networkidle' })
+    await pagina.waitForSelector('#form-entrar', { timeout: 15000 })
+  })
+  await passo('criar conta', async () => {
+    await pagina.click('[data-criar="student"]')
+    await pagina.waitForSelector('#form-criar', { timeout: 10000 })
+  })
 
   await passo('vagas abertas', async () => {
     await entrar(`m.${marca}@usp.br`)
@@ -182,7 +195,7 @@ try {
     await fecharGuia()
   })
   await passo('detalhe da vaga', async () => {
-    await pagina.click('.cartao')
+    await pagina.click('.vaga')
     await pagina.waitForSelector('.detalhe-grade', { timeout: 15000 })
   })
   await passo('certificados', async () => {
@@ -194,7 +207,7 @@ try {
     await pagina.waitForTimeout(400)
   })
   await passo('notificacoes', async () => {
-    await pagina.click('#btn-sino')
+    await pagina.click('[data-view="notificacoes"]')
     await pagina.waitForTimeout(600)
   })
   await passo('perfil publico', async () => {
@@ -211,10 +224,22 @@ try {
     await entrar(`e.${marca}@x.br`)
     await pagina.waitForTimeout(600)
     await fecharGuia()
-    // O botao so aparece depois do primeiro render com a conta carregada.
-    await pagina.waitForSelector('#btn-publicar:not([hidden])', { timeout: 20000 })
-    await pagina.click('#btn-publicar')
+    // O atalho da barra lateral so vira "Publicar vaga" depois do primeiro
+    // render com a conta carregada.
+    await pagina.waitForSelector('#cta-rotulo:has-text("Publicar vaga")', { timeout: 20000 })
+    await pagina.click('#cta-botao')
     await pagina.waitForSelector('#form-vaga')
+  })
+  // O modal de publicar ficou aberto no passo anterior: sem fechar, ele
+  // intercepta todo clique e as telas seguintes nunca abrem.
+  await passo('painel do ecossistema', async () => {
+    await fecharModal()
+    await pagina.click('.nav-item[data-view="painel"]')
+    await pagina.waitForSelector('.metricas', { timeout: 15000 })
+  })
+  await passo('verificar certificado', async () => {
+    await pagina.click('.nav-item[data-view="verificar"]')
+    await pagina.waitForSelector('#form-codigo', { timeout: 15000 })
   })
   await passo('verificacao publica', async () => {
     const cert = await query('select code from certificates limit 1')

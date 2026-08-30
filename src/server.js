@@ -1,6 +1,7 @@
 // Servidor Express: API e interface no mesmo processo.
 // Um comando, uma porta, nenhum build.
 
+import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import express from 'express'
@@ -24,6 +25,7 @@ import { cabecalhosDeSeguranca, idempotencia } from './lib/seguranca.js'
 import { metricsRouter } from './routes/metrics.js'
 import { chainRouter } from './routes/chain.js'
 import { streamRouter } from './routes/stream.js'
+import { demoRouter } from './routes/demo.js'
 
 export function createApp () {
   const app = express()
@@ -64,6 +66,7 @@ export function createApp () {
   app.use('/api/metrics', metricsRouter)
   app.use('/api/chain', chainRouter)
   app.use('/api/stream', streamRouter)
+  app.use('/api/demo', demoRouter)
 
   // Mantida por compatibilidade com quem ja aponta para ca. O detalhe esta
   // em /api/health/live e /api/health/ready.
@@ -71,6 +74,22 @@ export function createApp () {
     const info = await dbInfo()
     res.json({ ok: true, banco: info.driver, cluster: config.solana.cluster })
   }))
+
+  /**
+   * A marca, resolvida em tempo de execucao.
+   *
+   * A interface aponta sempre para /marca. Se existir public/logo.png, e ele
+   * que sai; senao sai o logo.svg de reserva. Trocar a marca e soltar o
+   * arquivo na pasta, sem editar CSS em lugar nenhum.
+   */
+  app.get('/marca', (_req, res) => {
+    const png = path.join(rootDir, 'public', 'logo.png')
+    const svg = path.join(rootDir, 'public', 'logo.svg')
+    const existePng = fs.existsSync(png)
+    res.set('content-type', existePng ? 'image/png' : 'image/svg+xml')
+    res.set('cache-control', 'public, max-age=300')
+    res.sendFile(existePng ? png : svg)
+  })
 
   app.use(express.static(path.join(rootDir, 'public'), { extensions: ['html'] }))
 

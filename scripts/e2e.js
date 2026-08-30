@@ -111,6 +111,46 @@ async function fecharGuia () {
   await pagina.waitForSelector('.guia', { state: 'detached', timeout: 3000 }).catch(() => null)
 }
 
+/**
+ * Espera a sessao abrir de verdade.
+ * O esqueleto (#app.ativo) fica montado com ou sem sessao, entao ele nao serve
+ * mais de sinal: o que so existe logado e o botao de sair.
+ */
+async function entrou () {
+  await pagina.waitForSelector('#btn-sair', { timeout: 15000 })
+  await fecharGuia()
+}
+
+async function sair () {
+  await pagina.click('#btn-sair')
+  await pagina.waitForSelector('#form-entrar', { timeout: 10000 })
+}
+
+async function entrarComo (email) {
+  await pagina.fill('#entrar-email', email)
+  await pagina.click('#form-entrar button[type="submit"]')
+  await entrou()
+}
+
+/**
+ * Abre o trampo do teste a partir de "Meus trampos".
+ * A lista publica so mostra aberta e garantida; depois de aceita, o unico
+ * caminho para as duas partes e a lista propria.
+ */
+async function abrirDoFeed () {
+  await pagina.click('[data-view="feed"]')
+  const cartao = '.vaga:has-text("Staff de credenciamento")'
+  await pagina.waitForSelector(cartao, { timeout: 15000 })
+  await pagina.click(cartao)
+}
+
+async function abrirOTrampo () {
+  await pagina.click('[data-view="minhas"]')
+  const cartao = '.vaga:has-text("Staff de credenciamento")'
+  await pagina.waitForSelector(cartao, { timeout: 15000 })
+  await pagina.click(cartao)
+}
+
 function conferir (condicao, mensagem) {
   if (!condicao) problemas.push(mensagem)
 }
@@ -120,22 +160,22 @@ console.log('\n  fluxo completo no navegador\n')
 try {
   // ─── 1. a porta de entrada ─────────────────────────────────────────────────
   await pagina.goto(base, { waitUntil: 'networkidle' })
+  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
   await capturar('porta-de-entrada')
-  conferir(await pagina.locator('text=O trampo acaba').isVisible(), 'a porta de entrada nao apareceu')
+  conferir(await pagina.locator('text=Trabalhe hoje').isVisible(), 'a porta de entrada nao apareceu')
 
   // ─── 2. cadastro do contratante ────────────────────────────────────────────
-  await pagina.click('#aba-criar')
-  await pagina.click('[data-tipo-de-conta="company"]')
-  await pagina.fill('#criar-nome', 'Produtora XPTO')
-  await pagina.fill('#criar-email', `empresa.${marca}@xpto.com.br`)
+  await pagina.click('[data-criar="company"]')
+  await pagina.waitForSelector('#form-criar')
+  await pagina.fill('#cc-nome', 'Produtora XPTO')
+  await pagina.fill('#cc-email', `empresa.${marca}@xpto.com.br`)
   await capturar('cadastro-do-contratante')
-  await pagina.click('#form-criar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
-  await fecharGuia()
+  await pagina.click('#cc-ok')
+  await entrou()
   await capturar('contratante-entrou')
 
   // ─── 3. publicar a vaga ────────────────────────────────────────────────────
-  await pagina.click('#btn-publicar')
+  await pagina.click('#cta-botao')
   await pagina.waitForSelector('#form-vaga')
   await pagina.fill('#v-titulo', 'Staff de credenciamento no congresso de tecnologia')
   await pagina.fill('#v-descricao', 'Recepcao e credenciamento dos participantes durante dois dias de congresso, com entrega de kits.')
@@ -145,40 +185,38 @@ try {
   await pagina.fill('#v-horas', '12')
   await capturar('publicar-vaga')
   await pagina.click('#salvar-vaga')
-  await pagina.waitForSelector('text=Vaga publicada', { timeout: 15000 })
+  await pagina.waitForSelector('text=Trampo publicado', { timeout: 15000 })
   await capturar('vaga-publicada')
 
   // ─── 4. reservar o valor ───────────────────────────────────────────────────
-  await pagina.click('.cartao:has-text("Staff de credenciamento")')
+  await abrirOTrampo()
   await pagina.waitForSelector('[data-acao-vaga="reservar"]', { timeout: 15000 })
   await capturar('detalhe-da-vaga')
   await pagina.click('[data-acao-vaga="reservar"]')
   await pagina.waitForSelector('text=Valor reservado', { timeout: 20000 })
   await capturar('valor-reservado')
 
-  const garantida = await pagina.locator('text=Pagamento garantido').first().isVisible()
+  const garantida = await pagina.locator('text=Pagamento reservado').first().isVisible()
   conferir(garantida, 'a vaga nao mostrou o pagamento como garantido')
 
-  const enderecoDaVaga = pagina.url()
-  await pagina.click('#btn-sair')
-  await pagina.waitForSelector('#porta:not(.escondida)', { timeout: 10000 })
+  await sair()
 
   // ─── 5. cadastro da estudante e candidatura ────────────────────────────────
-  await pagina.click('#aba-criar')
-  await pagina.click('[data-tipo-de-conta="student"]')
-  await pagina.fill('#criar-nome', 'Marina Alves')
-  await pagina.fill('#criar-email', `marina.${marca}@usp.br`)
-  await pagina.fill('#criar-universidade', 'USP')
-  await pagina.fill('#criar-curso', 'Design')
-  await pagina.click('#form-criar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
-  await fecharGuia()
+  await pagina.click('[data-criar="student"]')
+  await pagina.waitForSelector('#form-criar')
+  await pagina.fill('#cc-nome', 'Marina Alves')
+  await pagina.fill('#cc-email', `marina.${marca}@usp.br`)
+  await pagina.fill('#cc-universidade', 'USP')
+  await pagina.fill('#cc-curso', 'Design')
+  await pagina.click('#cc-ok')
+  await entrou()
   await capturar('estudante-entrou')
 
   // A estudante ve a garantia antes de aceitar. E a promessa do produto.
-  await pagina.click('.cartao:has-text("Staff de credenciamento")')
+  // Aqui ela ainda nao se candidatou, entao o caminho e a lista publica.
+  await abrirDoFeed()
   await pagina.waitForSelector('[data-acao-vaga="candidatar"]', { timeout: 15000 })
-  const veGarantia = await pagina.locator('text=Pagamento garantido').first().isVisible()
+  const veGarantia = await pagina.locator('text=Pagamento reservado').first().isVisible()
   conferir(veGarantia, 'a estudante nao ve a garantia antes de aceitar')
   await capturar('estudante-ve-a-garantia')
 
@@ -189,40 +227,22 @@ try {
   await pagina.waitForSelector('text=Candidatura enviada', { timeout: 15000 })
   await capturar('candidatura-enviada')
 
-  await pagina.click('#btn-sair')
-  await pagina.waitForSelector('#porta:not(.escondida)', { timeout: 10000 })
+  await sair()
 
   // ─── 6. o contratante escolhe ──────────────────────────────────────────────
-  await pagina.click('#aba-entrar')
-  await pagina.fill('#entrar-email', `empresa.${marca}@xpto.com.br`)
-  await pagina.click('#form-entrar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
-  await fecharGuia()
-
-  await pagina.goto(enderecoDaVaga.includes('/vaga/') ? enderecoDaVaga : base, { waitUntil: 'networkidle' })
-  if (!enderecoDaVaga.includes('/vaga/')) {
-    await pagina.click('.cartao:has-text("Staff de credenciamento")')
-  }
+  await entrarComo(`empresa.${marca}@xpto.com.br`)
+  await abrirOTrampo()
   await pagina.waitForSelector('[data-aceitar]', { timeout: 15000 })
   await capturar('candidatura-recebida')
   await pagina.click('[data-aceitar]')
   await pagina.waitForSelector('text=Estudante escolhido', { timeout: 15000 })
   await capturar('estudante-escolhido')
 
-  await pagina.click('#btn-sair')
-  await pagina.waitForSelector('#porta:not(.escondida)', { timeout: 10000 })
+  await sair()
 
   // ─── 7. a estudante comeca e entrega ───────────────────────────────────────
-  await pagina.click('#aba-entrar')
-  await pagina.fill('#entrar-email', `marina.${marca}@usp.br`)
-  await pagina.click('#form-entrar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
-  await fecharGuia()
-  // Uma vaga ja aceita sai da lista publica: o caminho do estudante agora e
-  // "Meus trampos".
-  await pagina.click('[data-view="minhas"]')
-  await pagina.waitForSelector('.cartao:has-text("Staff de credenciamento")', { timeout: 15000 })
-  await pagina.click('.cartao:has-text("Staff de credenciamento")')
+  await entrarComo(`marina.${marca}@usp.br`)
+  await abrirOTrampo()
   await pagina.waitForSelector('[data-acao-vaga="comecar"]', { timeout: 15000 })
   await pagina.click('[data-acao-vaga="comecar"]')
   await pagina.waitForSelector('[data-acao-vaga="entregar"]', { timeout: 15000 })
@@ -235,18 +255,11 @@ try {
   await pagina.waitForSelector('text=Entrega enviada', { timeout: 15000 })
   await capturar('entrega-enviada')
 
-  await pagina.click('#btn-sair')
-  await pagina.waitForSelector('#porta:not(.escondida)', { timeout: 10000 })
+  await sair()
 
   // ─── 8. confirmar: paga e certifica ────────────────────────────────────────
-  await pagina.click('#aba-entrar')
-  await pagina.fill('#entrar-email', `empresa.${marca}@xpto.com.br`)
-  await pagina.click('#form-entrar button[type="submit"]')
-  await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
-  await fecharGuia()
-  await pagina.click('[data-view="minhas"]')
-  await pagina.waitForSelector('.cartao:has-text("Staff de credenciamento")', { timeout: 15000 })
-  await pagina.click('.cartao:has-text("Staff de credenciamento")')
+  await entrarComo(`empresa.${marca}@xpto.com.br`)
+  await abrirOTrampo()
   await pagina.waitForSelector('[data-acao-vaga="confirmar"]', { timeout: 15000 })
   await capturar('pronto-para-confirmar')
   await pagina.click('[data-acao-vaga="confirmar"]')
