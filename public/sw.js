@@ -14,8 +14,8 @@ self.addEventListener('push', (evento) => {
   evento.waitUntil(
     self.registration.showNotification(dados.title ?? 'Uni.work', {
       body: dados.body ?? '',
-      icon: '/marca',
-      badge: '/marca',
+      icon: '/marca/simbolo',
+      badge: '/marca/simbolo',
       tag: dados.tag ?? 'uniwork',
       data: { url: dados.url ?? '/' },
       lang: 'pt-BR'

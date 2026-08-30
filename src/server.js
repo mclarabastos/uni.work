@@ -1,7 +1,6 @@
 // Servidor Express: API e interface no mesmo processo.
 // Um comando, uma porta, nenhum build.
 
-import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import express from 'express'
@@ -76,20 +75,21 @@ export function createApp () {
   }))
 
   /**
-   * A marca, resolvida em tempo de execucao.
+   * A marca, em duas pecas:
    *
-   * A interface aponta sempre para /marca. Se existir public/logo.png, e ele
-   * que sai; senao sai o logo.svg de reserva. Trocar a marca e soltar o
-   * arquivo na pasta, sem editar CSS em lugar nenhum.
+   *   /marca           o conjunto completo, simbolo mais nome
+   *   /marca/simbolo   so o simbolo, para onde o espaco e quadrado
+   *
+   * A interface aponta sempre para estas rotas e nunca para o nome do arquivo.
+   * Trocar a marca e substituir o arquivo em public/, sem editar CSS nem HTML.
    */
-  app.get('/marca', (_req, res) => {
-    const png = path.join(rootDir, 'public', 'logo.png')
-    const svg = path.join(rootDir, 'public', 'logo.svg')
-    const existePng = fs.existsSync(png)
-    res.set('content-type', existePng ? 'image/png' : 'image/svg+xml')
+  const enviarMarca = (res, arquivo) => {
     res.set('cache-control', 'public, max-age=300')
-    res.sendFile(existePng ? png : svg)
-  })
+    res.sendFile(path.join(rootDir, 'public', arquivo))
+  }
+
+  app.get('/marca', (_req, res) => enviarMarca(res, 'logo.png'))
+  app.get('/marca/simbolo', (_req, res) => enviarMarca(res, 'logo-simbolo.png'))
 
   app.use(express.static(path.join(rootDir, 'public'), { extensions: ['html'] }))
 

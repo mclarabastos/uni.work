@@ -271,7 +271,7 @@ function orbe (emoji, nome) {
 /** A marca em grande, como assinatura do heroi principal. */
 function marcaGrande () {
   return `<div class="heroi-arte" aria-hidden="true"
-    style="background:var(--ink);opacity:.9;-webkit-mask:url('/marca') center/contain no-repeat;mask:url('/marca') center/contain no-repeat"></div>`
+    style="background:var(--ink);opacity:.9;-webkit-mask:url('/marca/simbolo') center/contain no-repeat;mask:url('/marca/simbolo') center/contain no-repeat"></div>`
 }
 
 function heroi ({ cor = 'grafite', olho, titulo, texto, dados = [], acoes = '', arte = '' }) {
@@ -2174,8 +2174,8 @@ async function telaVerificacao (codigo) {
     dados = await resposta.json()
   } catch {
     alvo.innerHTML = `<div class="verificacao">
-      <a class="marca" href="/" style="margin-bottom:30px">
-        <span class="marca-simbolo" aria-hidden="true"></span><span class="marca-nome">UNI.WORK</span>
+      <a class="marca" href="/" aria-label="Uni.work, ir para o inicio" style="margin-bottom:30px">
+        <span class="marca-imagem"></span>
       </a>
       ${vazio('❓', 'Certificado nao encontrado',
         `Nao existe certificado com o codigo ${codigo}. Confira se o codigo foi copiado inteiro.`,
@@ -2191,8 +2191,8 @@ async function telaVerificacao (codigo) {
     : ['invalido', '✕', 'Este certificado nao confere']
 
   alvo.innerHTML = `<div class="verificacao">
-    <a class="marca" href="/" style="margin-bottom:30px">
-      <span class="marca-simbolo" aria-hidden="true"></span><span class="marca-nome">UNI.WORK</span>
+    <a class="marca" href="/" aria-label="Uni.work, ir para o inicio" style="margin-bottom:30px">
+      <span class="marca-imagem"></span>
     </a>
     <div class="selo ${selo[0]}"><span aria-hidden="true">${selo[1]}</span> ${selo[2]}</div>
     <h1 style="font-size:32px;margin-bottom:8px">${escapar(c.estudante)}</h1>

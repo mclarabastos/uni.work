@@ -35,14 +35,9 @@ console.log('\n  artefato do Uni.work\n')
 const OBRIGATORIOS = [
   'package.json', 'package-lock.json', '.env.example', 'README.md',
   'src/server.js', 'src/config.js', 'public/index.html', 'public/app.js',
-  'public/sw.js', 'migrations/0001_init.sql'
+  'public/sw.js', 'public/logo.png', 'public/logo-simbolo.png', 'public/favicon.png',
+  'migrations/0001_init.sql'
 ]
-
-// A marca pode ser png (a oficial) ou svg (a de reserva). Uma das duas basta.
-if (!['public/logo.png', 'public/logo.svg'].some((f) => fs.existsSync(path.join(rootDir, f)))) {
-  console.error('\n  falta a marca em public/logo.png ou public/logo.svg\n')
-  process.exit(1)
-}
 
 const faltando = OBRIGATORIOS.filter((arquivo) => !fs.existsSync(path.join(rootDir, arquivo)))
 if (faltando.length) {
