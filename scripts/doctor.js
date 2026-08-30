@@ -15,6 +15,7 @@ import { getConnection, getSolBalance, getPaymentBalance } from '../src/services
 import { indexerAvailable } from '../src/services/das.js'
 import { driverDeEmail, emailConfigurado } from '../src/services/mailer.js'
 import { pushConfigurado } from '../src/services/push.js'
+import { driverDeArmazenamento, armazenamentoPronto } from '../src/services/storage.js'
 
 const OK = 'ok  '
 const AVISO = 'aviso'
@@ -200,6 +201,15 @@ if (emailConfigurado()) {
 } else {
   registrar(AVISO, 'e-mail', 'nenhum servico de e-mail configurado: o link de acesso sai no terminal',
     'configure RESEND_API_KEY (https://resend.com) ou SMTP_URL no .env')
+}
+
+if (armazenamentoPronto()) {
+  registrar(OK, 'arquivos', `armazenamento ${driverDeArmazenamento()}`)
+} else {
+  registrar(ERRO, 'arquivos', `armazenamento ${driverDeArmazenamento()} nao esta utilizavel`,
+    driverDeArmazenamento() === 's3'
+      ? 'confira S3_BUCKET, S3_ACCESS_KEY_ID e S3_SECRET_ACCESS_KEY no .env'
+      : 'confira a permissao de escrita em .uniwork/uploads')
 }
 
 if (pushConfigurado()) {

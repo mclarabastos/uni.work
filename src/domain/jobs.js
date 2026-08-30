@@ -146,6 +146,7 @@ export function publicJob (row, extras = {}) {
     timeline: extras.timeline,
     certificado: extras.certificado,
     contestacao: extras.contestacao,
+    anexos: extras.anexos,
     minhaCandidatura: extras.minhaCandidatura
   }
 }
@@ -217,8 +218,12 @@ export async function getJobDetail (jobId, viewer = null) {
   const { disputaDaVaga } = await import('./disputes.js')
   const contestacao = await disputaDaVaga(jobId, viewer)
 
+  const { listarDaVaga } = await import('./attachments.js')
+  const anexos = (isCompany || isStudent) ? await listarDaVaga(jobId) : undefined
+
   return publicJob(row, {
     contestacao,
+    anexos,
     candidaturas,
     timeline: (isCompany || isStudent) ? await timelineForJob(jobId) : undefined,
     minhaCandidatura: minhaCandidatura

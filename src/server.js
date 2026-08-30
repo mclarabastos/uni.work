@@ -16,6 +16,7 @@ import { jobsRouter } from './routes/jobs.js'
 import { certificatesRouter } from './routes/certificates.js'
 import { disputesRouter } from './routes/disputes.js'
 import { notificationsRouter, mePreferencesRouter, pushRouter } from './routes/notifications.js'
+import { uploadsRouter, profilesRouter, mePerfilRouter } from './routes/uploads.js'
 import { metricsRouter } from './routes/metrics.js'
 import { chainRouter } from './routes/chain.js'
 import { streamRouter } from './routes/stream.js'
@@ -46,6 +47,9 @@ export function createApp () {
   app.use('/api/notifications', notificationsRouter)
   app.use('/api/me', mePreferencesRouter)
   app.use('/api/push', pushRouter)
+  app.use('/api/uploads', uploadsRouter)
+  app.use('/api/perfis', profilesRouter)
+  app.use('/api/me', mePerfilRouter)
   app.use('/api', certificatesRouter)
   app.use('/api/metrics', metricsRouter)
   app.use('/api/chain', chainRouter)
@@ -66,6 +70,12 @@ export function createApp () {
 
   // O link do e-mail cai aqui. A interface le o token da URL e troca por sessao.
   app.get('/entrar', (_req, res) => {
+    res.sendFile(path.join(rootDir, 'public', 'index.html'))
+  })
+
+  // O perfil publico e uma pagina que a pessoa manda para um contratante.
+  // Precisa abrir direto pelo link, sem conta.
+  app.get('/perfil/:id', (_req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'index.html'))
   })
 

@@ -25,6 +25,7 @@ const estado = {
   filtros: { modalidade: null, status: null, busca: '' },
   vagaAberta: null,
   contestacoes: [],
+  perfilAberto: null,
   notificacoes: [],
   naoLidas: 0,
   preferencias: null,
@@ -422,6 +423,9 @@ function telaConta () {
     <h1>${escapar(u.nome)}</h1>
     <p>${escapar(u.perfil === 'student' ? [u.curso, u.universidade].filter(Boolean).join(' · ') || 'Estudante' : 'Contratante')} · ${escapar(u.email)}</p>
   </section>
+  <div class="banner-acoes" style="margin-bottom:4px">
+    <button class="btn btn-linha" data-acao="meu-perfil">Ver meu perfil publico</button>
+  </div>
   <div class="grade">
     <div class="cartao" style="cursor:default">
       <h3 style="font-size:14px">Resumo</h3>
@@ -502,7 +506,10 @@ function telaDetalhe () {
       </span>
     </div>
     <h1>${escapar(vaga.titulo)}</h1>
-    <p>${escapar(vaga.contratante?.nome ?? '')}${vaga.local ? ` · ${escapar(vaga.local)}` : ''}</p>
+    <p>
+      <button class="btn btn-fantasma btn-mini" style="padding:0 4px;background:none;font-size:inherit"
+              data-perfil="${escapar(vaga.contratante?.id ?? '')}">${escapar(vaga.contratante?.nome ?? '')}</button>${vaga.local ? ` · ${escapar(vaga.local)}` : ''}
+    </p>
     <div class="banner-acoes">
       ${botoes.map(([acao, rotulo, classe]) => `<button class="btn ${classe}" data-acao-vaga="${acao}">${rotulo}</button>`).join('')}
     </div>
@@ -572,6 +579,17 @@ function telaDetalhe () {
           ${vaga.trilha?.cancelada ? '<div class="etapa"><span class="etapa-bola" aria-hidden="true">✕</span><div class="etapa-texto" style="color:var(--vermelho)">Cancelada, valor devolvido</div></div>' : ''}
         </div>
       </div>
+
+      ${vaga.anexos ? `<div class="painel">
+        <h4>ARQUIVOS DA VAGA</h4>
+        ${vaga.anexos.length
+          ? vaga.anexos.map((a) => `<div class="dado-linha">
+              <dt><a href="${escapar(a.url)}" target="_blank" rel="noopener">${escapar(a.nome)}</a></dt>
+              <dd class="mono">${Math.round(a.tamanho / 1024)} KB</dd>
+            </div>`).join('')
+          : '<p style="font-size:13px;color:var(--ink-4)">Nenhum arquivo por enquanto.</p>'}
+        <button class="btn btn-linha btn-mini btn-bloco" style="margin-top:12px" data-enviar="delivery">Anexar arquivo</button>
+      </div>` : ''}
 
       ${vaga.contestacao ? `<div class="painel" style="border-color:rgba(255,197,85,.32)">
         <h4 style="color:var(--amarelo)">CONTESTACAO</h4>
@@ -721,6 +739,218 @@ function telaNotificacoes () {
 }
 
 
+function telaPerfil () {
+  const p = estado.perfilAberto
+  if (!p) return vazio('?', 'Perfil nao encontrado', 'Este perfil pode ter sido removido.')
+
+  const ehEstudante = p.perfil === 'student'
+  const estrelas = (n) => '\u2605'.repeat(Math.round(n)) + '\u2606'.repeat(5 - Math.round(n))
+
+  return `
+  <button class="btn btn-fantasma btn-mini" data-acao="voltar" style="align-self:flex-start">\u2190 Voltar</button>
+  <section class="banner">
+    <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+      ${p.foto
+        ? `<img src="${escapar(p.foto)}" alt="" style="width:74px;height:74px;border-radius:20px;object-fit:cover;flex:none">`
+        : `<span class="avatar ${corDe(p.nome)}" style="width:74px;height:74px;border-radius:20px;font-size:26px">${iniciais(p.nome)}</span>`}
+      <div style="min-width:0;flex:1">
+        <h1>${escapar(p.nome)}</h1>
+        <p>${escapar(p.headline ?? (ehEstudante ? 'Estudante' : 'Contratante'))}</p>
+        ${ehEstudante && (p.curso || p.universidade)
+          ? `<p style="font-size:13.5px;color:var(--ink-3);margin-top:4px">${escapar([p.curso, p.universidade].filter(Boolean).join(' \u00b7 '))}</p>`
+          : ''}
+      </div>
+      ${p.souEu ? '<button class="btn btn-linha btn-mini" data-acao="editar-perfil">Editar perfil</button>' : ''}
+    </div>
+  </section>
+
+  <div class="metrica-grade" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    ${ehEstudante
+      ? `<div class="metrica"><div class="metrica-valor">${p.horasCertificadas}h</div><div class="metrica-rotulo">certificadas</div></div>
+         <div class="metrica"><div class="metrica-valor">${p.certificados.length}</div><div class="metrica-rotulo">certificados</div></div>
+         <div class="metrica"><div class="metrica-valor">${p.trabalhosConcluidos}</div><div class="metrica-rotulo">trampos concluidos</div></div>`
+      : `<div class="metrica"><div class="metrica-valor">${p.vagasPublicadas}</div><div class="metrica-rotulo">vagas publicadas</div></div>
+         <div class="metrica"><div class="metrica-valor">${p.taxaDeConfirmacao === null ? '\u2014' : p.taxaDeConfirmacao + '%'}</div><div class="metrica-rotulo">confirmadas</div></div>
+         <div class="metrica"><div class="metrica-valor">${p.tempoMedioAteConfirmarHoras === null ? '\u2014' : p.tempoMedioAteConfirmarHoras + 'h'}</div><div class="metrica-rotulo">para confirmar</div></div>`}
+    <div class="metrica">
+      <div class="metrica-valor">${p.avaliacao.total ? p.avaliacao.media.toFixed(1) : '\u2014'}</div>
+      <div class="metrica-rotulo">${p.avaliacao.total} avaliacoes</div>
+    </div>
+  </div>
+
+  ${p.bio ? `<div class="painel"><h4>SOBRE</h4><p style="font-size:14px;white-space:pre-wrap">${escapar(p.bio)}</p></div>` : ''}
+
+  ${ehEstudante && p.habilidades?.length
+    ? `<div class="painel"><h4>HABILIDADES</h4><div class="tags">${p.habilidades.map((h) => `<span class="tag">${escapar(h)}</span>`).join('')}</div></div>`
+    : ''}
+
+  ${p.links?.length
+    ? `<div class="painel"><h4>LINKS</h4><div class="tags">${p.links.map((l) => `<a class="tag" href="${escapar(l.url)}" target="_blank" rel="noopener nofollow">${escapar(l.rotulo)} \u2197</a>`).join('')}</div></div>`
+    : ''}
+
+  ${ehEstudante ? `<div class="secao-topo">
+      <h2>Certificados</h2><span class="conta">${p.certificados.length}</span>
+    </div>
+    ${p.certificados.length
+      ? `<div class="cert-grade">${p.certificados.map((c) => `
+          <a class="cert" href="${escapar(c.verificacao)}">
+            <img src="/api/certificates/${encodeURIComponent(c.codigo)}/image.svg" alt="Certificado de ${escapar(c.titulo)}" loading="lazy">
+            <div class="cert-info">
+              <span class="cert-horas">${c.horas}h</span>
+              <div style="min-width:0">
+                <div class="cert-titulo">${escapar(c.titulo)}</div>
+                <div class="cert-sub">${escapar(c.contratante)}</div>
+              </div>
+              <span class="cert-estado ${c.registrado ? 'pronto' : 'processando'}">${c.registrado ? 'verificavel' : 'processando'}</span>
+            </div>
+          </a>`).join('')}</div>`
+      : vazio('\u{1F393}', 'Nenhum certificado ainda', p.souEu
+          ? 'Conclua um trampo e o certificado aparece aqui, pronto para mostrar.'
+          : 'Esta pessoa ainda nao concluiu nenhum trampo pela plataforma.')}` : ''}
+
+  ${ehEstudante ? `<div class="secao-topo">
+      <h2>Portfolio</h2><span class="conta">${p.portfolio?.length ?? 0}</span>
+      ${p.souEu ? '<div class="filtros"><button class="btn btn-linha btn-mini" data-enviar="portfolio">Adicionar arquivo</button></div>' : ''}
+    </div>
+    ${p.portfolio?.length
+      ? `<div class="grade">${p.portfolio.map((a) => `<div class="cartao" style="cursor:default">
+          ${a.ehImagem
+            ? `<img src="${escapar(a.url)}" alt="${escapar(a.nome)}" style="width:100%;border-radius:12px;aspect-ratio:16/10;object-fit:cover">`
+            : `<div style="padding:26px;text-align:center;background:var(--surface-2);border-radius:12px;font-size:26px">\u{1F4C4}</div>`}
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div class="cartao-titulo" style="font-size:13.5px">${escapar(a.nome)}</div>
+              <div class="cartao-sub">${Math.round(a.tamanho / 1024)} KB</div>
+            </div>
+            ${p.souEu ? `<button class="btn btn-fantasma btn-mini" data-apagar-anexo="${escapar(a.id)}">Apagar</button>` : ''}
+          </div>
+        </div>`).join('')}</div>`
+      : vazio('\u{1F4CE}', 'Portfolio vazio', p.souEu
+          ? 'Adicione trabalhos que voce ja fez. E o que um contratante olha antes de escolher.'
+          : 'Esta pessoa ainda nao publicou trabalhos.')}` : ''}
+
+  <div class="secao-topo"><h2>Avaliacoes</h2><span class="conta">${p.avaliacoes.length}</span></div>
+  ${p.avaliacoes.length
+    ? `<div style="display:flex;flex-direction:column;gap:12px">
+        ${p.avaliacoes.map((a) => `<div class="painel">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <strong style="font-size:13.5px">${escapar(a.autor)}</strong>
+            <span style="color:var(--amarelo);font-size:13px">${estrelas(a.nota)}</span>
+            <span style="margin-left:auto;font-size:12px;color:var(--ink-4)">${quando(a.quando)}</span>
+          </div>
+          <p style="font-size:12.5px;color:var(--ink-4);margin-bottom:6px">${escapar(a.vaga)}</p>
+          ${a.comentario ? `<p style="font-size:13.5px;color:var(--ink-2)">${escapar(a.comentario)}</p>` : ''}
+        </div>`).join('')}
+      </div>`
+    : vazio('\u2605', 'Nenhuma avaliacao ainda', 'As avaliacoes aparecem quando um trampo e concluido pelos dois lados.')}
+  `
+}
+
+/**
+ * Envio de arquivo em dois passos: pede permissao, e so entao manda os bytes.
+ * O servidor decide o limite antes de o arquivo comecar a subir, e diz por que
+ * recusou quando recusa.
+ */
+async function enviarArquivo (tipo, vagaId = null) {
+  const seletor = document.createElement('input')
+  seletor.type = 'file'
+  seletor.accept = tipo === 'avatar' || tipo === 'portfolio'
+    ? 'image/*,application/pdf'
+    : 'image/*,application/pdf,video/mp4,.zip'
+
+  seletor.addEventListener('change', async () => {
+    const arquivo = seletor.files?.[0]
+    if (!arquivo) return
+    try {
+      const permissao = await chamar('/uploads', { method: 'POST', body: { tipo, vagaId } })
+      const resposta = await fetch(`/api/uploads/${permissao.bilhete}`, {
+        method: 'PUT',
+        headers: {
+          'content-type': arquivo.type || 'application/octet-stream',
+          'x-nome-do-arquivo': arquivo.name
+        },
+        body: arquivo
+      })
+      const dados = await resposta.json().catch(() => ({}))
+      if (!resposta.ok) {
+        avisar(dados.error ?? 'Nao conseguimos enviar o arquivo', '', 'erro')
+        return
+      }
+      avisar('Arquivo enviado', arquivo.name, 'ok')
+      if (estado.view === 'perfil') await abrirPerfil(estado.perfilAberto.id)
+      else if (estado.vagaAberta) await abrirVaga(estado.vagaAberta.id)
+    } catch {
+      avisar('Nao conseguimos enviar o arquivo', 'Tente de novo em instantes.', 'erro')
+    }
+  })
+  seletor.click()
+}
+
+async function abrirPerfil (id) {
+  try {
+    const { perfil } = await chamar(`/perfis/${id}`)
+    estado.perfilAberto = perfil
+    estado.view = 'perfil'
+    render()
+    $('#conteudo').focus()
+  } catch { /* o aviso de erro ja apareceu */ }
+}
+
+function modalEditarPerfil () {
+  const p = estado.perfilAberto
+  abrirModal({
+    titulo: 'Editar perfil',
+    corpo: `<div class="campo"><label for="p-headline">Uma linha sobre voce</label>
+        <input id="p-headline" maxlength="140" value="${escapar(p.headline ?? '')}" placeholder="Design de produto e pesquisa com usuario"></div>
+      <div class="campo"><label for="p-bio">Sobre</label>
+        <textarea id="p-bio" maxlength="600" placeholder="O que voce faz, o que ja fez, o que procura.">${escapar(p.bio ?? '')}</textarea></div>
+      ${p.perfil === 'student' ? `<div class="linha-2">
+        <div class="campo"><label for="p-universidade">Universidade</label>
+          <input id="p-universidade" value="${escapar(p.universidade ?? '')}"></div>
+        <div class="campo"><label for="p-curso">Curso</label>
+          <input id="p-curso" value="${escapar(p.curso ?? '')}"></div>
+      </div>
+      <div class="campo"><label for="p-habilidades">Habilidades</label>
+        <input id="p-habilidades" value="${escapar((p.habilidades ?? []).join(', '))}" placeholder="Figma, Pesquisa, Prototipagem">
+        <span class="dica">Separadas por virgula.</span></div>` : ''}
+      <div class="campo"><label for="p-link">Link principal</label>
+        <input id="p-link" value="${escapar(p.links?.[0]?.url ?? '')}" placeholder="https://seu-site.com.br">
+        <span class="dica">Endereco completo, comecando com https://</span></div>`,
+    rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
+             <button class="btn btn-linha" data-enviar="avatar">Trocar foto</button>
+             <button class="btn btn-marca" id="p-ok">Salvar</button>`,
+    aoMontar (raiz) {
+      $('#p-ok', raiz).addEventListener('click', async () => {
+        const link = $('#p-link', raiz).value.trim()
+        const corpo = {
+          headline: $('#p-headline', raiz).value.trim() || null,
+          bio: $('#p-bio', raiz).value.trim() || null,
+          links: link ? [{ rotulo: 'Site', url: link }] : []
+        }
+        if (p.perfil === 'student') {
+          corpo.universidade = $('#p-universidade', raiz).value.trim() || null
+          corpo.curso = $('#p-curso', raiz).value.trim() || null
+          corpo.habilidades = $('#p-habilidades', raiz).value
+            .split(',').map((h) => h.trim()).filter(Boolean)
+        }
+        const botao = $('#p-ok', raiz)
+        botao.disabled = true
+        botao.textContent = 'Salvando...'
+        try {
+          await chamar('/me/perfil', { method: 'PUT', body: corpo })
+          fecharModal()
+          avisar('Perfil atualizado', '', 'ok')
+          await abrirPerfil(p.id)
+        } catch {
+          botao.disabled = false
+          botao.textContent = 'Salvar'
+        }
+      })
+    }
+  })
+}
+
+
 // ─── painel lateral ──────────────────────────────────────────────────────────
 
 function renderLateral () {
@@ -765,7 +995,8 @@ function render () {
   const telas = {
     feed: telaFeed, minhas: telaMinhas, certificados: telaCertificados,
     conta: telaConta, detalhe: telaDetalhe, mediacao: telaMediacao,
-    notificacoes: telaNotificacoes
+    notificacoes: telaNotificacoes,
+    perfil: telaPerfil
   }
   $('#conteudo').innerHTML = (telas[estado.view] ?? telaFeed)()
   renderLateral()
@@ -1491,6 +1722,10 @@ async function mostrarApp () {
   $('#verificacao').hidden = true
   $('#app').classList.add('ativo')
   await recarregar()
+  if (estado.perfilPendente) {
+    await abrirPerfil(estado.perfilPendente)
+    estado.perfilPendente = null
+  }
   ligarEventos()
   carregarCamadaTecnica()
 }
@@ -1585,6 +1820,28 @@ function ligarInterface () {
       return
     }
 
+    const perfil = alvo('[data-perfil]')
+    if (perfil) return void abrirPerfil(perfil.dataset.perfil)
+
+    const enviar = alvo('[data-enviar]')
+    if (enviar) {
+      enviarArquivo(enviar.dataset.enviar, estado.vagaAberta?.id ?? null)
+      return
+    }
+
+    const apagarAnexo = alvo('[data-apagar-anexo]')
+    if (apagarAnexo) {
+      apagarAnexo.disabled = true
+      chamar(`/uploads/${apagarAnexo.dataset.apagarAnexo}`, { method: 'DELETE' })
+        .then(() => {
+          avisar('Arquivo apagado', '', 'ok')
+          if (estado.view === 'perfil') return abrirPerfil(estado.perfilAberto.id)
+          if (estado.vagaAberta) return abrirVaga(estado.vagaAberta.id)
+        })
+        .catch(() => { apagarAnexo.disabled = false })
+      return
+    }
+
     const cartao = alvo('[data-vaga]')
     if (cartao) return void abrirVaga(cartao.dataset.vaga)
 
@@ -1650,6 +1907,8 @@ function ligarInterface () {
     if (acao) {
       if (acao.dataset.acao === 'publicar') modalPublicar()
       if (acao.dataset.acao === 'voltar') { estado.view = 'feed'; render() }
+      if (acao.dataset.acao === 'editar-perfil') modalEditarPerfil()
+      if (acao.dataset.acao === 'meu-perfil') abrirPerfil(estado.usuario.id)
       if (acao.dataset.acao === 'marcar-lidas') {
         chamar('/notifications/read', { method: 'POST', body: {} })
           .then(() => carregarNotificacoes())
@@ -1729,6 +1988,9 @@ async function iniciar () {
 
   const rotaVerificacao = window.location.pathname.match(/^\/verificar\/(.+)$/)
   if (rotaVerificacao) return telaVerificacao(decodeURIComponent(rotaVerificacao[1]))
+
+  const rotaPerfil = window.location.pathname.match(/^\/perfil\/(.+)$/)
+  if (rotaPerfil) estado.perfilPendente = decodeURIComponent(rotaPerfil[1])
 
   // Decide o modo: se a API nao responde, a interface segue em simulacao.
   try {
