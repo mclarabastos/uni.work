@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# Estado local do bootstrap de devnet.
+# Contem a chave privada da conta da plataforma: nunca versionar.
+.uniwork/
+
 # Node
 node_modules/
 npm-debug.log*
@@ -10,28 +14,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Next.js (apps/web)
-apps/web/.next/
-apps/web/out/
-apps/web/build/
-
-# Backend (apps/api)
-apps/api/dist/
+# Artefatos de build e teste
+dist/
+coverage/
+test-results/
+playwright-report/
+.artifacts/
 
 # Anchor / Solana / Rust
 target/
 .anchor/
 test-ledger/
 **/*.rs.bk
-Cargo.lock
-
-# Wallets locais de teste (nunca commitar chave nenhuma)
-*.json
-!package.json
-!package-lock.json
-!pnpm-workspace.yaml
-!tsconfig.json
-!**/*.config.json
 
 # OS / editor
 .DS_Store
