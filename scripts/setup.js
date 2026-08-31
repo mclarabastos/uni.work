@@ -119,46 +119,100 @@ if (!temAnchor || !temCargo) {
     como: 'instale o Anchor (https://www.anchor-lang.com/docs/installation) e rode npm run setup de novo'
   })
 } else {
-  passo('compilando o programa…')
-  const build = rodar('anchor', ['build'], { stdio: 'inherit' })
-  if (build.status !== 0) {
+  // O declare_id! do repositorio precisa ser o endereco real do programa. Um
+  // clone novo vem com um placeholder, e `anchor build` nao reclama disso: a
+  // divergencia so aparece em runtime, com toda instrucao falhando em
+  // DeclaredProgramIdMismatch. `anchor keys sync` reescreve o declare_id! e o
+  // Anchor.toml a partir do keypair do programa, e e isso que fechamos aqui.
+  //
+  // O keypair vive em target/, que e descartavel. Se ele se perder, o proximo
+  // deploy cria um programa em OUTRO endereco e todo escrow ja aberto fica
+  // orfao. Por isso guardamos uma copia em .uniwork/, onde ja mora o resto do
+  // estado de devnet, e restauramos dela antes de qualquer coisa.
+  const keypairDoPrograma = path.join(rootDir, 'target', 'deploy', 'uniwork_escrow-keypair.json')
+  const copiaDoKeypair = path.join(rootDir, '.uniwork', 'escrow-program-keypair.json')
+
+  if (fs.existsSync(copiaDoKeypair) && !fs.existsSync(keypairDoPrograma)) {
+    fs.mkdirSync(path.dirname(keypairDoPrograma), { recursive: true })
+    fs.copyFileSync(copiaDoKeypair, keypairDoPrograma)
+    ok('endereco do programa restaurado de .uniwork/: continua sendo o mesmo de antes')
+  }
+
+  passo('sincronizando o endereco declarado no programa…')
+  // Em algumas versoes o keys sync exige que o keypair ja exista, e ele so
+  // nasce no primeiro build. Se falhar por isso, compilamos e tentamos de novo.
+  let sync = rodar('anchor', ['keys', 'sync'], { encoding: 'utf8' })
+  if (sync.status !== 0) {
+    rodar('anchor', ['build'], { stdio: 'inherit' })
+    sync = rodar('anchor', ['keys', 'sync'], { encoding: 'utf8' })
+  }
+
+  if (sync.status !== 0) {
+    process.stdout.write(`${sync.stdout ?? ''}${sync.stderr ?? ''}`)
+    aviso('anchor keys sync nao rodou; seguindo com o driver vault')
     pendencias.push({
-      titulo: 'anchor build falhou',
-      porque: 'sem o programa compilado nao ha deploy',
-      como: 'veja o erro acima; o driver vault continua funcionando enquanto isso'
+      titulo: 'declare_id! nao sincronizado com o endereco do programa',
+      porque: 'com os dois diferentes o programa deploya e depois recusa toda instrucao, o que parece deploy bem-sucedido',
+      como: 'rode anchor keys sync na mao e veja o erro; ate la o driver vault continua funcionando'
     })
   } else {
-    ok('programa compilado')
-    passo('fazendo o deploy em devnet…')
-    const deploy = rodar('anchor', ['deploy', '--provider.cluster', 'devnet'], { encoding: 'utf8' })
-    process.stdout.write(deploy.stdout ?? '')
+    process.stdout.write(sync.stdout ?? '')
+    ok('declare_id! e Anchor.toml apontam para o endereco real do programa')
 
-    // O deploy imprime o program id. Em vez de pedir para a pessoa copiar na
-    // mao, lemos daqui e gravamos no .env e no estado da plataforma.
-    const encontrado = `${deploy.stdout ?? ''}${deploy.stderr ?? ''}`
-      .match(/Program Id:\s*([1-9A-HJ-NP-Za-km-z]{32,44})/)
-
-    if (deploy.status === 0 && encontrado) {
-      const programId = encontrado[1]
-      env = fs.readFileSync(envPath, 'utf8')
-      env = /^ESCROW_PROGRAM_ID=.*$/m.test(env)
-        ? env.replace(/^ESCROW_PROGRAM_ID=.*$/m, `ESCROW_PROGRAM_ID=${programId}`)
-        : `${env.trimEnd()}\nESCROW_PROGRAM_ID=${programId}\n`
-      env = env.replace(/^ESCROW_DRIVER=.*$/m, 'ESCROW_DRIVER=anchor')
-      fs.writeFileSync(envPath, env)
-
-      const { writePlatformState } = await import('../src/services/platform.js')
-      writePlatformState({ escrowProgramId: programId })
-
-      ok(`programa deployado: ${programId}`)
-      ok('ESCROW_PROGRAM_ID gravado no .env e o driver trocado para anchor')
-    } else {
-      aviso('o deploy nao concluiu; seguindo com o driver vault')
+    passo('compilando o programa…')
+    const build = rodar('anchor', ['build'], { stdio: 'inherit' })
+    if (build.status !== 0) {
       pendencias.push({
-        titulo: 'anchor deploy falhou',
-        porque: 'o driver vault e custodial: a plataforma tem autoridade sobre o cofre',
-        como: 'confira o saldo de SOL da conta de deploy e rode npm run setup de novo'
+        titulo: 'anchor build falhou',
+        porque: 'sem o programa compilado nao ha deploy',
+        como: 'veja o erro acima; o driver vault continua funcionando enquanto isso'
       })
+    } else {
+      ok('programa compilado')
+
+      // Guardar a copia so faz sentido depois que existe um keypair de verdade.
+      if (fs.existsSync(keypairDoPrograma)) {
+        fs.mkdirSync(path.dirname(copiaDoKeypair), { recursive: true })
+        fs.copyFileSync(keypairDoPrograma, copiaDoKeypair)
+      }
+
+      passo('fazendo o deploy em devnet…')
+      const deploy = rodar('anchor', ['deploy', '--provider.cluster', 'devnet'], { encoding: 'utf8' })
+      process.stdout.write(deploy.stdout ?? '')
+
+      // O deploy imprime o program id. Em vez de pedir para a pessoa copiar na
+      // mao, lemos daqui e gravamos no .env e no estado da plataforma.
+      const encontrado = `${deploy.stdout ?? ''}${deploy.stderr ?? ''}`
+        .match(/Program Id:\s*([1-9A-HJ-NP-Za-km-z]{32,44})/)
+
+      if (deploy.status === 0 && encontrado) {
+        const programId = encontrado[1]
+        env = fs.readFileSync(envPath, 'utf8')
+        env = /^ESCROW_PROGRAM_ID=.*$/m.test(env)
+          ? env.replace(/^ESCROW_PROGRAM_ID=.*$/m, `ESCROW_PROGRAM_ID=${programId}`)
+          : `${env.trimEnd()}\nESCROW_PROGRAM_ID=${programId}\n`
+        // Sem esta linha no .env o config cai no padrao, que e vault. Trocar
+        // por replace so funciona se a chave ja existir; se nao existir, some.
+        env = /^ESCROW_DRIVER=.*$/m.test(env)
+          ? env.replace(/^ESCROW_DRIVER=.*$/m, 'ESCROW_DRIVER=anchor')
+          : `${env.trimEnd()}\nESCROW_DRIVER=anchor\n`
+        fs.writeFileSync(envPath, env)
+
+        const { writePlatformState } = await import('../src/services/platform.js')
+        writePlatformState({ escrowProgramId: programId })
+
+        ok(`programa deployado: ${programId}`)
+        ok('ESCROW_PROGRAM_ID gravado no .env e o driver trocado para anchor')
+        passo('     commite o declare_id! novo em programs/ e no Anchor.toml')
+      } else {
+        process.stdout.write(deploy.stderr ?? '')
+        aviso('o deploy nao concluiu; seguindo com o driver vault')
+        pendencias.push({
+          titulo: 'anchor deploy falhou',
+          porque: 'o driver vault e custodial: a plataforma tem autoridade sobre o cofre',
+          como: 'confira o saldo de SOL da conta de deploy e rode npm run setup de novo'
+        })
+      }
     }
   }
 }

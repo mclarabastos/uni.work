@@ -34,8 +34,27 @@ before(async () => {
   try {
     provider = anchor.AnchorProvider.env()
     anchor.setProvider(provider)
-    programa = anchor.workspace.UniworkEscrow
-    if (!programa) throw new Error('o workspace nao expos UniworkEscrow (rode com anchor test)')
+    // A chave do workspace ja mudou de convencao entre versoes do Anchor
+    // (UniworkEscrow, uniworkEscrow, uniwork_escrow). Procurar so uma delas faz
+    // este arquivo inteiro virar skip em silencio quando a versao muda — que e
+    // exatamente o que o cabecalho aqui em cima diz para nao fazer. O acesso vai
+    // dentro de try porque o workspace e um Proxy: chave errada pode lancar em
+    // vez de devolver undefined.
+    for (const nome of ['UniworkEscrow', 'uniworkEscrow', 'uniwork_escrow', 'uniwork-escrow']) {
+      try {
+        programa = anchor.workspace[nome]
+      } catch {
+        programa = undefined
+      }
+      if (programa) break
+    }
+    if (!programa) {
+      let expostas = 'nenhuma'
+      try {
+        expostas = Object.keys(anchor.workspace).join(', ') || 'nenhuma'
+      } catch { /* o Proxy pode recusar ate a listagem */ }
+      throw new Error(`o workspace nao expos o programa de escrow (rode com anchor test). Chaves disponiveis: ${expostas}`)
+    }
 
     plataforma = provider.wallet.payer ?? Keypair.generate()
     await provider.connection.getVersion()

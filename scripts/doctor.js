@@ -173,16 +173,33 @@ if (config.escrow.driver === 'anchor') {
   if (!programId) {
     registrar(ERRO, 'escrow', 'driver anchor selecionado, mas nao ha ESCROW_PROGRAM_ID',
       'rode npm run setup com o toolchain Anchor instalado, ou volte para ESCROW_DRIVER=vault')
-  } else if (rede.ok) {
-    const conta = await comTempo('programa', async () => {
-      const { PublicKey } = await import('@solana/web3.js')
-      return getConnection().getAccountInfo(new PublicKey(programId))
-    })
-    if (conta.ok && conta.valor?.executable) {
-      registrar(OK, 'escrow', `programa Anchor deployado em ${programId}`)
-    } else {
-      registrar(ERRO, 'escrow', `nao encontrei um programa executavel em ${programId}`,
-        'anchor deploy, ou volte para ESCROW_DRIVER=vault ate o deploy sair')
+  } else {
+    // O endereco declarado dentro do programa tem que ser o endereco onde ele
+    // foi deployado. Quando os dois divergem o programa existe, esta executavel
+    // e recusa toda instrucao com DeclaredProgramIdMismatch — a falha mais
+    // traicoeira das tres, porque por fora parece um deploy bem-sucedido. Esta
+    // conferencia nao depende da rede, entao roda antes dela.
+    const fonte = path.join(rootDir, 'programs', 'uniwork-escrow', 'src', 'lib.rs')
+    const declarado = fs.existsSync(fonte)
+      ? fs.readFileSync(fonte, 'utf8').match(/declare_id!\(\s*"([^"]+)"\s*\)/)?.[1]
+      : null
+
+    if (declarado && declarado !== programId) {
+      registrar(ERRO, 'escrow', `o programa declara ${declarado}, mas o deploy esta em ${programId}`,
+        'anchor keys sync, depois anchor build e anchor deploy (npm run setup faz os tres)')
+    }
+
+    if (rede.ok) {
+      const conta = await comTempo('programa', async () => {
+        const { PublicKey } = await import('@solana/web3.js')
+        return getConnection().getAccountInfo(new PublicKey(programId))
+      })
+      if (conta.ok && conta.valor?.executable) {
+        registrar(OK, 'escrow', `programa Anchor deployado em ${programId}`)
+      } else {
+        registrar(ERRO, 'escrow', `nao encontrei um programa executavel em ${programId}`,
+          'anchor deploy, ou volte para ESCROW_DRIVER=vault ate o deploy sair')
+      }
     }
   }
 } else {
