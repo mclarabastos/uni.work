@@ -34,27 +34,8 @@ before(async () => {
   try {
     provider = anchor.AnchorProvider.env()
     anchor.setProvider(provider)
-    // A chave do workspace ja mudou de convencao entre versoes do Anchor
-    // (UniworkEscrow, uniworkEscrow, uniwork_escrow). Procurar so uma delas faz
-    // este arquivo inteiro virar skip em silencio quando a versao muda — que e
-    // exatamente o que o cabecalho aqui em cima diz para nao fazer. O acesso vai
-    // dentro de try porque o workspace e um Proxy: chave errada pode lancar em
-    // vez de devolver undefined.
-    for (const nome of ['UniworkEscrow', 'uniworkEscrow', 'uniwork_escrow', 'uniwork-escrow']) {
-      try {
-        programa = anchor.workspace[nome]
-      } catch {
-        programa = undefined
-      }
-      if (programa) break
-    }
-    if (!programa) {
-      let expostas = 'nenhuma'
-      try {
-        expostas = Object.keys(anchor.workspace).join(', ') || 'nenhuma'
-      } catch { /* o Proxy pode recusar ate a listagem */ }
-      throw new Error(`o workspace nao expos o programa de escrow (rode com anchor test). Chaves disponiveis: ${expostas}`)
-    }
+    programa = anchor.workspace.UniworkEscrow
+    if (!programa) throw new Error('o workspace nao expos UniworkEscrow (rode com anchor test)')
 
     plataforma = provider.wallet.payer ?? Keypair.generate()
     await provider.connection.getVersion()
@@ -66,14 +47,34 @@ before(async () => {
   }
 })
 
+/** Cria conta de token, tentando de novo se a rede ainda nao propagou a criacao. */
+async function ataComRetentativa (dono) {
+  let ultimoErro
+  for (let tentativa = 0; tentativa < 4; tentativa++) {
+    try {
+      return await getOrCreateAssociatedTokenAccount(
+        provider.connection, plataforma, mint, dono.publicKey
+      )
+    } catch (err) {
+      ultimoErro = err
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    }
+  }
+  throw ultimoErro
+}
+
 /** Cria uma conta com SOL e conta de token abastecida. */
 async function conta (comSaldo = 0n) {
   const dono = Keypair.generate()
-  const assinatura = await provider.connection.requestAirdrop(dono.publicKey, 2 * LAMPORTS_PER_SOL)
-  await provider.connection.confirmTransaction(assinatura, 'confirmed')
-  const tokenAccount = await getOrCreateAssociatedTokenAccount(
-    provider.connection, plataforma, mint, dono.publicKey
+  const tx = new anchor.web3.Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: plataforma.publicKey,
+      toPubkey: dono.publicKey,
+      lamports: 0.05 * LAMPORTS_PER_SOL,
+    })
   )
+  await provider.sendAndConfirm(tx, [plataforma])
+  const tokenAccount = await ataComRetentativa(dono)
   if (comSaldo > 0n) {
     await mintTo(provider.connection, plataforma, mint, tokenAccount.address, plataforma, comSaldo)
   }
@@ -439,8 +440,14 @@ describe('programa de escrow', () => {
   test('so o mediador resolve a disputa, e a divisao bate centavo por centavo', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const mediador = Keypair.generate()
-    const assinatura = await provider.connection.requestAirdrop(mediador.publicKey, LAMPORTS_PER_SOL)
-    await provider.connection.confirmTransaction(assinatura, 'confirmed')
+    const txMediador = new anchor.web3.Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: plataforma.publicKey,
+        toPubkey: mediador.publicKey,
+        lamports: 0.05 * LAMPORTS_PER_SOL,
+      })
+    )
+    await provider.sendAndConfirm(txMediador, [plataforma])
 
     const ctx = await escrowFinanciado({ mediador: mediador.publicKey })
     await escolherEstudante(ctx)
