@@ -14,6 +14,12 @@ import { migrar } from '../src/db/migrate.js'
 import { closeDb } from '../src/db/index.js'
 import { platformSummary } from '../src/services/platform.js'
 import { formatBRL } from '../src/lib/money.js'
+import { getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token'
+import { Keypair, PublicKey } from '@solana/web3.js'
+import { one } from '../src/db/index.js'
+import { readPlatformState } from '../src/services/platform.js'
+import { getConnection } from '../src/services/solana.js'
+import { TOKEN_DECIMALS } from '../src/lib/money.js'
 
 const etapa = (n, texto) => console.log(`\n  ${String(n).padStart(2)}. ${texto}`)
 const detalhe = (texto) => console.log(`      ${texto}`)
@@ -60,6 +66,26 @@ try {
     body: { nome: 'Produtora XPTO', email: `xpto.${marca}@empresa.com.br`, perfil: 'company' }
   })
   detalhe(`${contratante.usuario.nome} entrou.`)
+
+  etapa(++passos, 'A plataforma credita um saldo de teste ao contratante')
+  const estadoRede = readPlatformState()
+  if (estadoRede?.usdcMint) {
+    const conexaoRede = getConnection()
+    const carteiraPlataforma = Keypair.fromSecretKey(Uint8Array.from(estadoRede.secretKey))
+    const mintTeste = new PublicKey(estadoRede.usdcMint)
+    const contaContratante = await one('select public_key from accounts where user_id = $1', [contratante.usuario.id])
+    const enderecoContratante = new PublicKey(contaContratante.public_key)
+    const contaToken = await getOrCreateAssociatedTokenAccount(
+      conexaoRede, carteiraPlataforma, mintTeste, enderecoContratante
+    )
+    await mintTo(
+      conexaoRede, carteiraPlataforma, mintTeste, contaToken.address, carteiraPlataforma,
+      BigInt(240) * BigInt(10 ** TOKEN_DECIMALS)
+    )
+    detalhe('R$ 240,00 de teste creditados, para poder reservar o pagamento da vaga')
+  } else {
+    detalhe('bootstrap ainda nao rodou: a reserva a seguir deve falhar por falta de saldo')
+  }
 
   etapa(++passos, 'O contratante publica uma vaga')
   const { vaga } = await api('/api/jobs', {
@@ -141,6 +167,7 @@ try {
   etapa(++passos, 'O contratante confirma: paga e certifica no mesmo fluxo')
   const confirmada = await api(`/api/jobs/${vaga.id}/confirm`, { method: 'POST', token: contratante.sessao.token })
   detalhe(`status: ${confirmada.vaga.statusRotulo} · etapa ${confirmada.vaga.trilha.etapa} de ${confirmada.vaga.trilha.total}`)
+  if (confirmada.certificado) {
   detalhe(`certificado ${confirmada.certificado.codigo} · ${confirmada.certificado.horas}h`)
   if (confirmada.certificado.emProcessamento) {
     detalhe('o registro publico ainda esta sendo processado; a fila termina sozinha')
@@ -160,6 +187,10 @@ try {
   etapa(++passos, 'A estudante ve as horas na conta dela')
   const carteira = await api('/api/me/certificates', { token: estudante.sessao.token })
   detalhe(`${carteira.certificados.length} certificado(s), ${carteira.horasTotais}h no total`)
+
+  } else {
+    detalhe('pagamento confirmado; o certificado entrou na fila e sai em instantes (nao esperamos aqui, e so uma demonstracao rapida)')
+  }
 
   console.log(`
   fluxo completo, do cadastro ao certificado verificado publicamente.
