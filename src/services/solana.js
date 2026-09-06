@@ -81,7 +81,7 @@ export async function sendTransaction (instructions, extraSigners = []) {
   try {
     const { transaction, lastValidBlockHeight, blockhash } = await buildTransaction(instructions, extraSigners)
     const signature = await conn.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: false,
+      skipPreflight: true,
       maxRetries: 3
     })
     contar('rede.enviadas')
