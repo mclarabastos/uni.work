@@ -49,7 +49,7 @@ async function openPglite () {
   await pg.waitReady
   return {
     driver: 'pglite',
-    label: emMemoria ? 'PGlite em memoria' : `PGlite embarcado (${path.relative(process.cwd(), config.db.pgliteDir)})`,
+    label: emMemoria ? 'PGlite em memória' : `PGlite embarcado (${path.relative(process.cwd(), config.db.pgliteDir)})`,
     async query (sql, params = []) {
       return normalize(await pg.query(sql, params))
     },
@@ -77,7 +77,7 @@ async function openPostgres () {
   // cada processo de teste trabalha no proprio schema e nao ve os outros.
   const schemaIsolado = process.env.UNIWORK_TEST_SCHEMA
   if (schemaIsolado) {
-    if (!/^[a-z0-9_]{1,60}$/.test(schemaIsolado)) throw new Error('UNIWORK_TEST_SCHEMA invalido')
+    if (!/^[a-z0-9_]{1,60}$/.test(schemaIsolado)) throw new Error('UNIWORK_TEST_SCHEMA inválido')
     const inicial = new Pool({ connectionString: config.db.url, max: 1, ssl: needsSsl ? { rejectUnauthorized: false } : undefined })
     await inicial.query(`create schema if not exists ${schemaIsolado}`)
     await inicial.end()

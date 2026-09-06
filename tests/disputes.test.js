@@ -67,8 +67,8 @@ async function vagaEntregue () {
     method: 'POST', token: contratante.sessao.token,
     body: {
       titulo: 'Staff de credenciamento no congresso',
-      descricao: 'Recepcao e credenciamento dos participantes durante o evento.',
-      categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP',
+      descricao: 'Recepção e credenciamento dos participantes durante o evento.',
+      categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP',
       valorCentavos: VALOR, horas: 12
     }
   })).corpo
@@ -82,7 +82,7 @@ async function vagaEntregue () {
   await pedir(`/api/jobs/${vaga.id}/start`, { method: 'POST', token: estudante.sessao.token })
   await pedir(`/api/jobs/${vaga.id}/deliver`, {
     method: 'POST', token: estudante.sessao.token,
-    body: { observacao: 'Credenciamento concluido nos dois dias.' }
+    body: { observacao: 'Credenciamento concluído nos dois dias.' }
   })
 
   return { vaga, estudante, contratante }
@@ -92,13 +92,13 @@ async function criarMediador () {
   contador += 1
   const conta = (await pedir('/api/signup', {
     method: 'POST',
-    body: { nome: 'Mediacao Uni.work', email: `med.${Date.now()}.${contador}@uniwork.br`, perfil: 'company' }
+    body: { nome: 'Mediação Uni.work', email: `med.${Date.now()}.${contador}@uniwork.br`, perfil: 'company' }
   })).corpo
   await query('update users set is_admin = true where id = $1', [conta.usuario.id])
   return conta
 }
 
-test('o contratante contesta, a mediacao divide, e a divisao bate centavo por centavo', async () => {
+test('o contratante contesta, a mediação divide, e a divisão bate centavo por centavo', async () => {
   const { vaga, contratante, estudante } = await vagaEntregue()
   const mediador = await criarMediador()
 
@@ -107,14 +107,14 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
     method: 'POST', token: contratante.sessao.token,
     body: {
       motivo: 'fora_do_combinado',
-      detalhe: 'Combinamos dois dias de credenciamento e so houve cobertura no primeiro dia.'
+      detalhe: 'Combinamos dois dias de credenciamento e só houve cobertura no primeiro dia.'
     }
   })
   assert.equal(abertura.status, 201)
   const contestacao = abertura.corpo.contestacao
   assert.equal(contestacao.status, 'open')
-  assert.equal(contestacao.motivoRotulo, 'A entrega nao corresponde ao combinado')
-  assert.ok(contestacao.prazoEm, 'a contestacao nasce com prazo visivel')
+  assert.equal(contestacao.motivoRotulo, 'A entrega não corresponde ao combinado')
+  assert.ok(contestacao.prazoEm, 'a contestação nasce com prazo visível')
   assert.equal(contestacao.atrasada, false)
 
   // ─── enquanto ha contestacao, o valor nao vai para lado nenhum ────────────
@@ -134,17 +134,17 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
   for (const quem of [contratante, estudante]) {
     const visao = (await pedir(`/api/jobs/${vaga.id}`, { token: quem.sessao.token })).corpo.vaga
     assert.equal(visao.emContestacao, true)
-    assert.equal(visao.statusRotulo, 'Em contestacao')
+    assert.equal(visao.statusRotulo, 'Em contestação')
     assert.equal(visao.contestacao.id, contestacao.id)
     assert.ok(visao.contestacao.prazoEm)
   }
 
   // ─── quem nao e da vaga nao ve nem abre ───────────────────────────────────
   const estranho = (await pedir('/api/signup', {
-    method: 'POST', body: { nome: 'Alguem', email: `x.${Date.now()}@teste.br`, perfil: 'student' }
+    method: 'POST', body: { nome: 'Alguém', email: `x.${Date.now()}@teste.br`, perfil: 'student' }
   })).corpo
   const visaoDeFora = (await pedir(`/api/jobs/${vaga.id}`, { token: estranho.sessao.token })).corpo.vaga
-  assert.equal(visaoDeFora.contestacao, null, 'quem nao e parte nao ve o conteudo da contestacao')
+  assert.equal(visaoDeFora.contestacao, null, 'quem não e parte não ve o conteúdo da contestação')
 
   // ─── so a mediacao ve a fila e resolve ────────────────────────────────────
   const filaNegada = await pedir('/api/disputes', { token: contratante.sessao.token })
@@ -158,7 +158,7 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
     method: 'POST', token: contratante.sessao.token,
     body: { resultado: 'resolved_company', resolucao: 'Quero meu dinheiro de volta agora mesmo.' }
   })
-  assert.equal(resolucaoNegada.status, 403, 'a parte interessada nao decide a propria contestacao')
+  assert.equal(resolucaoNegada.status, 403, 'a parte interessada não decide a própria contestação')
 
   // ─── a mediacao assume e divide meio a meio ───────────────────────────────
   const assumida = await pedir(`/api/disputes/${contestacao.id}/assumir`, {
@@ -179,7 +179,7 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
     body: {
       resultado: 'split',
       divisaoBps: 5000,
-      resolucao: 'Houve trabalho no primeiro dia e nao houve no segundo. Metade para cada lado.'
+      resolucao: 'Houve trabalho no primeiro dia e não houve no segundo. Metade para cada lado.'
     }
   })
   assert.equal(resolucao.status, 200)
@@ -189,7 +189,7 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
 
   // ─── a conta fecha ────────────────────────────────────────────────────────
   const divisao = resolucao.corpo.divisao
-  assert.ok(divisao, 'a resolucao precisa dizer para onde cada centavo foi')
+  assert.ok(divisao, 'a resolução precisa dizer para onde cada centavo foi')
 
   const brutoEstudante = VALOR / 2
   const { studentCents: liquidoEsperado, feeCents: taxaEsperada } = splitFee(brutoEstudante, 500)
@@ -202,7 +202,7 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
   assert.equal(
     divisao.studentCents + divisao.feeCents + divisao.companyCents,
     VALOR,
-    'a soma das tres partes precisa ser exatamente o valor da vaga'
+    'a soma das três partes precisa ser exatamente o valor da vaga'
   )
 
   // ─── o resultado bate com o que foi para a rede ───────────────────────────
@@ -210,7 +210,7 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
     `select * from chain_tx where job_id = $1 and kind = 'escrow_release' and status = 'confirmada'`,
     [vaga.id]
   )
-  assert.ok(naRede, 'a movimentacao precisa estar registrada')
+  assert.ok(naRede, 'a movimentação precisa estar registrada')
   const detalheDaRede = typeof naRede.detail === 'string' ? JSON.parse(naRede.detail) : naRede.detail
   assert.equal(detalheDaRede.resolucaoDeDisputa, true)
   assert.deepEqual(detalheDaRede.divisao, divisao, 'o registro da rede bate com a resposta da API')
@@ -226,15 +226,15 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
   const transferencias = instrucoes.filter((i) => i.dataLength > 1)
 
   if (escrowDriverName() === 'anchor') {
-    assert.equal(transferencias.length, 1, 'no programa, a divisao e uma instrucao so')
+    assert.equal(transferencias.length, 1, 'no programa, a divisão e uma instrução só')
   } else {
-    assert.equal(transferencias.length, 3, 'no cofre, uma transferencia por destino')
+    assert.equal(transferencias.length, 3, 'no cofre, uma transferência por destino')
   }
 
   // ─── a vaga fecha e sai da contestacao ────────────────────────────────────
   const final = await one('select status, disputed_at, completed_at from jobs where id = $1', [vaga.id])
   assert.equal(final.status, 'concluida')
-  assert.equal(final.disputed_at, null, 'a vaga sai da contestacao')
+  assert.equal(final.disputed_at, null, 'a vaga sai da contestação')
   assert.ok(final.completed_at)
 
   // ─── ficou registrado quem decidiu o que ──────────────────────────────────
@@ -242,19 +242,19 @@ test('o contratante contesta, a mediacao divide, e a divisao bate centavo por ce
     "select * from audit_log where entity = 'dispute' and entity_id = $1 and action = 'disputa.resolvida'",
     [contestacao.id]
   )
-  assert.ok(auditoria, 'a decisao precisa estar na trilha de auditoria')
+  assert.ok(auditoria, 'a decisão precisa estar na trilha de auditoria')
   assert.equal(auditoria.actor_id, mediador.usuario.id)
 
   // ─── resolver duas vezes e recusado ───────────────────────────────────────
   const denovo = await pedir(`/api/disputes/${contestacao.id}/resolve`, {
     method: 'POST', token: mediador.sessao.token,
-    body: { resultado: 'resolved_student', resolucao: 'Mudei de ideia sobre a decisao anterior.' }
+    body: { resultado: 'resolved_student', resolucao: 'Mudei de ideia sobre a decisão anterior.' }
   })
   assert.equal(denovo.status, 409)
   assert.equal(denovo.corpo.codigo, 'contestacao_ja_resolvida')
 })
 
-test('o estudante contesta quando o pagamento nao sai, e a mediacao pode dar tudo a ele', async () => {
+test('o estudante contesta quando o pagamento não sai, e a mediação pode dar tudo a ele', async () => {
   const { vaga, estudante } = await vagaEntregue()
   const mediador = await criarMediador()
 
@@ -262,7 +262,7 @@ test('o estudante contesta quando o pagamento nao sai, e a mediacao pode dar tud
     method: 'POST', token: estudante.sessao.token,
     body: {
       motivo: 'pagamento_travado',
-      detalhe: 'Entreguei ha duas semanas e o contratante nao responde nem confirma a entrega.'
+      detalhe: 'Entreguei há duas semanas e o contratante não responde nem confirma a entrega.'
     }
   })
   assert.equal(abertura.status, 201)
@@ -272,7 +272,7 @@ test('o estudante contesta quando o pagamento nao sai, e a mediacao pode dar tud
     method: 'POST', token: mediador.sessao.token,
     body: {
       resultado: 'resolved_student',
-      resolucao: 'A entrega esta documentada e o contratante nao se manifestou dentro do prazo.'
+      resolucao: 'A entrega esta documentada e o contratante não se manifestou dentro do prazo.'
     }
   })
   assert.equal(resolucao.status, 200)
@@ -292,7 +292,7 @@ test('o estudante contesta quando o pagamento nao sai, e a mediacao pode dar tud
   assert.ok(cert, 'quem teve o trabalho reconhecido recebe certificado')
 })
 
-test('contestacao duplicada, fora de hora, ou de quem nao e parte, e recusada', async () => {
+test('contestação duplicada, fora de hora, ou de quem não e parte, e recusada', async () => {
   const { vaga, contratante, estudante } = await vagaEntregue()
 
   const primeira = await pedir(`/api/jobs/${vaga.id}/dispute`, {
@@ -313,7 +313,7 @@ test('contestacao duplicada, fora de hora, ou de quem nao e parte, e recusada', 
   const outra = await vagaEntregue()
   const semExplicacao = await pedir(`/api/jobs/${outra.vaga.id}/dispute`, {
     method: 'POST', token: outra.contratante.sessao.token,
-    body: { motivo: 'outro', detalhe: 'nao gostei' }
+    body: { motivo: 'outro', detalhe: 'não gostei' }
   })
   assert.equal(semExplicacao.status, 400)
   assert.equal(semExplicacao.corpo.codigo, 'campos_invalidos')
@@ -321,17 +321,17 @@ test('contestacao duplicada, fora de hora, ou de quem nao e parte, e recusada', 
   // Motivo fora da lista.
   const motivoInvalido = await pedir(`/api/jobs/${outra.vaga.id}/dispute`, {
     method: 'POST', token: outra.contratante.sessao.token,
-    body: { motivo: 'porque_sim', detalhe: 'Um detalhe suficientemente longo para passar na validacao.' }
+    body: { motivo: 'porque_sim', detalhe: 'Um detalhe suficientemente longo para passar na validação.' }
   })
   assert.equal(motivoInvalido.status, 400)
 
   // Quem nao e parte da vaga.
   const estranho = (await pedir('/api/signup', {
-    method: 'POST', body: { nome: 'Alguem', email: `y.${Date.now()}@teste.br`, perfil: 'student' }
+    method: 'POST', body: { nome: 'Alguém', email: `y.${Date.now()}@teste.br`, perfil: 'student' }
   })).corpo
   const deFora = await pedir(`/api/jobs/${outra.vaga.id}/dispute`, {
     method: 'POST', token: estranho.sessao.token,
-    body: { motivo: 'conduta', detalhe: 'Nao tenho nada a ver com esta vaga mas quero contestar.' }
+    body: { motivo: 'conduta', detalhe: 'Não tenho nada a ver com esta vaga mas quero contestar.' }
   })
   assert.equal(deFora.status, 403)
 
@@ -342,18 +342,18 @@ test('contestacao duplicada, fora de hora, ou de quem nao e parte, e recusada', 
   })
   const tardeDemais = await pedir(`/api/jobs/${terceira.vaga.id}/dispute`, {
     method: 'POST', token: terceira.contratante.sessao.token,
-    body: { motivo: 'outro', detalhe: 'Descobri o problema depois que ja tinha confirmado a entrega.' }
+    body: { motivo: 'outro', detalhe: 'Descobri o problema depois que já tinha confirmado a entrega.' }
   })
   assert.equal(tardeDemais.status, 409)
   assert.match(tardeDemais.corpo.error, /suporte/i, 'a mensagem precisa dizer para onde ir')
 })
 
-test('a entrega que ninguem confirma nem contesta se confirma sozinha depois do prazo', async () => {
+test('a entrega que ninguém confirma nem contesta se confirma sozinha depois do prazo', async () => {
   const { vaga } = await vagaEntregue()
 
   // A entrega nasce com prazo de auto confirmacao.
   const comPrazo = await one('select auto_confirm_at, confirmed_at from jobs where id = $1', [vaga.id])
-  assert.ok(comPrazo.auto_confirm_at, 'entregar precisa marcar o prazo de confirmacao automatica')
+  assert.ok(comPrazo.auto_confirm_at, 'entregar precisa marcar o prazo de confirmação automática')
   assert.equal(comPrazo.confirmed_at, null)
 
   const diasDeDiferenca = (new Date(comPrazo.auto_confirm_at) - Date.now()) / 86400_000
@@ -381,10 +381,10 @@ test('a entrega que ninguem confirma nem contesta se confirma sozinha depois do 
     [vaga.id]
   )
   assert.ok(auditoria)
-  assert.equal(auditoria.actor_id, null, 'nenhuma pessoa assinou essa confirmacao')
+  assert.equal(auditoria.actor_id, null, 'nenhuma pessoa assinou essa confirmação')
 })
 
-test('uma contestacao aberta impede a auto confirmacao de atropelar a mediacao', async () => {
+test('uma contestação aberta impede a auto confirmação de atropelar a mediação', async () => {
   const { vaga, estudante } = await vagaEntregue()
 
   await pedir(`/api/jobs/${vaga.id}/dispute`, {
@@ -394,7 +394,7 @@ test('uma contestacao aberta impede a auto confirmacao de atropelar a mediacao',
 
   // Abrir contestacao limpa o prazo de auto confirmacao.
   const semPrazo = await one('select auto_confirm_at, disputed_at from jobs where id = $1', [vaga.id])
-  assert.equal(semPrazo.auto_confirm_at, null, 'a contestacao cancela a confirmacao automatica')
+  assert.equal(semPrazo.auto_confirm_at, null, 'a contestação cancela a confirmação automática')
   assert.ok(semPrazo.disputed_at)
 
   // Mesmo forcando um prazo vencido, a contestacao segura.
@@ -402,17 +402,17 @@ test('uma contestacao aberta impede a auto confirmacao de atropelar a mediacao',
   await processarUmaRodada()
 
   const aindaEmDisputa = await one('select confirmed_at, status from jobs where id = $1', [vaga.id])
-  assert.equal(aindaEmDisputa.confirmed_at, null, 'o prazo nao pode atropelar a mediacao')
+  assert.equal(aindaEmDisputa.confirmed_at, null, 'o prazo não pode atropelar a mediação')
   assert.equal(aindaEmDisputa.status, 'entregue')
 })
 
-test('se a rede recusar, a decisao da mediacao vale e a movimentacao vai para a fila', async () => {
+test('se a rede recusar, a decisão da mediação vale e a movimentação vai para a fila', async () => {
   const { vaga, contratante } = await vagaEntregue()
   const mediador = await criarMediador()
 
   const abertura = await pedir(`/api/jobs/${vaga.id}/dispute`, {
     method: 'POST', token: contratante.sessao.token,
-    body: { motivo: 'fora_do_combinado', detalhe: 'A entrega veio incompleta em relacao ao combinado.' }
+    body: { motivo: 'fora_do_combinado', detalhe: 'A entrega veio incompleta em relação ao combinado.' }
   })
 
   rede.derrubar()
@@ -432,9 +432,9 @@ test('se a rede recusar, a decisao da mediacao vale e a movimentacao vai para a 
     "select * from chain_jobs where job_id = $1 and kind = 'escrow_release' and done_at is null",
     [vaga.id]
   )
-  assert.ok(naFila, 'a movimentacao precisa estar na fila')
+  assert.ok(naFila, 'a movimentação precisa estar na fila')
   const payload = typeof naFila.payload === 'string' ? JSON.parse(naFila.payload) : naFila.payload
-  assert.equal(payload.divisaoBps, 3000, 'a fila carrega a divisao decidida, nao um pagamento integral')
+  assert.equal(payload.divisaoBps, 3000, 'a fila carrega a divisão decidida, não um pagamento integral')
 
   // Com a rede de volta, a fila executa exatamente a divisao decidida.
   rede.levantar()

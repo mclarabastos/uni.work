@@ -44,7 +44,7 @@ async function api (caminho, { method = 'GET', body, token } = {}) {
 }
 
 const marca = Date.now()
-console.log('\n  demonstracao do fluxo completo do Uni.work')
+console.log('\n  demonstração do fluxo completo do Uni.work')
 
 try {
   etapa(++passos, 'Uma estudante cria a conta')
@@ -61,29 +61,29 @@ try {
   })
   detalhe(`${contratante.usuario.nome} entrou.`)
 
-  etapa(++passos, 'O contratante publica uma vaga')
+  etapa(++passos, 'O contratante pública uma vaga')
   const { vaga } = await api('/api/jobs', {
     method: 'POST',
     token: contratante.sessao.token,
     body: {
       titulo: 'Staff de credenciamento no congresso de tecnologia',
-      descricao: 'Recepcao e credenciamento dos participantes durante dois dias de congresso.',
+      descricao: 'Recepção e credenciamento dos participantes durante dois dias de congresso.',
       categoria: 'Eventos',
       modalidade: 'presencial',
-      local: 'Sao Paulo, SP',
+      local: 'São Paulo, SP',
       valorCentavos: 24000,
       horas: 12
     }
   })
   detalhe(`"${vaga.titulo}"`)
   detalhe(`${formatBRL(vaga.valorCentavos)} por ${vaga.horas}h · etapa ${vaga.trilha.etapa} de ${vaga.trilha.total}`)
-  detalhe(`pagamento garantido: ${vaga.pagamentoGarantido ? 'sim' : 'ainda nao'}`)
+  detalhe(`pagamento garantido: ${vaga.pagamentoGarantido ? 'sim' : 'ainda não'}`)
 
   etapa(++passos, 'A estudante se candidata')
   await api(`/api/jobs/${vaga.id}/apply`, {
     method: 'POST',
     token: estudante.sessao.token,
-    body: { apresentacao: 'Ja trabalhei em tres congressos de tecnologia.' }
+    body: { apresentacao: 'Já trabalhei em três congressos de tecnologia.' }
   })
   detalhe('candidatura enviada')
 
@@ -104,15 +104,15 @@ try {
     console.log(`
   ─────────────────────────────────────────────────────────────────────────
 
-  O demo parou aqui de proposito.
+  O demo parou aqui de propósito.
 
-  As proximas etapas (reservar o valor, liberar o pagamento e emitir o
-  certificado) acontecem de verdade na rede, e o ambiente de devnet ainda nao
+  As próximas etapas (reservar o valor, liberar o pagamento e emitir o
+  certificado) acontecem de verdade na rede, e o ambiente de devnet ainda não
   foi preparado. Rode:
 
       npm run bootstrap
 
-  e chame npm run demo de novo. Nao vou simular essa parte: ela e o produto.
+  e chame npm run demo de novo. Não vou simular essa parte: ela e o produto.
 `)
     servidor.close()
     await closeDb()
@@ -129,12 +129,12 @@ try {
   const aceita = await api(`/api/jobs/applications/${candidaturaId}/accept`, { method: 'POST', token: contratante.sessao.token })
   detalhe(`status: ${aceita.vaga.statusRotulo}`)
 
-  etapa(++passos, 'A estudante comeca e entrega')
+  etapa(++passos, 'A estudante começa e entrega')
   await api(`/api/jobs/${vaga.id}/start`, { method: 'POST', token: estudante.sessao.token })
   const entregue = await api(`/api/jobs/${vaga.id}/deliver`, {
     method: 'POST',
     token: estudante.sessao.token,
-    body: { observacao: 'Credenciamento concluido nos dois dias, 480 participantes atendidos.' }
+    body: { observacao: 'Credenciamento concluído nos dois dias, 480 participantes atendidos.' }
   })
   detalhe(`status: ${entregue.vaga.statusRotulo} · etapa ${entregue.vaga.trilha.etapa} de ${entregue.vaga.trilha.total}`)
 
@@ -143,19 +143,19 @@ try {
   detalhe(`status: ${confirmada.vaga.statusRotulo} · etapa ${confirmada.vaga.trilha.etapa} de ${confirmada.vaga.trilha.total}`)
   detalhe(`certificado ${confirmada.certificado.codigo} · ${confirmada.certificado.horas}h`)
   if (confirmada.certificado.emProcessamento) {
-    detalhe('o registro publico ainda esta sendo processado; a fila termina sozinha')
+    detalhe('o registro público ainda está sendo processado; a fila termina sozinha')
   }
 
   etapa(++passos, 'Qualquer pessoa verifica o certificado, sem conta')
   const verificacao = await api(`/api/verify/${confirmada.certificado.codigo}`)
   detalhe(`valido: ${verificacao.valido ? 'sim' : 'nao'}`)
   detalhe(`${verificacao.certificado.estudante} · ${verificacao.certificado.horas}h · ${verificacao.certificado.atividade}`)
-  detalhe(`integridade: ${verificacao.integridade.confere ? 'confere' : 'NAO confere'}`)
-  detalhe(`confirmacao independente: ${
+  detalhe(`integridade: ${verificacao.integridade.confere ? 'confere' : 'NÃO confere'}`)
+  detalhe(`confirmação independente: ${
     verificacao.confirmacaoIndependente.confirmado
       ? 'confirmada pelo indexador'
       : verificacao.confirmacaoIndependente.motivo ?? 'pendente'}`)
-  detalhe(`link publico: ${verificacao.links.verificacao}`)
+  detalhe(`link público: ${verificacao.links.verificacao}`)
 
   etapa(++passos, 'A estudante ve as horas na conta dela')
   const carteira = await api('/api/me/certificates', { token: estudante.sessao.token })
@@ -163,7 +163,7 @@ try {
 
   console.log(`
   fluxo completo, do cadastro ao certificado verificado publicamente.
-  Nenhuma etapa pediu ao usuario para entender nada de rede.
+  Nenhuma etapa pediu ao usuário para entender nada de rede.
 `)
 } catch (err) {
   console.log(`\n  o demo parou: ${err.message}`)

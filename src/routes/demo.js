@@ -27,7 +27,7 @@ demoRouter.get('/contas', asyncRoute(async (_req, res) => {
   if (config.isProduction) {
     return res.json({
       disponivel: false,
-      motivo: 'As contas de exemplo existem apenas no ambiente de demonstracao.',
+      motivo: 'As contas de exemplo existem apenas no ambiente de demonstração.',
       estudantes: [],
       contratantes: []
     })

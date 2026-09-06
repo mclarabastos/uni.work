@@ -22,18 +22,18 @@ export const EVENT_LABELS = {
   'vaga.entregue': 'Entrega enviada',
   'vaga.concluida': 'Entrega confirmada, pagamento liberado',
   'vaga.cancelada': 'Vaga cancelada, valor devolvido',
-  'disputa.aberta': 'Contestacao aberta',
-  'disputa.resolvida': 'Contestacao resolvida',
+  'disputa.aberta': 'Contestação aberta',
+  'disputa.resolvida': 'Contestação resolvida',
   'vaga.auto_confirmada': 'Confirmada automaticamente por prazo',
   'certificado.emitido': 'Certificado emitido',
   'certificado.pendente': 'Certificado em processamento',
   'mensagem.enviada': 'Mensagem enviada',
-  'avaliacao.registrada': 'Avaliacao registrada',
+  'avaliacao.registrada': 'Avaliação registrada',
   'conta.criada': 'Conta criada',
   'conta.entrou': 'Entrou na conta',
-  'rede.operacao': 'Operacao registrada na rede',
-  'rede.enfileirada': 'Operacao aguardando nova tentativa',
-  'rede.desistiu': 'Operacao precisa de atencao da equipe'
+  'rede.operacao': 'Operação registrada na rede',
+  'rede.enfileirada': 'Operação aguardando nova tentativa',
+  'rede.desistiu': 'Operação precisa de atenção da equipe'
 }
 
 export function labelFor (type) {

@@ -55,7 +55,7 @@ async function criarConta (perfil = 'student') {
 /** O link chega por e-mail; no teste pegamos direto da resposta de desenvolvimento. */
 function tokenDoLink (resposta) {
   const link = resposta.corpo.linkParaDesenvolvimento
-  assert.ok(link, 'em desenvolvimento a resposta traz o link, para o fluxo nao travar')
+  assert.ok(link, 'em desenvolvimento a resposta traz o link, para o fluxo não travar')
   return new URL(link).searchParams.get('token')
 }
 
@@ -79,7 +79,7 @@ test('o ciclo completo do link: pedir, entrar, renovar e sair', async () => {
   // O que fica no banco e o hash do token, nao o token.
   const token = tokenDoLink(pedido)
   const guardado = await one('select token from login_tokens where email = $1', [conta.email])
-  assert.notEqual(guardado.token, token, 'o token nao pode ser guardado em claro')
+  assert.notEqual(guardado.token, token, 'o token não pode ser guardado em claro')
   assert.equal(guardado.token, crypto.createHash('sha256').update(token).digest('hex'))
 
   // 2. Trocar o token por sessao.
@@ -124,7 +124,7 @@ test('o ciclo completo do link: pedir, entrar, renovar e sair', async () => {
   assert.equal((await pedir('/api/me', { token: renovada.corpo.sessao.token })).status, 401)
 })
 
-test('o link vale uma vez so, vence, e nao existe para quem nao existe', async () => {
+test('o link vale uma vez só, vence, e não existe para quem não existe', async () => {
   const conta = await criarConta()
 
   // Reuso: o segundo uso do mesmo token e recusado.
@@ -136,7 +136,7 @@ test('o link vale uma vez so, vence, e nao existe para quem nao existe', async (
   const segundoUso = await pedir('/api/auth/verify', { method: 'POST', body: { token } })
   assert.equal(segundoUso.status, 400)
   assert.equal(segundoUso.corpo.codigo, 'link_ja_usado')
-  assert.match(segundoUso.corpo.error, /ja foi usado/i)
+  assert.match(segundoUso.corpo.error, /já foi usado/i)
 
   // Vencimento: envelhecemos o token no banco e tentamos usar.
   const outro = await pedir('/api/auth/magic-link', { method: 'POST', body: { email: conta.email } })
@@ -197,7 +197,7 @@ test('pedir link para um e-mail sem conta responde igual a pedir para um com con
   assert.equal(criados.n, 0)
 })
 
-test('sessoes podem ser listadas e revogadas, uma a uma ou todas as outras', async () => {
+test('sessões podem ser listadas e revogadas, uma a uma ou todas as outras', async () => {
   const conta = await criarConta()
 
   // Tres sessoes, como se fossem tres dispositivos.
@@ -211,7 +211,7 @@ test('sessoes podem ser listadas e revogadas, uma a uma ou todas as outras', asy
   const lista = await pedir('/api/auth/sessions', { token: sessoes[2].token })
   assert.equal(lista.status, 200)
   assert.ok(lista.corpo.sessoes.length >= 3)
-  assert.equal(lista.corpo.sessoes.filter((s) => s.atual).length, 1, 'a sessao atual e marcada')
+  assert.equal(lista.corpo.sessoes.filter((s) => s.atual).length, 1, 'a sessão atual e marcada')
 
   // A lista nunca devolve o token inteiro.
   for (const s of lista.corpo.sessoes) {
@@ -240,7 +240,7 @@ test('sessoes podem ser listadas e revogadas, uma a uma ou todas as outras', asy
   assert.equal((await pedir('/api/me', { token: sessoes[2].token })).status, 200)
 })
 
-test('conta suspensa nao entra, nao renova e nao recebe link', async () => {
+test('conta suspensa não entra, não renova e não recebe link', async () => {
   const conta = await criarConta()
   const pedido = await pedir('/api/auth/magic-link', { method: 'POST', body: { email: conta.email } })
   const entrada = await pedir('/api/auth/verify', { method: 'POST', body: { token: tokenDoLink(pedido) } })
@@ -258,7 +258,7 @@ test('conta suspensa nao entra, nao renova e nao recebe link', async () => {
   // Pedir link continua respondendo igual, mas nao gera token nenhum.
   const antes = await one('select count(*)::int as n from login_tokens where email = $1', [conta.email])
   const novoPedido = await pedir('/api/auth/magic-link', { method: 'POST', body: { email: conta.email } })
-  assert.equal(novoPedido.status, 200, 'o bloqueio nao se anuncia')
+  assert.equal(novoPedido.status, 200, 'o bloqueio não se anuncia')
   const depois = await one('select count(*)::int as n from login_tokens where email = $1', [conta.email])
   assert.equal(depois.n, antes.n, 'nenhum link novo foi criado para a conta suspensa')
 })
@@ -293,7 +293,7 @@ test('o limite de escrita por conta protege as rotas que mudam estado', async ()
 
   const corpo = {
     titulo: 'Vaga de teste para o limite',
-    descricao: 'Descricao com tamanho suficiente para passar na validacao de campo.',
+    descricao: 'Descrição com tamanho suficiente para passar na validação de campo.',
     categoria: 'Teste',
     modalidade: 'remoto',
     valorCentavos: 1000,

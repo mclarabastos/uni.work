@@ -22,7 +22,7 @@ export function chavePublica () {
 }
 
 async function webpush () {
-  if (!pushConfigurado()) throw new Error('push nao configurado')
+  if (!pushConfigurado()) throw new Error('push não configurado')
   if (!webpushCarregado) {
     const modulo = await import('web-push')
     webpushCarregado = modulo.default ?? modulo
@@ -41,7 +41,7 @@ export async function registrarInscricao (userId, inscricao, userAgent = null) {
   const p256dh = inscricao?.keys?.p256dh
   const auth = inscricao?.keys?.auth
   if (!endpoint || !p256dh || !auth) {
-    throw new Error('inscricao incompleta')
+    throw new Error('inscrição incompleta')
   }
   await query(
     `insert into push_subscriptions (id, user_id, endpoint, p256dh, auth, user_agent)

@@ -1,7 +1,8 @@
 // Uni.work — aplicacao de tela unica, sem build.
 //
-// Tres colunas: navegacao a esquerda, conteudo no meio, painel do ecossistema a
-// direita. Cada tela abre com um heroi proprio, e o resto e conteudo.
+// Tres colunas: navegacao a esquerda, conteudo no meio, e a direita responde
+// "onde esta a minha grana". Cada tela abre com um heroi proprio, e o resto e
+// conteudo.
 //
 // Dois modos: http fala com a API de verdade; simulacao entra quando a API nao
 // responde, com dados de exemplo e um aviso permanente na tela. Nada aqui finge
@@ -12,6 +13,7 @@ const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)]
 
 const CHAVE_SESSAO = 'uniwork.sessao'
 const CHAVE_GUIA = 'uniwork.guia-visto'
+const CHAVE_TEMA = 'uniwork.tema'
 
 const estado = {
   modo: 'http',
@@ -52,7 +54,11 @@ const estado = {
   perfilPendente: null,
   personas: null,
   codigoDigitado: '',
-  online: true
+  online: true,
+
+  // Quantos reais vale um USDC. Vem do servidor, que e o unico lugar onde a
+  // cotacao esta escrita. Nulo enquanto nao chegou.
+  cotacao: null
 }
 
 // ─── util ────────────────────────────────────────────────────────────────────
@@ -62,13 +68,46 @@ const escapar = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => (
 ))
 
 /**
- * O valor circula em USDC, a moeda estavel do pagamento. Os centavos do banco
- * viram unidades inteiras aqui, que e como o numero aparece na tela.
+ * O valor circula em USDC, a moeda estável do pagamento. Os centavos do banco
+ * viram unidades inteiras aqui.
  */
 const usdc = (centavos) => Math.round(Number(centavos ?? 0) / 100).toLocaleString('pt-BR')
-const usdcExato = (centavos) => (Number(centavos ?? 0) / 100).toLocaleString('pt-BR', {
-  minimumFractionDigits: 2, maximumFractionDigits: 2
-})
+
+/**
+ * Quem le a tela pensa em real, não em USDC: um universitario não sabe quanto
+ * vale 800 USDC. Entao o número grande e sempre em real, e o USDC aparece
+ * embaixo como referência.
+ *
+ * A cotação mora num lugar só, no servidor, e chega junto com a saúde da API.
+ * Sem ela não há conversao: o número grande volta a ser o USDC, porque exibir
+ * reais com uma cotação inventada seria pior do que não exibir.
+ */
+const real = (centavos) => {
+  if (!estado.cotacao) return null
+  const reais = (Number(centavos ?? 0) / 100) * estado.cotacao
+  return `R$ ${reais.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
+/** O número grande: real quando da, USDC quando não da. */
+const valorGrande = (centavos) => real(centavos) ?? `${usdc(centavos)} USDC`
+
+/**
+ * A linha de baixo, que ancora o número grande na unidade técnica e, quando
+ * pedido, na carga horária. Volta vazia quando o número grande já e o USDC.
+ */
+function valorReferencia (centavos, { horas = null } = {}) {
+  const partes = []
+  if (estado.cotacao) partes.push(`${usdc(centavos)} USDC`)
+  if (horas != null) partes.push(`${horas}h`)
+  return partes.join(' · ')
+}
+
+/** Valor com a referência embaixo, do jeito que aparece em cartao e painel. */
+function valorEmpilhado (centavos, { horas = null, classe = '' } = {}) {
+  const ref = valorReferencia(centavos, { horas })
+  return `<span class="${classe}">${escapar(valorGrande(centavos))}${
+    ref ? `<small>${escapar(ref)}</small>` : ''}</span>`
+}
 
 function quando (iso) {
   if (!iso) return ''
@@ -89,16 +128,18 @@ function iniciais (nome) {
   return String(nome ?? '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 }
 
-/** Cor estavel a partir do texto: o mesmo nome sempre recebe a mesma cor. */
+/** Cor estável a partir do texto: o mesmo nome sempre recebe a mesma cor. */
 function corDe (texto) {
   let soma = 0
   for (const ch of String(texto ?? '')) soma += ch.charCodeAt(0)
   return soma % 5
 }
 
+// As chaves sao o nome da categoria como ele vem do banco, agora com acento.
+// Categoria que nao estiver aqui cai no simbolo generico, e nao numa falha.
 const EMOJI_CATEGORIA = {
-  Eventos: '🎪', Monitoria: '📐', Design: '🎨', Traducao: '🌐', Pesquisa: '🔬',
-  Desenvolvimento: '⚙️', Conteudo: '✍️', Fotografia: '📷'
+  Eventos: '🎪', Monitoria: '📐', Design: '🎨', Tradução: '🌐', Pesquisa: '🔬',
+  Desenvolvimento: '⚙️', Conteúdo: '✍️', Fotografia: '📷'
 }
 const emojiDe = (categoria) => EMOJI_CATEGORIA[categoria] ?? '📌'
 
@@ -116,6 +157,38 @@ function avisar (titulo, texto = '', tipo = 'info') {
     el.style.transition = 'opacity .25s'
     setTimeout(() => el.remove(), 250)
   }, tipo === 'erro' ? 6500 : 4200)
+}
+
+// ─── tema ────────────────────────────────────────────────────────────────────
+
+/**
+ * O tema em vigor agora: a escolha salva, se houver, e senao a preferência do
+ * sistema. Quem nunca escolheu nada não tem atributo no <html>, e ai quem
+ * decide e o próprio sistema, pela consulta do CSS.
+ */
+function temaAtual () {
+  const escolhido = document.documentElement.getAttribute('data-tema')
+  if (escolhido === 'claro' || escolhido === 'escuro') return escolhido
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'
+}
+
+/** O botao mostra para onde ele leva, e não onde a pessoa esta. */
+function pintarBotaoDoTema () {
+  const escuro = temaAtual() === 'escuro'
+  $('#ico-tema')?.firstElementChild?.setAttribute('href', escuro ? '#i-sol' : '#i-lua')
+  const rotulo = $('#rotulo-tema')
+  if (rotulo) rotulo.textContent = escuro ? 'Modo claro' : 'Modo escuro'
+  $('#btn-tema')?.setAttribute('aria-pressed', String(escuro))
+}
+
+/** A escolha da pessoa vence a do sistema, nos dois sentidos, e fica guardada. */
+function alternarTema () {
+  const proximo = temaAtual() === 'escuro' ? 'claro' : 'escuro'
+  document.documentElement.setAttribute('data-tema', proximo)
+  try {
+    localStorage.setItem(CHAVE_TEMA, proximo)
+  } catch { /* sem armazenamento: a escolha vale só para esta visita */ }
+  pintarBotaoDoTema()
 }
 
 function marcarOffline (offline) {
@@ -140,7 +213,7 @@ async function chamar (caminho, { method = 'GET', body, silencioso = false } = {
     })
   } catch {
     marcarOffline(true)
-    const err = new Error('Sem conexao com o servico agora.')
+    const err = new Error('Sem conexão com o serviço agora.')
     err.offline = true
     throw err
   }
@@ -150,13 +223,13 @@ async function chamar (caminho, { method = 'GET', body, silencioso = false } = {
   const dados = texto ? JSON.parse(texto) : {}
 
   if (!resposta.ok) {
-    const err = new Error(dados.error ?? 'Nao conseguimos concluir agora, ja estamos tentando de novo.')
+    const err = new Error(dados.error ?? 'Não conseguimos concluir agora, já estamos tentando de novo.')
     err.codigo = dados.codigo
     err.detalhes = dados.detalhes
     err.status = resposta.status
-    // So encerra a sessao se a chamada FOI feita com credencial e ela foi
-    // recusada, e se essa credencial ainda e a atual. Sem as duas condicoes,
-    // uma resposta atrasada da sessao anterior derruba a sessao de agora.
+    // Só encerra a sessão se a chamada FOI feita com credencial e ela foi
+    // recusada, e se essa credencial ainda e a atual. Sem as duas condições,
+    // uma resposta atrasada da sessão anterior derruba a sessão de agora.
     if (resposta.status === 401 && tokenUsado && tokenUsado === estado.token) sair(true)
     if (!silencioso) avisar(err.message, primeiroDetalhe(err), 'erro')
     throw err
@@ -169,13 +242,13 @@ function primeiroDetalhe (err) {
   return ''
 }
 
-// ─── modo simulacao ──────────────────────────────────────────────────────────
+// ─── modo simulação ──────────────────────────────────────────────────────────
 
 const SIM = {
   usuario: { id: 'usr_demo', nome: 'Marina Alves', email: 'marina@usp.br', perfil: 'student', universidade: 'USP', curso: 'Design' },
   vagas: [
-    { id: 'job_1', titulo: 'Staff de credenciamento no congresso', descricao: 'Recepcao e credenciamento dos participantes durante dois dias de evento.', categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP', valorCentavos: 24000, horas: 12, status: 'garantida', statusRotulo: 'Pagamento reservado', pagamentoGarantido: true, trilha: { etapa: 2, total: 6, cancelada: false }, contratante: { id: 'c1', nome: 'Produtora XPTO' }, criadoEm: new Date(Date.now() - 3600e3).toISOString() },
-    { id: 'job_2', titulo: 'Traducao PT-EN de documentacao tecnica', descricao: 'Traducao de 14 paginas de documentacao de API, com glossario fornecido.', categoria: 'Traducao', modalidade: 'remoto', local: null, valorCentavos: 26000, horas: 9, status: 'aberta', statusRotulo: 'Aberta', pagamentoGarantido: false, trilha: { etapa: 1, total: 6, cancelada: false }, contratante: { id: 'c2', nome: 'Studio Nimbus' }, criadoEm: new Date(Date.now() - 7200e3).toISOString() }
+    { id: 'job_1', titulo: 'Staff de credenciamento no congresso', descricao: 'Recepção e credenciamento dos participantes durante dois dias de evento.', categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP', valorCentavos: 24000, horas: 12, status: 'garantida', statusRotulo: 'Pagamento reservado', pagamentoGarantido: true, trilha: { etapa: 2, total: 6, cancelada: false }, contratante: { id: 'c1', nome: 'Produtora XPTO' }, criadoEm: new Date(Date.now() - 3600e3).toISOString() },
+    { id: 'job_2', titulo: 'Tradução PT-EN de documentação técnica', descricao: 'Tradução de 14 páginas de documentação de API, com glossário fornecido.', categoria: 'Tradução', modalidade: 'remoto', local: null, valorCentavos: 26000, horas: 9, status: 'aberta', statusRotulo: 'Aberta', pagamentoGarantido: false, trilha: { etapa: 1, total: 6, cancelada: false }, contratante: { id: 'c2', nome: 'Studio Nimbus' }, criadoEm: new Date(Date.now() - 7200e3).toISOString() }
   ]
 }
 
@@ -193,19 +266,19 @@ async function simulacao (caminho) {
       porStatus: {}, porCategoria: [], porModalidade: {}, contadores: {}
     }
   }
-  const erro = new Error('Esta acao precisa do servico no ar. Estamos em modo de demonstracao.')
+  const erro = new Error('Esta ação precisa do serviço no ar. Estamos em modo de demonstração.')
   avisar(erro.message, '', 'info')
   throw erro
 }
 
-// ─── sessao ──────────────────────────────────────────────────────────────────
+// ─── sessão ──────────────────────────────────────────────────────────────────
 
 function guardarSessao (usuario, sessao) {
   estado.usuario = usuario
   estado.token = sessao?.token ?? null
   try {
     localStorage.setItem(CHAVE_SESSAO, JSON.stringify({ usuario, token: estado.token }))
-  } catch { /* navegador sem armazenamento: a sessao dura enquanto a aba viver */ }
+  } catch { /* navegador sem armazenamento: a sessão dura enquanto a aba viver */ }
 }
 
 function lerSessao () {
@@ -220,8 +293,8 @@ function sair (silencioso = false) {
   desligarEventos()
   estado.usuario = null
   estado.token = null
-  // Limpar o que era da sessao anterior. Sem isto, um render pendente ainda
-  // tentaria desenhar o detalhe de um trampo com estado.usuario ja nulo.
+  // Limpar o que era da sessão anterior. Sem isto, um render pendente ainda
+  // tentaria desenhar o detalhe de um trampo com estado.usuário já nulo.
   estado.view = 'entrar'
   estado.vagaAberta = null
   estado.perfilAberto = null
@@ -239,9 +312,10 @@ function sair (silencioso = false) {
 // ─── arte dos herois ─────────────────────────────────────────────────────────
 
 /**
- * Um orbe escuro com brilho, sobre uma plataforma isometrica.
+ * Um orbe sobre uma plataforma isometrica. As cores vem dos tokens do tema, e
+ * não cravadas no desenho: o mesmo SVG serve o modo claro e o escuro.
  *
- * O simbolo vai fora do SVG, num span comum: dentro de <text> ele depende da
+ * O símbolo vai fora do SVG, num span comum: dentro de <text> ele depende da
  * fonte de emoji do sistema e some em ambiente sem ela, deixando a esfera vazia.
  */
 function orbe (emoji, nome) {
@@ -249,20 +323,16 @@ function orbe (emoji, nome) {
     <svg viewBox="0 0 200 200" fill="none" width="100%" height="100%">
       <defs>
         <radialGradient id="o${nome}" cx="38%" cy="30%">
-          <stop offset="0%" stop-color="#2c313a"/><stop offset="70%" stop-color="#14171c"/>
-          <stop offset="100%" stop-color="#0c0e12"/>
+          <stop offset="0%" stop-color="var(--orbe-1)"/>
+          <stop offset="70%" stop-color="var(--orbe-2)"/>
+          <stop offset="100%" stop-color="var(--orbe-3)"/>
         </radialGradient>
-        <linearGradient id="p${nome}" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity=".10"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-        </linearGradient>
         <filter id="b${nome}"><feGaussianBlur stdDeviation="9"/></filter>
       </defs>
-      <path d="M100 132 168 168 100 200 32 168z" fill="url(#p${nome})"/>
-      <path d="M100 132 168 168 100 200 32 168z" stroke="#ffffff" stroke-opacity=".10"/>
-      <ellipse cx="100" cy="150" rx="46" ry="16" fill="#000" opacity=".45" filter="url(#b${nome})"/>
-      <circle cx="100" cy="86" r="46" fill="url(#o${nome})" stroke="#ffffff" stroke-opacity=".08"/>
-      <circle cx="84" cy="70" r="16" fill="#ffffff" opacity=".05"/>
+      <path d="M100 132 168 168 100 200 32 168z" fill="var(--orbe-2)" opacity=".7"/>
+      <path d="M100 132 168 168 100 200 32 168z" stroke="var(--line-2)"/>
+      <ellipse cx="100" cy="150" rx="46" ry="16" fill="#000" opacity="var(--orbe-sombra)" filter="url(#b${nome})"/>
+      <circle cx="100" cy="86" r="46" fill="url(#o${nome})" stroke="var(--line-2)"/>
     </svg>
     <span class="heroi-glifo">${emoji}</span>
   </div>`
@@ -281,13 +351,46 @@ function heroi ({ cor = 'grafite', olho, titulo, texto, dados = [], acoes = '', 
     <h1>${escapar(titulo)}</h1>
     ${texto ? `<p>${escapar(texto)}</p>` : ''}
     ${dados.length ? `<div class="heroi-dados">${dados.map((d) => `
-      <div class="heroi-dado"><span>${escapar(d.rotulo)}</span><strong>${escapar(d.valor)}</strong></div>
+      <div class="heroi-dado">
+        <span>${escapar(d.rotulo)}</span>
+        <strong ${d.mono ? 'class="mono"' : ''}>${escapar(d.valor)}</strong>
+        ${d.nota ? `<span style="margin-top:2px">${escapar(d.nota)}</span>` : ''}
+      </div>
     `).join('')}</div>` : ''}
     ${acoes ? `<div class="heroi-acoes">${acoes}</div>` : ''}
   </section>`
 }
 
-// ─── navegacao ───────────────────────────────────────────────────────────────
+// ─── navegação ───────────────────────────────────────────────────────────────
+
+/** Um icone da biblioteca do index.html, no tamanho de quem o usa. */
+const ico = (nome, classe = '') =>
+  `<svg class="${classe}" aria-hidden="true"><use href="#i-${nome}"></use></svg>`
+
+/**
+ * Os selos do estudante. A regra mora aqui e em nenhum outro lugar: sobe de
+ * selo por trampo concluído, e o selo aparece na lista para o contratante.
+ */
+const SELOS = [
+  { nome: 'Bronze', trampos: 0 },
+  { nome: 'Prata', trampos: 3 },
+  { nome: 'Ouro', trampos: 10 }
+]
+
+function selo (concluidos = 0) {
+  let atual = SELOS[0]
+  let proximo = null
+  for (const s of SELOS) {
+    if (concluidos >= s.trampos) atual = s
+    else if (!proximo) proximo = s
+  }
+  const base = atual.trampos
+  const alvo = proximo?.trampos ?? atual.trampos
+  const progresso = proximo
+    ? Math.round(((concluidos - base) / (alvo - base)) * 100)
+    : 100
+  return { atual, proximo, faltam: proximo ? alvo - concluidos : 0, progresso }
+}
 
 function itensNav () {
   const u = estado.usuario
@@ -297,97 +400,214 @@ function itensNav () {
 
   if (!u) {
     return [
-      { id: 'entrar', rotulo: 'Entrar', glifo: '◆' },
-      { id: 'feed', rotulo: 'Trampos abertos', glifo: '▸', conta: abertas },
-      { grupo: 'PUBLICO' },
-      { id: 'verificar', rotulo: 'Verificar certificado', glifo: '◎' },
-      { id: 'painel', rotulo: 'Painel', glifo: '▲' }
+      { id: 'entrar', rotulo: 'Entrar', icone: 'user' },
+      { id: 'feed', rotulo: 'Trampos abertos', icone: 'bussola', conta: abertas },
+      { grupo: 'Público' },
+      { id: 'verificar', rotulo: 'Verificar certificado', icone: 'check' },
+      { id: 'painel', rotulo: 'Painel', icone: 'grafico' }
     ]
   }
 
+  // A casa do contratante são as vagas dele: elas vêm primeiro. Cair na lista
+  // de trampos de outras empresas é o que o redesenho veio corrigir.
+  const minhas = ehEstudante
+    ? { id: 'minhas', rotulo: 'Meus trampos', icone: 'mochila', conta: estado.minhasVagas.length || null }
+    : { id: 'minhas', rotulo: 'Minhas vagas', icone: 'pasta', conta: estado.minhasVagas.length || null }
+  const feed = { id: 'feed', rotulo: 'Trampos abertos', icone: 'bussola', conta: abertas }
+
   return [
-    { id: 'feed', rotulo: 'Trampos abertos', glifo: '▸', conta: abertas },
-    { id: 'minhas', rotulo: ehEstudante ? 'Meus trampos' : 'Minhas vagas', glifo: '▪' },
-    ...(ehEstudante ? [{ id: 'certificados', rotulo: 'Certificados', glifo: '★', conta: estado.certificados.length || null }] : []),
-    { id: 'notificacoes', rotulo: 'Notificacoes', glifo: '◉', conta: estado.naoLidas || null },
-    { grupo: 'MINHA CONTA' },
-    { id: 'conta', rotulo: 'Perfil e ajustes', glifo: '◍' },
+    ...(ehEstudante ? [feed, minhas] : [minhas, feed]),
+    ...(ehEstudante
+      ? [{ id: 'certificados', rotulo: 'Meus certificados', icone: 'selo', conta: estado.certificados.length || null }]
+      : []),
+    { id: 'notificacoes', rotulo: 'Avisos', icone: 'sino', conta: estado.naoLidas || null, alerta: true },
+    { grupo: 'Minha conta' },
+    { id: 'conta', rotulo: 'Perfil e ajustes', icone: 'eng' },
     ...(u.mediador
       ? [
-          { grupo: 'MEDIACAO' },
+          { grupo: 'Mediação' },
           {
             id: 'mediacao',
-            rotulo: 'Contestacoes',
-            glifo: '⚖',
+            rotulo: 'Contestações',
+            icone: 'balanca',
             conta: estado.contestacoes.filter((c) => ['open', 'in_review'].includes(c.status)).length || null
           }
         ]
       : []),
-    { grupo: 'PUBLICO' },
-    { id: 'verificar', rotulo: 'Verificar certificado', glifo: '◎' },
-    { id: 'painel', rotulo: 'Painel', glifo: '▲' }
+    { grupo: 'Público' },
+    { id: 'verificar', rotulo: 'Verificar certificado', icone: 'check' },
+    { id: 'painel', rotulo: 'Painel', icone: 'grafico' }
   ]
 }
 
 function renderNav () {
   $('#nav').innerHTML = itensNav().map((item) => {
-    if (item.grupo) return `<div class="nav-grupo">${item.grupo}</div>`
-    return `<button class="nav-item" data-view="${item.id}" ${estado.view === item.id ? 'aria-current="page"' : ''}>
-      <span class="nav-glifo" aria-hidden="true">${item.glifo}</span>
+    if (item.grupo) return `<div class="nav-grupo">${escapar(item.grupo)}</div>`
+    return `<button class="nav-item ${item.alerta && item.conta ? 'alerta' : ''}" data-view="${item.id}"
+                    ${estado.view === item.id ? 'aria-current="page"' : ''}>
+      ${ico(item.icone, 'nav-glifo')}
       <span>${escapar(item.rotulo)}</span>
       ${item.conta ? `<span class="nav-conta">${item.conta}</span>` : ''}
     </button>`
   }).join('')
 
-  // O bloco de baixo fala com quem esta olhando. Sem sessao ele nao promete
-  // publicar nem procurar: convida a entrar, que e o unico passo possivel.
-  const u = estado.usuario
-  const ehEstudante = u?.perfil === 'student'
-  const cta = !u
-    ? ['Comece em um minuto', 'Nome e e-mail bastam. A conta de recebimento fica pronta junto.', 'Criar minha conta']
-    : ehEstudante
-      ? ['Trabalhe com garantia', 'O valor ja esta reservado quando voce aceita, e a entrega confirmada vira certificado.', 'Procurar trampos']
-      : ['Contrate com garantia', 'Publique um trampo, reserve o valor e pague na confirmacao.', 'Publicar vaga']
-  $('#cta-titulo').textContent = cta[0]
-  $('#cta-texto').textContent = cta[1]
-  $('#cta-rotulo').textContent = cta[2]
+  $('#esq-rodape').innerHTML = cartaoDeQuemEntrou()
 
+  const u = estado.usuario
   $('#topo-acoes').innerHTML = u
-    ? `<button class="btn btn-linha btn-mini" data-acao="meu-perfil">${escapar(u.nome.split(' ')[0])}</button>
+    ? `<button class="btn btn-linha btn-mini" data-acao="meu-perfil">
+         <span class="avatar c${corDe(u.nome)}" aria-hidden="true">${iniciais(u.nome)}</span>
+         ${escapar(u.nome.split(' ')[0])}
+       </button>
        <button class="btn btn-fantasma btn-mini" id="btn-sair">Sair</button>`
     : `<button class="btn btn-linha btn-mini" data-view="entrar">Entrar</button>
-       <button class="btn btn-azul btn-mini" data-acao="criar-conta">Criar conta</button>`
+       <button class="btn btn-primario btn-mini" data-acao="criar-conta">Criar conta</button>`
+}
+
+/**
+ * O cartao no rodape do menu. Com sessão ele diz quem você e e a que distância
+ * esta do próximo selo; sem sessão ele convida a entrar, que e o único passo
+ * possível de quem chega.
+ */
+function cartaoDeQuemEntrou () {
+  const u = estado.usuario
+  const r = estado.resumo
+
+  if (!u) {
+    return `<div class="eu">
+      <span class="eu-nome">Comece em um minuto</span>
+      <p>Nome e e-mail bastam. Sua conta de recebimento fica pronta junto.</p>
+      <button class="btn btn-primario btn-mini btn-bloco esq-cta" id="cta-botao">
+        <span id="cta-rotulo">Criar minha conta</span>
+      </button>
+    </div>`
+  }
+
+  const ehEstudante = u.perfil === 'student'
+  const porStatus = r?.vagasPorStatus ?? {}
+  const reservadas = (porStatus.garantida ?? 0) + (porStatus.aceita ?? 0) +
+    (porStatus.em_andamento ?? 0) + (porStatus.entregue ?? 0)
+
+  let meio
+  if (ehEstudante) {
+    const s = selo(porStatus.concluida ?? 0)
+    meio = `<div class="barra-selo" role="img" aria-label="Selo ${s.atual.nome}, ${s.progresso}% até o próximo">
+         <i style="width:${Math.max(6, Math.min(100, s.progresso))}%"></i>
+       </div>
+       <p>${s.proximo
+          ? `Faltam <b>${s.faltam} ${s.faltam === 1 ? 'trampo' : 'trampos'}</b> para o selo ${s.proximo.nome}, que sobe você na lista.`
+          : `Selo <b>${s.atual.nome}</b>, o mais alto. Você aparece no topo da lista.`}</p>`
+  } else {
+    meio = `<p><b>${escapar(valorGrande(r?.valores?.reservadoCentavos))}</b> reservados em ${reservadas} ${reservadas === 1 ? 'vaga' : 'vagas'}.</p>`
+  }
+
+  return `<div class="eu">
+    <div class="eu-topo">
+      <span class="avatar g c${corDe(u.nome)}" aria-hidden="true">${iniciais(u.nome)}</span>
+      <span style="min-width:0">
+        <span class="eu-nome">${escapar(u.nome)}</span>
+        <span class="eu-sub">${escapar(ehEstudante
+          ? ([u.curso, u.universidade].filter(Boolean).join(' · ') || 'Estudante')
+          : (u.headline || 'Contratante'))}</span>
+      </span>
+    </div>
+    ${meio}
+    <button class="btn ${ehEstudante ? 'btn-linha' : 'btn-primario'} btn-mini btn-bloco esq-cta" id="cta-botao">
+      ${ehEstudante ? '' : ico('mais')}
+      <span id="cta-rotulo">${ehEstudante ? 'Procurar trampos' : 'Publicar vaga'}</span>
+    </button>
+  </div>
+  <div class="esq-vivo">
+    <span class="ponto-vivo" aria-hidden="true"></span>
+    <span>ao vivo</span>
+  </div>
+  <button class="esq-link" data-view="verificar">Verificar certificado</button>
+  <button class="esq-link" data-view="painel">Painel do ecossistema</button>`
 }
 
 // ─── cartao de trampo ────────────────────────────────────────────────────────
 
-function trilhaHtml (trilha) {
-  const total = trilha?.total ?? 6
-  const etapa = trilha?.etapa ?? 0
-  return `<div class="trilha" role="img" aria-label="Etapa ${etapa} de ${total}">
-    ${Array.from({ length: total }, (_, i) => {
-      const feito = !trilha?.cancelada && i < etapa
-      return `<span class="trilha-seg ${trilha?.cancelada ? 'cancelado' : feito ? 'feito' : ''}"></span>`
-    }).join('')}
+/**
+ * O que esta acontecendo agora, em uma linha.
+ *
+ * A trilha do servidor conta quantas etapas já foram cumpridas. A etapa em
+ * curso e a seguinte, e e ela que a pessoa quer ler: "escolhendo quem faz" diz
+ * mais do que uma barra pela metade. O caso da etapa 2 tem rotulo próprio,
+ * porque "o valor ainda nao foi reservado" e a informação que decide se vale a
+ * pena se candidatar.
+ */
+const ROTULO_DO_PASSO = {
+  2: 'o contratante ainda não reservou o valor',
+  3: 'escolhendo quem faz',
+  4: 'combinando o início do trabalho',
+  5: 'trabalho em andamento',
+  6: 'esperando a confirmação da entrega'
+}
+
+function passoAtual (vaga) {
+  const total = vaga.trilha?.total ?? 6
+  const cumpridas = vaga.trilha?.etapa ?? 0
+
+  if (vaga.trilha?.cancelada) {
+    return { etapa: 0, total, texto: 'cancelado, o valor voltou para quem reservou', alerta: true }
+  }
+  if (vaga.status === 'concluida') {
+    return { etapa: total, total, texto: 'pago e certificado', alerta: false }
+  }
+  const emCurso = Math.min(cumpridas + 1, total)
+  return { etapa: emCurso, total, texto: ROTULO_DO_PASSO[emCurso] ?? '', alerta: emCurso === 2 }
+}
+
+function trilhaHtml (vaga) {
+  const passo = passoAtual(vaga)
+  const total = passo.total
+  const cumpridas = vaga.trilha?.etapa ?? 0
+  const cancelada = Boolean(vaga.trilha?.cancelada)
+
+  const legenda = cancelada || vaga.status === 'concluida'
+    ? passo.texto
+    : `etapa ${passo.etapa} de ${total}, ${passo.texto}`
+
+  return `<div>
+    <div class="trilha" role="img" aria-label="${escapar(legenda)}">
+      ${Array.from({ length: total }, (_, i) => {
+        const classe = cancelada
+          ? 'cancelado'
+          : i < cumpridas ? 'feito' : i === cumpridas ? 'atual' : ''
+        return `<span class="trilha-seg ${classe}"></span>`
+      }).join('')}
+    </div>
+    <span class="passo-nome ${passo.alerta ? 'alerta' : ''}">${escapar(
+      cancelada || vaga.status === 'concluida'
+        ? passo.texto.charAt(0).toUpperCase() + passo.texto.slice(1)
+        : `Etapa ${passo.etapa} de ${total} · ${passo.texto}`
+    )}</span>
   </div>`
+}
+
+/** A etiqueta que responde "o dinheiro está separado?" antes de qualquer outra. */
+function etiquetaDaGarantia (vaga) {
+  if (vaga.status === 'concluida') return `<span class="etiqueta verde">${ico('check')} Pago</span>`
+  if (vaga.emContestacao) return `<span class="etiqueta coral">${ico('relogio')} Em contestação</span>`
+  if (vaga.pagamentoGarantido) return `<span class="etiqueta verde">${ico('lock')} Grana reservada</span>`
+  return `<span class="etiqueta laranja">${ico('relogio')} Valor a reservar</span>`
 }
 
 function cartaoVaga (vaga) {
   return `<button class="vaga" data-vaga="${escapar(vaga.id)}">
     <div class="vaga-capa c${corDe(vaga.categoria ?? vaga.titulo)}">
-      <div class="vaga-valor">${usdc(vaga.valorCentavos)}<small>USDC</small></div>
+      ${valorEmpilhado(vaga.valorCentavos, { horas: vaga.horas, classe: 'vaga-valor' })}
       <span class="vaga-modo">${vaga.modalidade === 'presencial' ? 'presencial' : 'remoto'}</span>
       <span class="vaga-selo" aria-hidden="true">${emojiDe(vaga.categoria)}</span>
     </div>
     <div class="vaga-corpo">
       <div class="vaga-titulo">${escapar(vaga.titulo)}</div>
       <p class="vaga-desc">${escapar(vaga.descricao)}</p>
-      ${trilhaHtml(vaga.trilha)}
       <div class="etiquetas">
-        <span class="etiqueta">${vaga.horas}h certificadas</span>
+        ${etiquetaDaGarantia(vaga)}
         <span class="etiqueta">${escapar(vaga.categoria)}</span>
-        ${vaga.pagamentoGarantido ? '<span class="etiqueta" style="color:var(--verde);border-color:rgba(34,197,94,.28)">garantido</span>' : ''}
       </div>
+      ${trilhaHtml(vaga)}
       <div class="vaga-rodape">
         <span class="avatar c${corDe(vaga.contratante?.nome)}" aria-hidden="true">${iniciais(vaga.contratante?.nome)}</span>
         <span>${escapar(vaga.contratante?.nome ?? 'Contratante')}</span>
@@ -422,24 +642,24 @@ function telaEntrar () {
 
   return heroi({
     cor: 'verde',
-    olho: 'Track 01 · Vida universitaria · Hackathon Superteam Brasil',
+    olho: 'Track 01 · Vida universitária · Hackathon Superteam Brasil',
     titulo: 'Trabalhe hoje. Receba hoje. Comprove sempre.',
-    texto: 'Trampos curtos para universitarios. O contratante reserva o valor antes de voce comecar, e cada trabalho concluido vira um certificado que ninguem consegue falsificar.',
+    texto: 'Trampos curtos para universitários. O contratante reserva o valor antes de você começar, e cada trabalho concluído vira um certificado que ninguém consegue falsificar.',
     dados: [
       { rotulo: 'Pagamento', valor: 'em garantia' },
-      { rotulo: 'Certificado', valor: 'automatico' },
-      { rotulo: 'Rede', valor: 'Solana devnet' }
+      { rotulo: 'Certificado', valor: 'automático' },
+      { rotulo: 'Rede', valor: 'Solana devnet', mono: true }
     ],
     arte: marcaGrande()
   }) + `
 
   <div class="entrar-grade">
     <div class="painel">
-      <h4>ENTRAR COMO ESTUDANTE</h4>
+      <h4>${ico('mochila')} Entrar como estudante</h4>
       ${listaDe(p?.estudantes, 'Nenhuma conta de exemplo neste ambiente. Crie a sua abaixo.')}
     </div>
     <div class="painel">
-      <h4>ENTRAR COMO CONTRATANTE</h4>
+      <h4>${ico('pasta')} Entrar como contratante</h4>
       ${listaDe(p?.contratantes, 'Nenhuma conta de exemplo neste ambiente. Crie a sua abaixo.')}
     </div>
   </div>
@@ -447,26 +667,26 @@ function telaEntrar () {
   <div class="painel">
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:250px">
-        <h4 style="margin-bottom:8px">CRIAR CONTA</h4>
+        <h4 style="margin-bottom:8px">Criar conta</h4>
         <p style="font-size:13px;color:var(--ink-3);line-height:1.6">
           Nome e e-mail. A conta de recebimento fica pronta junto, sem nenhum passo a mais
-          e sem nenhuma extensao para instalar.
+          e sem nenhuma extensão para instalar.
         </p>
       </div>
       <div style="display:flex;gap:9px;flex-wrap:wrap">
         <button class="btn btn-linha" data-criar="student">Sou estudante</button>
-        <button class="btn btn-azul" data-criar="company">Quero contratar</button>
+        <button class="btn btn-primario" data-criar="company">Quero contratar</button>
       </div>
     </div>
   </div>
 
   <div class="painel">
-    <h4>JA TENHO CONTA</h4>
+    <h4>Já tenho conta</h4>
     <form id="form-entrar" style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
         <label class="sr" for="entrar-email">E-mail</label>
         <input id="entrar-email" class="campo-filtro" style="width:100%" type="email"
-               autocomplete="email" required placeholder="voce@universidade.br">
+               autocomplete="email" required placeholder="seu.nome@universidade.br">
       </div>
       <button class="btn btn-claro" type="submit">Entrar</button>
     </form>
@@ -481,7 +701,7 @@ function telaFeed () {
     cor: 'azul',
     olho: 'Descobrir',
     titulo: 'Trampos abertos',
-    texto: 'Todo valor listado aqui ja esta reservado pelo contratante. Voce ve o dinheiro garantido antes de aceitar.',
+    texto: 'Cada vaga diz se a grana já está separada. Você vê o dinheiro antes de topar, e o filtro deixa só as que já têm.',
     arte: orbe('🧭', 'Az')
   }) + `
 
@@ -489,7 +709,7 @@ function telaFeed () {
     <button class="aba" data-modalidade="" aria-pressed="${!f.modalidade}">Tudo</button>
     <button class="aba" data-modalidade="presencial" aria-pressed="${f.modalidade === 'presencial'}">Presencial</button>
     <button class="aba" data-modalidade="remoto" aria-pressed="${f.modalidade === 'remoto'}">Remoto</button>
-    <button class="aba" data-garantidas="1" aria-pressed="${f.garantidas}">So garantidas</button>
+    <button class="aba" data-garantidas="1" aria-pressed="${f.garantidas}">Só com grana reservada</button>
     <div class="filtros">
       ${estado.ordensDisponiveis.length > 1 ? `
         <label class="sr" for="ordenar">Ordenar por</label>
@@ -518,28 +738,28 @@ function telaFeed () {
          <button class="btn btn-linha" data-acao="mais-vagas" ${estado.buscando ? 'disabled' : ''}>
            ${estado.buscando ? 'Carregando…' : 'Ver mais trampos'}
          </button></div>` : ''}`
-    : vazio('🔍', 'Nenhum trampo por aqui',
+    : vazio('🔍', 'Nada com esse filtro',
         (f.busca || f.modalidade || f.categoria || f.garantidas)
-          ? 'Nenhum trampo bate com esse filtro. Tente afrouxar a busca.'
-          : 'Ainda nao ha trampos publicados. Volte daqui a pouco.',
+          ? 'Nenhum trampo bate com o que você pediu. Solte um filtro e veja o que aparece.'
+          : 'Ainda não há trampo publicado. Volte daqui a pouco.',
         '<button class="btn btn-linha" data-acao="limpar-filtros">Limpar filtros</button>')}`
 }
 
 function telaVerificar () {
   return heroi({
     cor: 'roxo',
-    olho: 'Publico · sem login',
+    olho: 'Público · sem login',
     titulo: 'Verificar certificado',
-    texto: 'Digite o codigo impresso no documento. Nao precisa de conta, nem de login, nem de cadastro.',
+    texto: 'Digite o código impresso no documento. Não precisa de conta, nem de login, nem de cadastro.',
     arte: orbe('🔎', 'Rx')
   }) + `
 
   <div class="painel" style="max-width:560px">
     <form class="codigo-caixa" id="form-codigo">
-      <label class="sr" for="codigo">Codigo do certificado</label>
+      <label class="sr" for="codigo">Código do certificado</label>
       <input id="codigo" placeholder="UNI-XXXX-XXXX" maxlength="14"
              autocomplete="off" spellcheck="false" value="${escapar(estado.codigoDigitado)}">
-      <button class="btn btn-azul" type="submit">Verificar</button>
+      <button class="btn btn-primario" type="submit">Verificar</button>
     </form>
   </div>
 
@@ -554,54 +774,154 @@ function telaPainel () {
 
   return heroi({
     cor: 'grafite',
-    olho: 'Publico · em tempo real',
+    olho: 'Público · em tempo real',
     titulo: 'Painel do ecossistema',
-    texto: 'Quanto ja foi pago, quanto esta em garantia agora e quantas horas viraram certificado. Os numeros vem do banco e da rede, nao de estimativa.',
+    texto: 'Quanto já foi pago, quanto está em garantia agora e quantas horas viraram certificado. Os números vem do banco e da rede, não de estimativa.',
     arte: orbe('📊', 'Gf')
   }) + `
 
   <div class="metricas">
-    <div class="metrica"><div class="metrica-valor">${usdc(t?.pagoCentavos)}<span style="font-size:13px;color:var(--ink-3)"> USDC</span></div><div class="metrica-rotulo">pago a estudantes</div></div>
-    <div class="metrica"><div class="metrica-valor">${usdc(t?.reservadoCentavos)}<span style="font-size:13px;color:var(--ink-3)"> USDC</span></div><div class="metrica-rotulo">em garantia agora</div></div>
+    <div class="metrica"><div class="metrica-valor">${valorGrande(t?.pagoCentavos)}</div><div class="metrica-rotulo">pago a estudantes${valorReferencia(t?.pagoCentavos) ? ` · ${valorReferencia(t?.pagoCentavos)}` : ''}</div></div>
+    <div class="metrica"><div class="metrica-valor">${valorGrande(t?.reservadoCentavos)}</div><div class="metrica-rotulo">separado agora${valorReferencia(t?.reservadoCentavos) ? ` · ${valorReferencia(t?.reservadoCentavos)}` : ''}</div></div>
     <div class="metrica"><div class="metrica-valor">${t?.horasCertificadas ?? 0}h</div><div class="metrica-rotulo">horas certificadas</div></div>
     <div class="metrica"><div class="metrica-valor">${t?.certificados ?? 0}</div><div class="metrica-rotulo">certificados emitidos</div></div>
     <div class="metrica"><div class="metrica-valor">${t?.vagas ?? 0}</div><div class="metrica-rotulo">trampos publicados</div></div>
-    <div class="metrica"><div class="metrica-valor">${t?.concluidas ?? 0}</div><div class="metrica-rotulo">concluidos</div></div>
+    <div class="metrica"><div class="metrica-valor">${t?.concluidas ?? 0}</div><div class="metrica-rotulo">concluídos</div></div>
     <div class="metrica"><div class="metrica-valor">${t?.estudantes ?? 0}</div><div class="metrica-rotulo">estudantes</div></div>
     <div class="metrica"><div class="metrica-valor">${t?.contratantes ?? 0}</div><div class="metrica-rotulo">contratantes</div></div>
   </div>
 
   ${cat.length ? `<div class="painel">
-    <h4>POR CATEGORIA</h4>
-    <dl class="dados">${cat.map((c) => `<div class="linha-dado">
-      <dt>${escapar(c.categoria)}</dt><dd>${c.total}</dd>
-    </div>`).join('')}</dl>
+    <h4>${ico('grafico')} Trampos por categoria</h4>
+    <div class="cats">${(() => {
+      // Conta todo trampo publicado, em qualquer etapa — e o que a consulta do
+      // painel faz, e o painel e um retrato do ecossistema inteiro.
+      //
+      // A barra e proporcional a maior categoria, e nao ao total: a pergunta
+      // aqui e "qual categoria puxa mais trampo", nao "que fatia do bolo".
+      //
+      // O teto nunca desce de 4, mesmo que a maior categoria tenha 1. Sem esse
+      // piso, oito categorias empatadas em 1 viram oito barras cheias, que
+      // parecem oito barras de progresso em 100% e nao dizem nada. Com ele, o
+      // empate aparece como oito barras curtas e iguais, que e o que ele e.
+      const teto = Math.max(...cat.map((c) => c.total), 4)
+      return cat.map((c) => `<div class="cat"
+              title="${escapar(c.categoria)}: ${c.total} ${c.total === 1 ? 'trampo publicado' : 'trampos publicados'}">
+        <span class="cat-nome">${escapar(c.categoria)}</span>
+        <span class="cat-trilho" aria-hidden="true">
+          <span class="cat-barra" style="width:${Math.max(4, Math.round((c.total / teto) * 100))}%"></span>
+        </span>
+        <span class="cat-total">${c.total}</span>
+      </div>`).join('')
+    })()}</div>
   </div>` : ''}`
+}
+
+/**
+ * As decisões que estão paradas esperando o contratante.
+ *
+ * "Precisam de voce" já existia, mas como contador ao lado de um título de
+ * grupo. Aqui vira lista: uma linha por decisão, com o botao da ação do lado, e
+ * o lembrete de reservar o valor incluido — que e a decisão que a pessoa não
+ * sabe que precisa tomar.
+ */
+function decisoesPendentes (vagas) {
+  const fila = []
+  for (const vaga of vagas) {
+    if (vaga.emContestacao) continue
+
+    if (vaga.status === 'aberta') {
+      fila.push({
+        vaga,
+        icone: 'lock',
+        pronto: false,
+        titulo: `Reservar o valor de ${vaga.titulo.toLowerCase()}`,
+        texto: 'Enquanto o valor não está separado, a vaga aparece sem garantia e recebe menos candidatos.',
+        acoes: `<button class="btn btn-dinheiro btn-mini" data-fila="reservar" data-fila-vaga="${escapar(vaga.id)}">
+                  Reservar ${escapar(valorGrande(vaga.valorCentavos))}
+                </button>`
+      })
+      continue
+    }
+
+    if (vaga.status === 'garantida' && vaga.candidaturasPendentes) {
+      const n = vaga.candidaturasPendentes
+      fila.push({
+        vaga,
+        icone: 'user',
+        pronto: true,
+        titulo: `Escolher quem faz ${vaga.titulo.toLowerCase()}`,
+        texto: `${n} ${n === 1 ? 'candidatura' : 'candidaturas'} · ${valorGrande(vaga.valorCentavos)} já reservados`,
+        acoes: `<button class="btn btn-primario btn-mini" data-vaga="${escapar(vaga.id)}">Ver perfis e escolher</button>`
+      })
+      continue
+    }
+
+    if (vaga.status === 'entregue' && !vaga.pagamentoEmProcessamento) {
+      fila.push({
+        vaga,
+        icone: 'check',
+        pronto: true,
+        titulo: `Confirmar a entrega de ${vaga.titulo.toLowerCase()}`,
+        texto: 'O mesmo clique paga o estudante e emite o certificado.',
+        acoes: `<button class="btn btn-primario btn-mini" data-fila="confirmar" data-fila-vaga="${escapar(vaga.id)}">
+                  Confirmar e pagar
+                </button>`
+      })
+    }
+  }
+  return fila
+}
+
+function filaHtml (fila) {
+  return `<div class="fila">${fila.map((item) => `<div class="acao ${item.pronto ? 'pronto' : ''}">
+    <span class="acao-ico" aria-hidden="true">${ico(item.icone)}</span>
+    <div>
+      <h4>${escapar(item.titulo)}</h4>
+      <p>${escapar(item.texto)}</p>
+    </div>
+    <div class="acao-bts">${item.acoes}</div>
+  </div>`).join('')}</div>`
 }
 
 function telaMinhas () {
   const ehEstudante = estado.usuario?.perfil === 'student'
-  // Lista propria, vinda de /jobs/minhas. Filtrar o resultado da busca publica
-  // nao funciona: ela so traz trampo aberto ou garantido.
+  // Lista própria, vinda de /jobs/minhas. Filtrar o resultado da busca pública
+  // não funciona: ela só traz trampo aberto ou garantido.
   const minhas = estado.minhasVagas
+  const emCurso = minhas.filter((v) => ['aberta', 'garantida', 'aceita', 'em_andamento', 'entregue'].includes(v.status))
+  const fila = ehEstudante ? [] : decisoesPendentes(minhas)
 
   const grupos = [
-    { titulo: 'Precisam de voce', filtro: (v) => ['aberta', 'garantida', 'aceita', 'em_andamento', 'entregue'].includes(v.status) },
-    { titulo: 'Concluidos', filtro: (v) => v.status === 'concluida' },
-    { titulo: 'Cancelados', filtro: (v) => v.status === 'cancelada' }
+    { titulo: ehEstudante ? 'Rolando agora' : 'Suas vagas em andamento', filtro: (v) => emCurso.includes(v) },
+    { titulo: ehEstudante ? 'Concluídos' : 'Concluídas', filtro: (v) => v.status === 'concluida' },
+    { titulo: ehEstudante ? 'Cancelados' : 'Canceladas', filtro: (v) => v.status === 'cancelada' }
   ]
 
+  const resumoDoTopo = ehEstudante
+    ? (minhas.length
+        ? `${emCurso.length} ${emCurso.length === 1 ? 'trampo rolando' : 'trampos rolando'}. Cada um mostra em que etapa está.`
+        : 'Tudo o que você aceitou ou está fazendo aparece aqui.')
+    : (minhas.length
+        ? `${emCurso.length} ${emCurso.length === 1 ? 'rolando' : 'rolando'}, ${fila.length} ${fila.length === 1 ? 'precisa' : 'precisam'} de você hoje.`
+        : 'O que você publicar aparece aqui, com a etapa de cada vaga.')
+
   return heroi({
-    cor: 'grafite',
-    olho: ehEstudante ? 'Seu trabalho' : 'Suas contratacoes',
-    titulo: ehEstudante ? 'Meus trampos' : 'Minhas vagas',
-    texto: minhas.length
-      ? `${minhas.length} no total. Acompanhe cada etapa e confirme quando estiver tudo certo.`
-      : (ehEstudante
-          ? 'Tudo que voce se candidatou ou esta executando aparece aqui.'
-          : 'Tudo que voce publicou aparece aqui, com o estagio de cada trampo.'),
+    cor: fila.length ? 'verde' : 'grafite',
+    olho: ehEstudante ? 'Seu trabalho' : 'Suas contratações',
+    titulo: ehEstudante ? 'Meus trampos' : 'Suas vagas',
+    texto: resumoDoTopo,
+    acoes: ehEstudante
+      ? '<button class="btn btn-linha" data-view="feed">Ver trampos abertos</button>'
+      : `<button class="btn btn-primario" data-acao="publicar">${ico('mais')} Publicar vaga</button>`,
     arte: orbe(ehEstudante ? '🎒' : '🗂️', 'Mn')
-  }) + (minhas.length
+  }) + (fila.length
+    ? `<div class="secao">
+         <h2>Precisam de você hoje</h2>
+         <span class="conta">${fila.length} ${fila.length === 1 ? 'decisão' : 'decisões'}</span>
+       </div>
+       ${filaHtml(fila)}`
+    : '') + (minhas.length
     ? grupos.map((g) => {
         const lista = minhas.filter(g.filtro)
         if (!lista.length) return ''
@@ -611,13 +931,13 @@ function telaMinhas () {
         ? '<div style="display:flex;justify-content:center"><button class="btn btn-linha" data-acao="mais-minhas">Ver mais</button></div>'
         : '')
     : vazio('📋',
-        ehEstudante ? 'Voce ainda nao pegou nenhum trampo' : 'Voce ainda nao publicou nada',
+        ehEstudante ? 'Seu primeiro trampo ainda não saiu' : 'Nenhuma vaga publicada ainda',
         ehEstudante
-          ? 'Procure na lista de trampos abertos e candidate-se ao que combinar com voce.'
-          : 'Publique o primeiro trampo e reserve o valor para os estudantes verem a garantia.',
+          ? 'Dá para se candidatar a quantos você quiser: só vira compromisso quando você é escolhida.'
+          : 'Publique a primeira e reserve o valor. Vaga com grana separada recebe mais candidatos.',
         ehEstudante
-          ? '<button class="btn btn-azul" data-view="feed">Ver trampos abertos</button>'
-          : '<button class="btn btn-azul" data-acao="publicar">Publicar vaga</button>'))
+          ? '<button class="btn btn-primario" data-view="feed">Ver trampos abertos</button>'
+          : '<button class="btn btn-primario" data-acao="publicar">Publicar vaga</button>'))
 }
 
 function cartaoCertificado (c) {
@@ -641,8 +961,8 @@ function telaCertificados () {
     return heroi({
       cor: 'roxo',
       olho: 'Certificados',
-      titulo: 'O certificado e do estudante',
-      texto: 'Cada entrega que voce confirma emite um certificado com a carga horaria, na conta de quem executou. Ele tem codigo publico e qualquer pessoa confere sem ter conta.',
+      titulo: 'O certificado é do estudante',
+      texto: 'Cada entrega que você confirma emite um certificado com a carga horária, na conta de quem executou. Ele tem código público e qualquer pessoa confere sem ter conta.',
       arte: orbe('🎓', 'Ce')
     })
   }
@@ -651,13 +971,13 @@ function telaCertificados () {
     cor: 'roxo',
     olho: 'Seus comprovantes',
     titulo: `${estado.horasTotais}h certificadas`,
-    texto: 'Cada certificado tem codigo publico. Mande o link para a coordenacao do seu curso ou para um contratante: eles conferem sem precisar de conta.',
+    texto: 'Cada certificado tem código público. Mande o link para a coordenação do seu curso ou para um contratante: eles conferem sem precisar de conta.',
     arte: orbe('🎓', 'Ce')
   }) + (estado.certificados.length
     ? `<div class="cert-grade">${estado.certificados.map(cartaoCertificado).join('')}</div>`
     : vazio('🎓', 'Nenhum certificado ainda',
-        'Conclua um trampo e o certificado com a carga horaria aparece aqui automaticamente, sem voce pedir.',
-        '<button class="btn btn-azul" data-view="feed">Ver trampos abertos</button>'))
+        'Conclua um trampo e o certificado com a carga horária aparece aqui automaticamente, sem você pedir.',
+        '<button class="btn btn-primario" data-view="feed">Ver trampos abertos</button>'))
 }
 
 function telaConta () {
@@ -672,7 +992,7 @@ function telaConta () {
     texto: u.perfil === 'student'
       ? ([u.curso, u.universidade].filter(Boolean).join(' · ') || 'Estudante')
       : 'Contratante',
-    acoes: `<button class="btn btn-linha" data-acao="meu-perfil">Ver meu perfil publico</button>
+    acoes: `<button class="btn btn-linha" data-acao="meu-perfil">Ver meu perfil público</button>
             <button class="btn btn-fantasma" data-acao="rever-guia">Rever como funciona</button>`,
     arte: orbe(u.perfil === 'student' ? '🎒' : '🏢', 'Co')
   }) + `
@@ -680,17 +1000,19 @@ function telaConta () {
   <div class="detalhe-grade">
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
       <div class="painel">
-        <h4>RESUMO</h4>
+        <h4>${ico('grafico')} Resumo</h4>
         <dl class="dados">
-          <div class="linha-dado"><dt>Movimentado</dt><dd>${usdcExato(r?.valores?.movimentadoCentavos)} USDC</dd></div>
-          <div class="linha-dado"><dt>Em garantia agora</dt><dd>${usdcExato(r?.valores?.reservadoCentavos)} USDC</dd></div>
+          <div class="linha-dado"><dt>${u.perfil === 'student' ? 'Já recebido' : 'Já pago'}</dt><dd>${valorGrande(r?.valores?.movimentadoCentavos)}</dd></div>
+          <div class="linha-dado"><dt>Separado agora</dt><dd>${valorGrande(r?.valores?.reservadoCentavos)}</dd></div>
           <div class="linha-dado"><dt>Horas certificadas</dt><dd>${r?.certificados?.horas ?? 0}h</dd></div>
-          <div class="linha-dado"><dt>Avaliacao</dt><dd>${(r?.avaliacao?.media ?? 0).toFixed(1)} (${r?.avaliacao?.total ?? 0})</dd></div>
+          <div class="linha-dado"><dt>Avaliação</dt><dd>${r?.avaliacao?.total
+            ? `${r.avaliacao.media.toFixed(1)} de 5 <small style="font-family:var(--sans);font-size:11.5px;font-weight:700;color:var(--ink-3)">${r.avaliacao.total} ${r.avaliacao.total === 1 ? 'avaliação' : 'avaliações'}</small>`
+            : '<span style="font-family:var(--sans);font-weight:700;font-size:13px;color:var(--ink-3)">ninguém avaliou ainda</span>'}</dd></div>
         </dl>
       </div>
 
       <div class="painel">
-        <h4>COMO O PAGAMENTO FUNCIONA</h4>
+        <h4>${ico('lock')} Como o pagamento funciona</h4>
         <p style="font-size:13.5px;color:var(--ink-2);line-height:1.65">
           O contratante reserva o valor ao publicar. Ele sai da conta dele e fica separado, sem
           poder voltar sozinho. Quando a entrega e confirmada, o valor vai para o estudante e o
@@ -701,14 +1023,14 @@ function telaConta () {
     </div>
 
     <div class="painel">
-      <h4>NOTIFICACOES</h4>
+      <h4>${ico('sino')} Avisos</h4>
       <dl class="dados">
-        <div class="linha-dado"><dt>No aplicativo</dt><dd style="color:var(--verde);font-family:var(--sans)">sempre</dd></div>
+        <div class="linha-dado"><dt>No aplicativo</dt><dd style="color:var(--verde-txt);font-family:var(--sans)">sempre</dd></div>
         <div class="linha-dado"><dt>Por e-mail</dt><dd style="font-family:var(--sans)">${p?.email ? 'ligado' : 'desligado'}</dd></div>
         <div class="linha-dado"><dt>No navegador</dt><dd style="font-family:var(--sans)">${p?.push ? 'ligado' : 'desligado'}</dd></div>
       </dl>
       <button class="btn btn-linha btn-mini btn-bloco" style="margin-top:12px" data-view="notificacoes">
-        Ajustar notificacoes
+        Ajustar notificações
       </button>
     </div>
   </div>`
@@ -721,9 +1043,15 @@ const ETAPAS_ROTULO = [
   'Trabalho em andamento', 'Entrega enviada', 'Confirmado e pago'
 ]
 
+/** O que falta acontecer em cada etapa, do ponto de vista de quem espera. */
+const ETAPAS_ESPERA = [
+  'já saiu', 'é com o contratante', 'é com o contratante',
+  'é com o estudante', 'é com o estudante', 'o mesmo clique paga e certifica'
+]
+
 function acoesDaVaga (vaga) {
   const u = estado.usuario
-  // Sem sessao nao ha acao possivel. Acontece quando um render pendente roda
+  // Sem sessão não há ação possível. Acontece quando um render pendente roda
   // logo depois de sair.
   if (!u) return []
 
@@ -732,49 +1060,66 @@ function acoesDaVaga (vaga) {
   const botoes = []
 
   if (souContratante) {
-    if (vaga.status === 'aberta') botoes.push(['reservar', 'Reservar o valor', 'btn-azul'])
-    if (vaga.status === 'entregue' && !vaga.emContestacao) botoes.push(['confirmar', 'Confirmar entrega e pagar', 'btn-azul'])
+    if (vaga.status === 'aberta') botoes.push(['reservar', 'Reservar o valor', 'btn-primario'])
+    if (vaga.status === 'entregue' && !vaga.emContestacao) botoes.push(['confirmar', 'Confirmar entrega e pagar', 'btn-primario'])
     if (['aberta', 'garantida', 'aceita', 'em_andamento'].includes(vaga.status) && !vaga.emContestacao) {
       botoes.push(['cancelar', 'Cancelar', 'btn-perigo'])
     }
   }
   if (souEstudante) {
-    if (vaga.status === 'aceita') botoes.push(['comecar', 'Comecar o trabalho', 'btn-azul'])
-    if (vaga.status === 'em_andamento') botoes.push(['entregar', 'Enviar entrega', 'btn-azul'])
+    if (vaga.status === 'aceita') botoes.push(['comecar', 'Começar o trabalho', 'btn-primario'])
+    if (vaga.status === 'em_andamento') botoes.push(['entregar', 'Enviar entrega', 'btn-primario'])
   }
   if (!souContratante && !souEstudante && u.perfil === 'student' &&
       ['aberta', 'garantida'].includes(vaga.status) && !vaga.minhaCandidatura) {
-    botoes.push(['candidatar', 'Quero esse trampo', 'btn-azul'])
+    botoes.push(['candidatar', 'Quero esse trampo', 'btn-primario'])
   }
   if (vaga.status === 'concluida' && (souContratante || souEstudante)) {
     botoes.push(['avaliar', 'Avaliar', 'btn-linha'])
   }
-  // Contestar so aparece quando ha trabalho combinado, valor reservado e o
-  // dinheiro ainda nao saiu. Fora dessa janela nao ha o que contestar.
+  // Contestar só aparece quando há trabalho combinado, valor reservado e o
+  // dinheiro ainda não saiu. Fora dessa janela não há o que contestar.
   if ((souContratante || souEstudante) && !vaga.contestacao &&
       ['aceita', 'em_andamento', 'entregue'].includes(vaga.status)) {
-    botoes.push(['contestar', 'Abrir contestacao', 'btn-linha'])
+    botoes.push(['contestar', 'Abrir contestação', 'btn-linha'])
   }
   return botoes
 }
 
 /** Onde o dinheiro esta neste momento, em uma frase. */
 function frasePagamento (vaga) {
-  const valor = `${usdc(vaga.valorCentavos)} USDC`
+  const valor = valorGrande(vaga.valorCentavos)
   if (vaga.status === 'cancelada') return `${valor}. O trampo foi cancelado e o valor voltou para quem reservou.`
   if (vaga.status === 'concluida') return `${valor} pagos ao estudante, com o certificado emitido na mesma hora.`
-  if (vaga.pagamentoEmProcessamento) return `${valor} ja confirmados. Estamos concluindo o pagamento agora.`
-  if (vaga.emContestacao) return `${valor} parados ate a contestacao ser decidida. Nem saem, nem voltam.`
-  if (vaga.pagamentoGarantido) return `${valor} ja reservados. O valor sai para o estudante assim que a entrega for confirmada.`
-  return `${valor}. O contratante ainda nao reservou o valor.`
+  if (vaga.pagamentoEmProcessamento) return `${valor} já confirmados. Estamos concluindo o pagamento agora.`
+  if (vaga.emContestacao) return `${valor} parados até a contestação ser decidida. Nem saem, nem voltam.`
+  if (vaga.pagamentoGarantido) return `${valor} já separados. O valor sai para o estudante assim que a entrega for confirmada.`
+  return `${valor}, ainda na conta do contratante. Enquanto ele não reservar, ninguém pode ser escolhido.`
+}
+
+/**
+ * A linha que da contexto a uma candidatura.
+ *
+ * Sem ela, escolher entre dois nomes e chute. Com curso, trampos feitos e horas
+ * certificadas, a escolha fica obvia — e o certificado passa a valer algo, que e
+ * o propósito dele.
+ */
+function contextoDoCandidato (estudante) {
+  const partes = [estudante.curso, estudante.universidade].filter(Boolean)
+  const feitos = estudante.trabalhosConcluidos ?? 0
+  const horas = estudante.horasCertificadas ?? 0
+  partes.push(feitos
+    ? `${feitos} ${feitos === 1 ? 'trampo' : 'trampos'}, ${horas}h certificadas`
+    : 'primeira candidatura por aqui')
+  return partes.join(' · ')
 }
 
 function telaDetalhe () {
   const vaga = estado.vagaAberta
-  if (!vaga) return vazio('🔍', 'Trampo nao encontrado', 'Ele pode ter sido removido.')
+  if (!vaga) return vazio('🔍', 'Trampo não encontrado', 'Ele pode ter sido removido.')
 
   const etapaAtual = vaga.trilha?.etapa ?? 0
-  // Numa vaga concluida a ultima etapa esta cumprida, e nao em curso.
+  // Numa vaga concluída a última etapa esta cumprida, e não em curso.
   const terminou = vaga.status === 'concluida'
   const botoes = acoesDaVaga(vaga)
   const u = estado.usuario
@@ -789,8 +1134,9 @@ function telaDetalhe () {
     titulo: vaga.titulo,
     texto: frasePagamento(vaga),
     dados: [
-      { rotulo: 'Valor', valor: `${usdc(vaga.valorCentavos)} USDC` },
-      { rotulo: 'Carga horaria', valor: `${vaga.horas}h` },
+      { rotulo: 'Quanto paga', valor: valorGrande(vaga.valorCentavos), nota: valorReferencia(vaga.valorCentavos) },
+      { rotulo: 'Carga horária', valor: `${vaga.horas}h` },
+      { rotulo: 'Etapa', valor: `${passoAtual(vaga).etapa} de ${passoAtual(vaga).total}` },
       { rotulo: 'Estado', valor: vaga.statusRotulo }
     ],
     acoes: botoes.map(([acao, rotulo, classe]) =>
@@ -800,33 +1146,50 @@ function telaDetalhe () {
   <div class="detalhe-grade">
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
       <div class="painel">
-        <h4>DESCRICAO</h4>
+        <h4>Descrição</h4>
         <p style="font-size:14px;white-space:pre-wrap;line-height:1.65">${escapar(vaga.descricao)}</p>
       </div>
 
       ${vaga.entregaObservacao ? `<div class="painel">
-        <h4>OBSERVACAO DA ENTREGA</h4>
+        <h4>Observação da entrega</h4>
         <p style="font-size:14px;white-space:pre-wrap;line-height:1.65">${escapar(vaga.entregaObservacao)}</p>
       </div>` : ''}
 
       ${vaga.candidaturas?.length ? `<div class="painel">
-        <h4>CANDIDATURAS (${vaga.candidaturas.length})</h4>
-        ${vaga.candidaturas.map((c) => `<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)">
+        <h4>${ico('user')} Quem se candidatou (${vaga.candidaturas.length})</h4>
+        <p style="font-size:12.5px;color:var(--ink-3);margin-bottom:12px">
+          Escolher entre dois nomes é difícil. Curso, trampos feitos e horas certificadas
+          são o que separa um do outro.
+        </p>
+        ${vaga.candidaturas.map((c) => `<div class="pessoa">
           <span class="avatar g c${corDe(c.estudante.nome)}" aria-hidden="true">${iniciais(c.estudante.nome)}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:14px">${escapar(c.estudante.nome)}</div>
-            <div style="font-size:12px;color:var(--ink-3)">${escapar([c.estudante.curso, c.estudante.universidade].filter(Boolean).join(' · '))}</div>
-            ${c.apresentacao ? `<p style="font-size:13px;color:var(--ink-2);margin-top:6px">${escapar(c.apresentacao)}</p>` : ''}
-          </div>
+          <span style="min-width:0;flex:1">
+            <span class="pessoa-nome">${escapar(c.estudante.nome)}</span>
+            <span class="pessoa-sub">${escapar(contextoDoCandidato(c.estudante))}</span>
+            ${c.apresentacao ? `<span class="pessoa-sub" style="color:var(--ink-2);margin-top:5px">${escapar(c.apresentacao)}</span>` : ''}
+          </span>
           ${c.status === 'pendente' && vaga.status === 'garantida'
-            ? `<button class="btn btn-claro btn-mini" data-aceitar="${escapar(c.id)}">Escolher</button>`
+            ? `<button class="btn btn-primario btn-mini" data-aceitar="${escapar(c.id)}">Escolher</button>`
             : `<span class="etiqueta">${escapar(c.status)}</span>`}
         </div>`).join('')}
-        ${vaga.status === 'aberta' ? '<p style="font-size:12.5px;color:var(--laranja);margin-top:10px">Reserve o valor para poder escolher um estudante.</p>' : ''}
+        ${vaga.status === 'aberta'
+          ? `<div class="acao" style="margin-top:12px">
+               <span class="acao-ico" aria-hidden="true">${ico('lock')}</span>
+               <div>
+                 <h4>Reserve o valor para poder escolher</h4>
+                 <p>Ninguém é escolhido antes de a grana estar separada. É o que garante o pagamento de quem aceitar.</p>
+               </div>
+               <div class="acao-bts">
+                 <button class="btn btn-dinheiro btn-mini" data-acao-vaga="reservar">
+                   Reservar ${escapar(valorGrande(vaga.valorCentavos))}
+                 </button>
+               </div>
+             </div>`
+          : ''}
       </div>` : ''}
 
       ${souParte ? `<div class="painel">
-        <h4>CONVERSA</h4>
+        <h4>${ico('chat')} Conversa</h4>
         <div class="conversa" id="conversa"><p style="color:var(--ink-3);font-size:13px">Carregando…</p></div>
         <form id="form-mensagem" style="display:flex;gap:8px;margin-top:12px">
           <label class="sr" for="mensagem-texto">Mensagem</label>
@@ -838,47 +1201,54 @@ function telaDetalhe () {
 
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="painel">
-        <h4>ANDAMENTO</h4>
+        <h4>${ico('raio')} Andamento</h4>
+        <p class="passo-nome ${passoAtual(vaga).alerta ? 'alerta' : ''}" style="margin-bottom:12px">
+          ${escapar(vaga.trilha?.cancelada || terminou
+            ? passoAtual(vaga).texto.charAt(0).toUpperCase() + passoAtual(vaga).texto.slice(1)
+            : `Etapa ${passoAtual(vaga).etapa} de ${passoAtual(vaga).total} · ${passoAtual(vaga).texto}`)}
+        </p>
         <div class="etapas">
           ${ETAPAS_ROTULO.map((rotulo, i) => {
             const num = i + 1
-            const feita = !vaga.trilha?.cancelada && (num < etapaAtual || (terminou && num === etapaAtual))
-            const atual = !vaga.trilha?.cancelada && !terminou && num === etapaAtual
+            // etapaAtual conta o que já foi cumprido, entao ela mesma esta
+            // feita. O que esta em curso e a etapa seguinte.
+            const feita = !vaga.trilha?.cancelada && num <= etapaAtual
+            const atual = !vaga.trilha?.cancelada && !terminou && num === etapaAtual + 1
             return `<div class="etapa ${feita ? 'feita' : ''} ${atual ? 'atual' : ''}">
               <span class="etapa-bola" aria-hidden="true">${feita ? '✓' : ''}</span>
-              <div class="etapa-texto">${rotulo}</div>
+              <div class="etapa-texto">${rotulo}${atual ? ` <span style="font-weight:700;color:var(--ink-3)">· ${ETAPAS_ESPERA[i]}</span>` : ''}</div>
             </div>`
           }).join('')}
-          ${vaga.trilha?.cancelada ? '<div class="etapa"><span class="etapa-bola" aria-hidden="true">✕</span><div class="etapa-texto" style="color:#f87171">Cancelado, valor devolvido</div></div>' : ''}
+          ${vaga.trilha?.cancelada ? `<div class="etapa"><span class="etapa-bola" aria-hidden="true">✕</span><div class="etapa-texto" style="color:var(--vermelho-txt)">Cancelado, valor devolvido</div></div>` : ''}
         </div>
       </div>
 
       ${vaga.contestacao ? `<div class="painel" style="border-color:rgba(245,158,11,.3)">
-        <h4 style="color:var(--laranja)">CONTESTACAO</h4>
+        <h4 style="color:var(--laranja-txt)">Contestação</h4>
         <p style="font-size:13.5px;font-weight:700;margin-bottom:6px">${escapar(vaga.contestacao.statusRotulo)}</p>
         <p style="font-size:13px;color:var(--ink-2);margin-bottom:10px">${escapar(vaga.contestacao.motivoRotulo)}</p>
         <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap;margin-bottom:12px">${escapar(vaga.contestacao.detalhe)}</p>
         <dl class="dados">
           <div class="linha-dado"><dt>Aberta por</dt><dd style="font-family:var(--sans)">${escapar(vaga.contestacao.abertaPor.nome ?? '-')}</dd></div>
-          <div class="linha-dado"><dt>Prazo da analise</dt><dd>${dataBR(vaga.contestacao.prazoEm)}</dd></div>
+          <div class="linha-dado"><dt>Prazo da análise</dt><dd>${dataBR(vaga.contestacao.prazoEm)}</dd></div>
         </dl>
         ${vaga.contestacao.resolucao ? `
-          <p style="font-size:11px;letter-spacing:.1em;color:var(--ink-3);margin:14px 0 6px">DECISAO</p>
+          <p style="font-size:11px;letter-spacing:.1em;color:var(--ink-3);margin:14px 0 6px">DECISÃO</p>
           <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap">${escapar(vaga.contestacao.resolucao)}</p>
-          ${vaga.contestacao.divisaoBps !== null ? `<p style="font-size:12.5px;color:var(--ink-3);margin-top:8px">Divisao: ${Math.round(vaga.contestacao.divisaoBps / 100)}% para o estudante</p>` : ''}
-        ` : '<p style="font-size:12.5px;color:var(--ink-3);margin-top:10px">Enquanto a contestacao estiver aberta, o valor fica parado. Nem sai, nem volta.</p>'}
+          ${vaga.contestacao.divisaoBps !== null ? `<p style="font-size:12.5px;color:var(--ink-3);margin-top:8px">Divisão: ${Math.round(vaga.contestacao.divisaoBps / 100)}% para o estudante</p>` : ''}
+        ` : '<p style="font-size:12.5px;color:var(--ink-3);margin-top:10px">Enquanto a contestação estiver aberta, o valor fica parado. Nem sai, nem volta.</p>'}
       </div>` : ''}
 
       ${vaga.autoConfirmaEm && vaga.status === 'entregue' && !vaga.contestacao && !vaga.pagamentoEmProcessamento ? `<div class="painel">
-        <h4>PRAZO DE CONFIRMACAO</h4>
+        <h4>${ico('relogio')} Prazo de confirmação</h4>
         <p style="font-size:13px;color:var(--ink-2);line-height:1.6">
-          Se ninguem confirmar nem contestar ate <strong>${dataBR(vaga.autoConfirmaEm)}</strong>,
+          Se ninguém confirmar nem contestar até <strong>${dataBR(vaga.autoConfirmaEm)}</strong>,
           o pagamento e liberado automaticamente para o estudante.
         </p>
       </div>` : ''}
 
       ${vaga.anexos ? `<div class="painel">
-        <h4>ARQUIVOS</h4>
+        <h4>Arquivos</h4>
         ${vaga.anexos.length
           ? `<dl class="dados">${vaga.anexos.map((a) => `<div class="linha-dado">
               <dt><a href="${escapar(a.url)}" target="_blank" rel="noopener" style="color:var(--azul-2)">${escapar(a.nome)}</a></dt>
@@ -889,7 +1259,7 @@ function telaDetalhe () {
       </div>` : ''}
 
       ${vaga.certificado ? `<div class="painel">
-        <h4>CERTIFICADO</h4>
+        <h4>${ico('selo')} Certificado</h4>
         <p style="font-size:14px;font-weight:700">${vaga.certificado.horas}h certificadas</p>
         <p class="mono" style="font-size:12px;color:var(--ink-3);margin:6px 0 12px">${escapar(vaga.certificado.codigo)}</p>
         <a class="btn btn-linha btn-mini btn-bloco" href="/verificar/${encodeURIComponent(vaga.certificado.codigo)}">Ver certificado</a>
@@ -898,11 +1268,11 @@ function telaDetalhe () {
   </div>`
 }
 
-// ─── perfil publico ──────────────────────────────────────────────────────────
+// ─── perfil público ──────────────────────────────────────────────────────────
 
 function telaPerfil () {
   const p = estado.perfilAberto
-  if (!p) return vazio('❓', 'Perfil nao encontrado', 'Este perfil pode ter sido removido.')
+  if (!p) return vazio('❓', 'Perfil não encontrado', 'Este perfil pode ter sido removido.')
 
   const ehEstudante = p.perfil === 'student'
   const estrelas = (n) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n))
@@ -918,26 +1288,26 @@ function telaPerfil () {
     dados: ehEstudante
       ? [
           { rotulo: 'Horas certificadas', valor: `${p.horasCertificadas}h` },
-          { rotulo: 'Trampos concluidos', valor: String(p.trabalhosConcluidos) },
-          { rotulo: 'Avaliacao', valor: p.avaliacao.total ? `${p.avaliacao.media.toFixed(1)} de 5` : 'sem avaliacao' }
+          { rotulo: 'Trampos concluídos', valor: String(p.trabalhosConcluidos) },
+          { rotulo: 'Avaliação', valor: p.avaliacao.total ? `${p.avaliacao.media.toFixed(1)} de 5` : 'sem avaliação' }
         ]
       : [
           { rotulo: 'Vagas publicadas', valor: String(p.vagasPublicadas) },
-          { rotulo: 'Taxa de confirmacao', valor: p.taxaDeConfirmacao === null ? '—' : `${p.taxaDeConfirmacao}%` },
-          { rotulo: 'Tempo ate confirmar', valor: p.tempoMedioAteConfirmarHoras === null ? '—' : `${p.tempoMedioAteConfirmarHoras}h` }
+          { rotulo: 'Taxa de confirmação', valor: p.taxaDeConfirmacao === null ? '—' : `${p.taxaDeConfirmacao}%` },
+          { rotulo: 'Tempo até confirmar', valor: p.tempoMedioAteConfirmarHoras === null ? '—' : `${p.tempoMedioAteConfirmarHoras}h` }
         ],
     acoes: p.souEu ? '<button class="btn btn-linha" data-acao="editar-perfil">Editar perfil</button>' : ''
   })}
 
-  ${p.bio ? `<div class="painel"><h4>SOBRE</h4><p style="font-size:14px;white-space:pre-wrap;line-height:1.65">${escapar(p.bio)}</p></div>` : ''}
+  ${p.bio ? `<div class="painel"><h4>Sobre</h4><p style="font-size:14px;white-space:pre-wrap;line-height:1.65">${escapar(p.bio)}</p></div>` : ''}
 
   ${ehEstudante && p.habilidades?.length ? `<div class="painel">
-    <h4>HABILIDADES</h4>
+    <h4>Habilidades</h4>
     <div class="etiquetas">${p.habilidades.map((h) => `<span class="etiqueta">${escapar(h)}</span>`).join('')}</div>
   </div>` : ''}
 
   ${p.links?.length ? `<div class="painel">
-    <h4>LINKS</h4>
+    <h4>Links</h4>
     <div class="etiquetas">${p.links.map((l) => `<a class="etiqueta" href="${escapar(l.url)}" target="_blank" rel="noopener nofollow">${escapar(l.rotulo)} ↗</a>`).join('')}</div>
   </div>` : ''}
 
@@ -953,12 +1323,12 @@ function telaPerfil () {
                 <div class="cert-titulo">${escapar(c.titulo)}</div>
                 <div class="cert-sub">${escapar(c.contratante)}</div>
               </div>
-              <span class="cert-estado ${c.registrado ? 'pronto' : 'processando'}">${c.registrado ? 'verificavel' : 'processando'}</span>
+              <span class="cert-estado ${c.registrado ? 'pronto' : 'processando'}">${c.registrado ? 'verificável' : 'processando'}</span>
             </div>
           </a>`).join('')}</div>`
       : vazio('🎓', 'Nenhum certificado ainda', p.souEu
           ? 'Conclua um trampo e o certificado aparece aqui, pronto para mostrar.'
-          : 'Esta pessoa ainda nao concluiu nenhum trampo pela plataforma.')}
+          : 'Esta pessoa ainda não concluiu nenhum trampo pela plataforma.')}
 
     <div class="secao">
       <h2>Portfolio</h2><span class="conta">${p.portfolio?.length ?? 0}</span>
@@ -978,25 +1348,25 @@ function telaPerfil () {
           </div>
         </div>`).join('')}</div>`
       : vazio('📎', 'Portfolio vazio', p.souEu
-          ? 'Adicione trabalhos que voce ja fez. E o que um contratante olha antes de escolher.'
-          : 'Esta pessoa ainda nao publicou trabalhos.')}
+          ? 'Adicione trabalhos que você já fez. É o que um contratante olha antes de escolher.'
+          : 'Esta pessoa ainda não publicou trabalhos.')}
   ` : ''}
 
-  <div class="secao"><h2>Avaliacoes</h2><span class="conta">${p.avaliacoes.length}</span></div>
+  <div class="secao"><h2>Avaliações</h2><span class="conta">${p.avaliacoes.length}</span></div>
   ${p.avaliacoes.length
     ? `<div style="display:flex;flex-direction:column;gap:12px">${p.avaliacoes.map((a) => `<div class="painel">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <strong style="font-size:13.5px">${escapar(a.autor)}</strong>
-          <span style="color:var(--laranja);font-size:13px">${estrelas(a.nota)}</span>
+          <span style="color:var(--laranja-txt);font-size:13px">${estrelas(a.nota)}</span>
           <span style="margin-left:auto;font-size:12px;color:var(--ink-3)">${quando(a.quando)}</span>
         </div>
         <p style="font-size:12.5px;color:var(--ink-3);margin-bottom:6px">${escapar(a.vaga)}</p>
         ${a.comentario ? `<p style="font-size:13.5px;color:var(--ink-2)">${escapar(a.comentario)}</p>` : ''}
       </div>`).join('')}</div>`
-    : vazio('★', 'Nenhuma avaliacao ainda', 'As avaliacoes aparecem quando um trampo e concluido pelos dois lados.')}`
+    : vazio('★', 'Nenhuma avaliação ainda', 'As avaliações aparecem quando um trampo é concluído pelos dois lados.')}`
 }
 
-// ─── notificacoes ────────────────────────────────────────────────────────────
+// ─── notificações ────────────────────────────────────────────────────────────
 
 function telaNotificacoes () {
   const p = estado.preferencias
@@ -1005,7 +1375,7 @@ function telaNotificacoes () {
   return heroi({
     cor: 'grafite',
     olho: 'Sua caixa',
-    titulo: 'Notificacoes',
+    titulo: 'Notificações',
     texto: naoLidas ? `${naoLidas} nova${naoLidas === 1 ? '' : 's'}.` : 'Tudo em dia por aqui.',
     acoes: naoLidas ? '<button class="btn btn-linha" data-acao="marcar-lidas">Marcar todas como lidas</button>' : '',
     arte: orbe('🔔', 'No')
@@ -1022,28 +1392,28 @@ function telaNotificacoes () {
             </div>
             <time class="mono" style="font-size:11.5px;color:var(--ink-3);white-space:nowrap">${quando(n.quando)}</time>
           </button>`).join('')
-        : vazio('🔔', 'Nada por aqui ainda', 'Quando alguem se candidatar, entregar ou confirmar um trampo seu, o aviso aparece aqui.')}
+        : vazio('🔔', 'Nada por aqui ainda', 'Quando alguém se candidatar, entregar ou confirmar um trampo seu, o aviso aparece aqui.')}
     </div>
 
     <div class="painel">
-      <h4>COMO SER AVISADO</h4>
+      <h4>${ico('sino')} Como ser avisado</h4>
       <dl class="dados">
-        <div class="linha-dado"><dt>No aplicativo</dt><dd style="color:var(--verde);font-family:var(--sans)">sempre</dd></div>
+        <div class="linha-dado"><dt>No aplicativo</dt><dd style="color:var(--verde-txt);font-family:var(--sans)">sempre</dd></div>
       </dl>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
-        <button class="btn ${p?.email ? 'btn-azul' : 'btn-linha'} btn-mini btn-bloco" data-pref="email">
+        <button class="btn ${p?.email ? 'btn-primario' : 'btn-linha'} btn-mini btn-bloco" data-pref="email">
           Por e-mail: ${p?.email ? 'ligado' : 'desligado'}
         </button>
-        <button class="btn ${p?.push ? 'btn-azul' : 'btn-linha'} btn-mini btn-bloco" data-pref="push"
+        <button class="btn ${p?.push ? 'btn-primario' : 'btn-linha'} btn-mini btn-bloco" data-pref="push"
                 ${estado.pushDisponivel ? '' : 'disabled'}>
-          No navegador: ${estado.pushDisponivel ? (p?.push ? 'ligado' : 'desligado') : 'indisponivel'}
+          No navegador: ${estado.pushDisponivel ? (p?.push ? 'ligado' : 'desligado') : 'indisponível'}
         </button>
       </div>
 
-      <h4 style="margin-top:18px">QUANDO</h4>
+      <h4 style="margin-top:18px">Quando</h4>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${[['instant', 'Na hora'], ['daily', 'Resumo diario'], ['off', 'Desligado']].map(([valor, rotulo]) => `
-          <button class="btn ${p?.digest === valor ? 'btn-azul' : 'btn-linha'} btn-mini btn-bloco" data-digest="${valor}">
+        ${[['instant', 'Na hora'], ['daily', 'Resumo diário'], ['off', 'Desligado']].map(([valor, rotulo]) => `
+          <button class="btn ${p?.digest === valor ? 'btn-primario' : 'btn-linha'} btn-mini btn-bloco" data-digest="${valor}">
             ${rotulo}
           </button>`).join('')}
       </div>
@@ -1051,7 +1421,7 @@ function telaNotificacoes () {
   </div>`
 }
 
-// ─── mediacao ────────────────────────────────────────────────────────────────
+// ─── mediação ────────────────────────────────────────────────────────────────
 
 function telaMediacao () {
   const abertas = estado.contestacoes.filter((c) => ['open', 'in_review'].includes(c.status))
@@ -1064,35 +1434,35 @@ function telaMediacao () {
         <div style="font-size:14px;font-weight:700">${escapar(c.vagaTitulo ?? c.vagaId)}</div>
         <div style="font-size:12px;color:var(--ink-3)">${escapar(c.motivoRotulo)} · aberta por ${escapar(c.abertaPor.nome ?? '-')}</div>
       </div>
-      <div class="mono" style="font-size:15px;font-weight:700">${usdc(c.valorCentavos)} <span style="font-size:11px;color:var(--ink-3)">USDC</span></div>
+      <div class="mono" style="font-size:15px;font-weight:700">${valorGrande(c.valorCentavos)}</div>
     </div>
     <p style="font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:10px">${escapar(c.detalhe)}</p>
     <div class="etiquetas" style="margin-bottom:10px">
       <span class="etiqueta">${escapar(c.statusRotulo)}</span>
-      <span class="etiqueta" style="${c.atrasada ? 'color:#f87171;border-color:rgba(239,68,68,.3)' : ''}">
+      <span class="etiqueta" style="${c.atrasada ? 'color:var(--vermelho-txt);border-color:rgba(239,68,68,.3)' : ''}">
         prazo ${dataBR(c.prazoEm)}${c.atrasada ? ' · atrasada' : ''}
       </span>
     </div>
     ${c.resolucao ? `<p style="font-size:12.5px;color:var(--ink-3);white-space:pre-wrap">${escapar(c.resolucao)}</p>` : ''}
     ${['open', 'in_review'].includes(c.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${c.status === 'open' ? `<button class="btn btn-linha btn-mini" data-assumir="${escapar(c.id)}">Assumir analise</button>` : ''}
-      <button class="btn btn-azul btn-mini" data-resolver="${escapar(c.id)}">Decidir</button>
+      ${c.status === 'open' ? `<button class="btn btn-linha btn-mini" data-assumir="${escapar(c.id)}">Assumir análise</button>` : ''}
+      <button class="btn btn-primario btn-mini" data-resolver="${escapar(c.id)}">Decidir</button>
       <button class="btn btn-fantasma btn-mini" data-vaga="${escapar(c.vagaId)}">Ver o trampo</button>
     </div>` : ''}
   </div>`
 
   return heroi({
     cor: 'grafite',
-    olho: 'Equipe de mediacao',
-    titulo: 'Contestacoes',
-    texto: 'Quando as duas partes discordam, o valor fica parado ate alguem decidir. Cada caso tem prazo, e o que voce decide aqui move dinheiro de verdade.',
+    olho: 'Equipe de mediação',
+    titulo: 'Contestações',
+    texto: 'Quando as duas partes discordam, o valor fica parado até alguém decidir. Cada caso tem prazo, e o que você decide aqui move dinheiro de verdade.',
     arte: orbe('⚖️', 'Me')
   }) + `
 
-  <div class="secao"><h2>Aguardando decisao</h2><span class="conta">${abertas.length}</span></div>
+  <div class="secao"><h2>Aguardando decisão</h2><span class="conta">${abertas.length}</span></div>
   ${abertas.length
     ? `<div style="display:flex;flex-direction:column;gap:14px">${abertas.map(cartao).join('')}</div>`
-    : vazio('✓', 'Nenhuma contestacao aberta', 'Quando alguem contestar um trampo, o caso aparece aqui com o prazo de analise.')}
+    : vazio('✓', 'Nenhuma contestação aberta', 'Quando alguém contestar um trampo, o caso aparece aqui com o prazo de análise.')}
 
   ${resolvidas.length ? `
     <div class="secao"><h2>Resolvidas</h2><span class="conta">${resolvidas.length}</span></div>
@@ -1101,64 +1471,91 @@ function telaMediacao () {
 
 // ─── painel da direita ───────────────────────────────────────────────────────
 
-const PASSOS = 6
+/** Um cartao da barra, com título, icone e o que vier dentro. */
+function widget (titulo, icone, corpo, selo = '') {
+  return `<div class="widget">
+    <div class="widget-topo">
+      <h3>${ico(icone)} ${escapar(titulo)}</h3>
+      ${selo}
+    </div>
+    ${corpo}
+  </div>`
+}
 
+const linhaDeValor = (rotulo, centavos, { destaque = false, nota = null } = {}) =>
+  `<div class="linha ${destaque ? 'destaque' : ''}">
+    <span>${escapar(rotulo)}</span>
+    <b>${escapar(valorGrande(centavos))}${nota ? `<small>${escapar(nota)}</small>` : ''}</b>
+  </div>`
+
+const passoNumerado = (n, titulo, texto) =>
+  `<div class="mini-passo">
+    <span class="n" aria-hidden="true">${n}</span>
+    <div><b>${escapar(titulo)}</b><p>${escapar(texto)}</p></div>
+  </div>`
+
+/**
+ * A barra da direita responde "onde esta a minha grana".
+ *
+ * Antes ela falava de ecossistema, atividade da rede e do que roda por baixo do
+ * capo: informação sobre o mecanismo, no lugar mais nobre da tela. Agora ela
+ * responde quanto a pessoa tem esperando, reservado e recebido, e o resto desce
+ * para a gaveta fechada do rodape.
+ */
 function renderDir () {
+  const u = estado.usuario
+  const r = estado.resumo
   const t = estado.metricas?.totais
-  // A barra acompanha a etapa do trampo aberto; sem trampo aberto, mostra 1.
-  const etapa = estado.vagaAberta?.trilha?.etapa ?? 1
+  const porStatus = r?.vagasPorStatus ?? {}
 
-  $('#dir').innerHTML = `
-    <div class="widget">
-      <div class="widget-topo">
-        <h3>Como funciona</h3>
-        <span class="widget-selo">${PASSOS} etapas</span>
-      </div>
-      <div class="barra">
-        <div class="barra-trilho" role="img" aria-label="Etapa ${etapa} de ${PASSOS}">
-          ${Array.from({ length: PASSOS }, (_, i) => `<span class="barra-seg ${i < etapa ? 'feito' : ''}"></span>`).join('')}
-        </div>
-        <span class="barra-num">${etapa}/${PASSOS}</span>
-      </div>
-      <p>Publicar, reservar o valor, escolher o estudante, executar, entregar e confirmar.
-         A confirmacao paga e certifica no mesmo clique.</p>
-    </div>
+  if (!u) {
+    $('#dir-widgets').innerHTML =
+      widget('Como funciona', 'raio',
+        passoNumerado(1, 'O contratante reserva', 'O valor sai da conta dele antes de você começar.') +
+        passoNumerado(2, 'Você faz e entrega', 'Pelo site mesmo, com arquivo ou recado.') +
+        passoNumerado(3, 'Recebe e comprova', 'A confirmação paga e emite o certificado.')) +
+      widget('O que já rolou aqui', 'grafico',
+        linhaDeValor('Pago a estudantes', t?.pagoCentavos) +
+        linhaDeValor('Reservado agora', t?.reservadoCentavos) +
+        `<div class="linha"><span>Horas certificadas</span><b>${t?.horasCertificadas ?? 0}h</b></div>
+         <div class="linha"><span>Certificados</span><b>${t?.certificados ?? 0}</b></div>`)
+    return
+  }
 
-    <div class="widget">
-      <div class="widget-topo">
-        <h3>Ecossistema</h3>
-        <span class="widget-selo">devnet</span>
-      </div>
-      <dl class="dados">
-        <div class="linha-dado"><dt>Pago a estudantes</dt><dd>${usdc(t?.pagoCentavos)}</dd></div>
-        <div class="linha-dado"><dt>Em garantia</dt><dd>${usdc(t?.reservadoCentavos)}</dd></div>
-        <div class="linha-dado"><dt>Horas certificadas</dt><dd>${t?.horasCertificadas ?? 0}h</dd></div>
-        <div class="linha-dado"><dt>Certificados</dt><dd>${t?.certificados ?? 0}</dd></div>
-      </dl>
-    </div>
+  if (u.perfil === 'student') {
+    const esperando = r?.esperandoRespostaCentavos ?? 0
+    const candidaturas = r?.candidaturasPendentes ?? 0
 
-    <div class="widget">
-      <div class="widget-topo">
-        <h3>Atividade recente</h3>
-        <span class="widget-selo vivo"><span class="ponto-vivo" aria-hidden="true"></span>ao vivo</span>
-      </div>
-      ${estado.feed.length
-        ? estado.feed.slice(0, 8).map((e) => `<div class="feed-item">
-            <span class="feed-ponto" aria-hidden="true"></span>
-            <div>
-              <div class="feed-texto">${escapar(e.label ?? e.type)}</div>
-              <div class="feed-quando">${quando(e.created_at)}</div>
-            </div>
-          </div>`).join('')
-        : '<p>Nada aconteceu ainda. Assim que alguem publicar, aceitar ou confirmar um trampo, aparece aqui.</p>'}
-    </div>
+    $('#dir-widgets').innerHTML =
+      widget('Sua grana', 'lock',
+        linhaDeValor('Esperando resposta', esperando, {
+          nota: candidaturas ? `${candidaturas} ${candidaturas === 1 ? 'candidatura' : 'candidaturas'}` : null
+        }) +
+        linhaDeValor('Reservado pra você', r?.valores?.reservadoCentavos, { destaque: true }) +
+        linhaDeValor('Já recebido', r?.valores?.movimentadoCentavos) +
+        '<p style="margin-top:9px">Quando você é escolhida, o valor já está travado. Ninguém consegue tirar de lá.</p>') +
+      widget('Como funciona', 'raio',
+        passoNumerado(1, 'Você se candidata', 'Vendo o valor já reservado.') +
+        passoNumerado(2, 'Faz e entrega', 'Pelo site mesmo, com arquivo ou recado.') +
+        passoNumerado(3, 'Recebe e comprova', 'A confirmação paga e emite o certificado.'))
+    return
+  }
 
-    <div class="widget">
-      <div class="widget-topo"><h3>Por baixo do capo</h3></div>
-      <p style="margin-bottom:12px">O pagamento e o certificado rodam na Solana. Nenhuma tela do produto
-         precisa que voce entenda nada disso.</p>
-      <button class="btn btn-linha btn-mini btn-bloco" data-acao="abrir-gaveta">Abrir camada tecnica</button>
-    </div>`
+  const publicadas = Object.values(porStatus).reduce((soma, n) => soma + n, 0)
+  const reservadas = (porStatus.garantida ?? 0) + (porStatus.aceita ?? 0) +
+    (porStatus.em_andamento ?? 0) + (porStatus.entregue ?? 0)
+
+  $('#dir-widgets').innerHTML =
+    widget('Suas vagas', 'pasta',
+      `<div class="linha"><span>Publicadas</span><b>${publicadas}</b></div>
+       <div class="linha"><span>Com valor reservado</span><b>${reservadas}</b></div>
+       <div class="linha"><span>Concluídas</span><b>${porStatus.concluida ?? 0}</b></div>
+       <div class="linha"><span>Certificados emitidos</span><b>${r?.certificadosEmitidos ?? 0}</b></div>` +
+      linhaDeValor('Reservado agora', r?.valores?.reservadoCentavos, { destaque: true })) +
+    widget('Como funciona', 'check',
+      passoNumerado(1, 'Pública a vaga', 'Título, valor e carga horária.') +
+      passoNumerado(2, 'Reserva o valor', 'Sai da sua conta e fica travado.') +
+      passoNumerado(3, 'Confirma a entrega', 'O mesmo clique paga e certifica.'))
 }
 
 // ─── render ──────────────────────────────────────────────────────────────────
@@ -1179,10 +1576,19 @@ const TELAS = {
 
 const EXIGEM_SESSAO = ['minhas', 'certificados', 'conta', 'notificacoes', 'mediacao']
 
+/**
+ * Onde cada pessoa cai ao entrar.
+ *
+ * O contratante vai para as vagas dele. Mandar quem paga para a lista de
+ * trampos de outras empresas era o erro mais caro do painel: a pessoa que
+ * pública não via o que precisava decidir.
+ */
+const viewInicial = () => (estado.usuario?.perfil === 'company' ? 'minhas' : 'feed')
+
 function render () {
-  // Uma tela que exige sessao nunca e desenhada sem sessao.
+  // Uma tela que exige sessão nunca e desenhada sem sessão.
   if (!estado.usuario && EXIGEM_SESSAO.includes(estado.view)) estado.view = 'entrar'
-  if (estado.usuario && estado.view === 'entrar') estado.view = 'feed'
+  if (estado.usuario && estado.view === 'entrar') estado.view = viewInicial()
 
   renderNav()
   $('#conteudo').innerHTML = (TELAS[estado.view] ?? telaFeed)()
@@ -1196,35 +1602,35 @@ const GUIAS = {
   student: [
     {
       arte: '🔒',
-      titulo: 'O pagamento vem antes de voce aceitar',
-      corpo: 'O contratante reserva o valor no ato de publicar. Quando voce ve "garantido" num cartao, o dinheiro ja saiu da conta dele e esta separado. Voce so aceita sabendo que vai receber.'
+      titulo: 'O pagamento vem antes de você aceitar',
+      corpo: 'O contratante reserva o valor no ato de publicar. Quando você ve "garantido" num cartão, o dinheiro já saiu da conta dele e está separado. Você só aceita sabendo que vai receber.'
     },
     {
       arte: '🎓',
-      titulo: 'Todo trampo concluido vira certificado',
-      corpo: 'Quando o contratante confirma a entrega, o pagamento sai e o certificado com a carga horaria e emitido no mesmo instante. Ele tem codigo publico: a coordenacao do seu curso confere sem precisar de conta.'
+      titulo: 'Todo trampo concluído vira certificado',
+      corpo: 'Quando o contratante confirma a entrega, o pagamento sai e o certificado com a carga horária é emitido no mesmo instante. Ele tem código público: a coordenação do seu curso confere sem precisar de conta.'
     },
     {
       arte: '🤝',
-      titulo: 'Se algo der errado, ha para quem recorrer',
-      corpo: 'Entregou e o contratante sumiu? Voce abre uma contestacao e o valor fica parado ate alguem da equipe analisar, com prazo. E se ninguem confirmar nem contestar, o pagamento sai sozinho depois de sete dias.'
+      titulo: 'Se algo der errado, há para quem recorrer',
+      corpo: 'Entregou e o contratante sumiu? Você abre uma contestação e o valor fica parado até alguém da equipe analisar, com prazo. E se ninguém confirmar nem contestar, o pagamento sai sozinho depois de sete dias.'
     }
   ],
   company: [
     {
       arte: '🔒',
-      titulo: 'Reservar o valor e o que atrai gente boa',
-      corpo: 'Publicar e reservar sao dois passos. Enquanto voce nao reserva, o trampo aparece sem garantia e nao da para escolher ninguem. Com o valor reservado, o estudante ve a garantia e o trampo fica muito mais atraente.'
+      titulo: 'Reservar o valor é o que atrai gente boa',
+      corpo: 'Publicar e reservar são dois passos. Enquanto você não reserva, o trampo aparece sem garantia e não dá para escolher ninguém. Com o valor reservado, o estudante ve a garantia e o trampo fica muito mais atraente.'
     },
     {
       arte: '✓',
       titulo: 'Confirmar a entrega paga e certifica de uma vez',
-      corpo: 'Um clique faz as duas coisas: libera o valor para o estudante e emite o certificado com a carga horaria. Voce nao precisa fazer mais nada depois.'
+      corpo: 'Um clique faz as duas coisas: libera o valor para o estudante e emite o certificado com a carga horária. Você não precisa fazer mais nada depois.'
     },
     {
       arte: '⏱',
       titulo: 'O prazo corre para os dois lados',
-      corpo: 'Voce tem sete dias para confirmar ou contestar uma entrega. Passado o prazo sem resposta, o sistema confirma sozinho. Sua taxa de confirmacao fica visivel no seu perfil, e e o que o estudante olha antes de aceitar.'
+      corpo: 'Você tem sete dias para confirmar ou contestar uma entrega. Passado o prazo sem resposta, o sistema confirma sozinho. Sua taxa de confirmação fica visível no seu perfil, e e o que o estudante olha antes de aceitar.'
     }
   ]
 }
@@ -1233,7 +1639,7 @@ function jaViuOGuia (perfil) {
   try {
     return (localStorage.getItem(CHAVE_GUIA) ?? '').split(',').includes(perfil)
   } catch {
-    // Sem armazenamento, mostrar o guia toda vez seria pior do que nao mostrar.
+    // Sem armazenamento, mostrar o guia toda vez seria pior do que não mostrar.
     return true
   }
 }
@@ -1243,7 +1649,7 @@ function marcarGuiaComoVisto (perfil) {
     const vistos = new Set((localStorage.getItem(CHAVE_GUIA) ?? '').split(',').filter(Boolean))
     vistos.add(perfil)
     localStorage.setItem(CHAVE_GUIA, [...vistos].join(','))
-  } catch { /* sem armazenamento: o guia volta na proxima sessao */ }
+  } catch { /* sem armazenamento: o guia volta na próxima sessão */ }
 }
 
 function mostrarGuia (perfil, { forcado = false } = {}) {
@@ -1273,8 +1679,8 @@ function mostrarGuia (perfil, { forcado = false } = {}) {
         <button class="btn btn-fantasma btn-mini" style="margin-left:auto" data-guia="pular">
           ${ultimo ? '' : 'Pular'}
         </button>
-        <button class="btn btn-azul" data-guia="proximo">
-          ${ultimo ? 'Entendi, vamos la' : 'Proximo'}
+        <button class="btn btn-primario" data-guia="proximo">
+          ${ultimo ? 'Entendi, vamos la' : 'Próximo'}
         </button>
       </div>
     </div>`
@@ -1370,20 +1776,20 @@ function modalCriarConta (perfil) {
     titulo: ehEstudante ? 'Criar conta de estudante' : 'Criar conta de contratante',
     corpo: `<p style="font-size:13.5px;color:var(--ink-3);margin-bottom:18px;line-height:1.6">
         Nome e e-mail. A conta de recebimento fica pronta junto, sem nenhum passo a mais e sem
-        nenhuma extensao para instalar.
+        nenhuma extensão para instalar.
       </p>
       <form id="form-criar">
         <div class="campo"><label for="cc-nome">Nome completo</label>
           <input id="cc-nome" required minlength="2" placeholder="${ehEstudante ? 'Marina Alves' : 'Produtora XPTO'}"></div>
         <div class="campo"><label for="cc-email">E-mail</label>
-          <input id="cc-email" type="email" required autocomplete="email" placeholder="voce@${ehEstudante ? 'universidade.br' : 'empresa.com.br'}"></div>
+          <input id="cc-email" type="email" required autocomplete="email" placeholder="seu.nome@${ehEstudante ? 'universidade.br' : 'empresa.com.br'}"></div>
         ${ehEstudante ? `<div class="linha-2">
           <div class="campo"><label for="cc-universidade">Universidade</label><input id="cc-universidade" placeholder="USP"></div>
           <div class="campo"><label for="cc-curso">Curso</label><input id="cc-curso" placeholder="Design"></div>
         </div>` : ''}
       </form>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
-             <button class="btn btn-azul" id="cc-ok">Criar minha conta</button>`,
+             <button class="btn btn-primario" id="cc-ok">Criar minha conta</button>`,
     aoMontar (raiz) {
       $('#cc-ok', raiz).addEventListener('click', async () => {
         const form = $('#form-criar', raiz)
@@ -1404,7 +1810,7 @@ function modalCriarConta (perfil) {
           })
           fecharModal()
           guardarSessao(out.usuario, out.sessao)
-          avisar('Conta criada', 'Sua conta ja esta pronta para receber.', 'ok')
+          avisar('Conta criada', 'Sua conta já está pronta para receber.', 'ok')
           await entrarNoApp()
         } catch {
           botao.disabled = false
@@ -1423,35 +1829,35 @@ function modalPublicar () {
         <label>Modalidade</label>
         <div class="escolha" id="escolha-modalidade">
           <button type="button" data-escolher-modalidade="presencial" aria-pressed="true"><strong>Presencial</strong><span>Evento, monitoria, campo</span></button>
-          <button type="button" data-escolher-modalidade="remoto" aria-pressed="false"><strong>Remoto</strong><span>Design, codigo, traducao</span></button>
+          <button type="button" data-escolher-modalidade="remoto" aria-pressed="false"><strong>Remoto</strong><span>Design, código, tradução</span></button>
         </div>
       </div>
-      <div class="campo"><label for="v-titulo">Titulo</label>
+      <div class="campo"><label for="v-titulo">Título</label>
         <input id="v-titulo" required minlength="6" placeholder="Staff de credenciamento no congresso"></div>
-      <div class="campo"><label for="v-descricao">Descricao</label>
-        <textarea id="v-descricao" required minlength="20" placeholder="Explique o que precisa ser feito, quando e o que voce espera da entrega."></textarea></div>
+      <div class="campo"><label for="v-descricao">Descrição</label>
+        <textarea id="v-descricao" required minlength="20" placeholder="Explique o que precisa ser feito, quando e o que você espera da entrega."></textarea></div>
       <div class="linha-2">
         <div class="campo"><label for="v-categoria">Categoria</label>
           <input id="v-categoria" required placeholder="Eventos" list="categorias">
           <datalist id="categorias">
             <option>Eventos</option><option>Monitoria</option><option>Pesquisa</option>
-            <option>Design</option><option>Desenvolvimento</option><option>Traducao</option>
-            <option>Conteudo</option><option>Fotografia</option>
+            <option>Design</option><option>Desenvolvimento</option><option>Tradução</option>
+            <option>Conteúdo</option><option>Fotografia</option>
           </datalist></div>
         <div class="campo" id="campo-local"><label for="v-local">Local</label>
-          <input id="v-local" placeholder="Sao Paulo, SP"></div>
+          <input id="v-local" placeholder="São Paulo, SP"></div>
       </div>
       <div class="linha-2">
-        <div class="campo"><label for="v-valor">Valor total</label>
+        <div class="campo"><label for="v-valor">Quanto você paga</label>
           <input id="v-valor" type="number" min="1" step="1" required placeholder="240">
-          <span class="dica">Em USDC. Voce reserva esse valor na proxima etapa.</span></div>
-        <div class="campo"><label for="v-horas">Carga horaria</label>
+          <span class="dica" id="dica-valor">Você reserva esse valor no próximo passo.</span></div>
+        <div class="campo"><label for="v-horas">Carga horária</label>
           <input id="v-horas" type="number" min="0.5" step="0.5" required placeholder="12">
           <span class="dica">Vai no certificado do estudante.</span></div>
       </div>
     </form>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
-             <button class="btn btn-azul" id="salvar-vaga">Publicar</button>`,
+             <button class="btn btn-primario" id="salvar-vaga">Publicar</button>`,
     aoMontar (raiz) {
       let modalidade = 'presencial'
       $$('#escolha-modalidade button', raiz).forEach((b) => b.addEventListener('click', () => {
@@ -1459,6 +1865,18 @@ function modalPublicar () {
         $$('#escolha-modalidade button', raiz).forEach((o) => o.setAttribute('aria-pressed', String(o === b)))
         $('#campo-local', raiz).style.display = modalidade === 'presencial' ? '' : 'none'
       }))
+
+      // O campo recebe o valor na moeda do pagamento, mas quem digita pensa em
+      // real: a dica mostra o equivalente enquanto a pessoa escreve.
+      const campoValor = $('#v-valor', raiz)
+      const dicaValor = $('#dica-valor', raiz)
+      campoValor.addEventListener('input', () => {
+        const unidades = Number(campoValor.value)
+        const equivalente = unidades > 0 ? real(unidades * 100) : null
+        dicaValor.textContent = equivalente
+          ? `${equivalente}, hoje. Você reserva esse valor no próximo passo.`
+          : 'Você reserva esse valor no próximo passo.'
+      })
 
       $('#salvar-vaga', raiz).addEventListener('click', async () => {
         const form = $('#form-vaga', raiz)
@@ -1501,7 +1919,7 @@ function modalTexto ({ titulo, rotulo, textoBotao, dica = '', aoConfirmar }) {
       <textarea id="m-texto" placeholder="${escapar(dica)}"></textarea>
     </div>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
-             <button class="btn btn-azul" id="m-ok">${escapar(textoBotao)}</button>`,
+             <button class="btn btn-primario" id="m-ok">${escapar(textoBotao)}</button>`,
     aoMontar (raiz) {
       $('#m-ok', raiz).addEventListener('click', async () => {
         const botao = $('#m-ok', raiz)
@@ -1529,7 +1947,7 @@ function modalAvaliar (vagaId) {
       <div class="campo"><label for="a-comentario">Comentario</label>
         <textarea id="a-comentario" placeholder="Opcional"></textarea></div>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
-             <button class="btn btn-azul" id="a-ok">Enviar avaliacao</button>`,
+             <button class="btn btn-primario" id="a-ok">Enviar avaliação</button>`,
     aoMontar (raiz) {
       let nota = 5
       $$('#notas button', raiz).forEach((b) => b.addEventListener('click', () => {
@@ -1542,9 +1960,9 @@ function modalAvaliar (vagaId) {
             method: 'POST', body: { nota, comentario: $('#a-comentario', raiz).value.trim() || null }
           })
           fecharModal()
-          avisar('Avaliacao registrada', '', 'ok')
+          avisar('Avaliação registrada', '', 'ok')
           await abrirVaga(vagaId)
-        } catch { /* o aviso de erro ja apareceu */ }
+        } catch { /* o aviso de erro já apareceu */ }
       })
     }
   })
@@ -1557,14 +1975,14 @@ function modalContestar (vaga) {
   let motivoEscolhido = motivos[0].valor
 
   abrirModal({
-    titulo: 'Abrir contestacao',
+    titulo: 'Abrir contestação',
     corpo: `<p style="font-size:13.5px;color:var(--ink-3);margin-bottom:18px;line-height:1.6">
-        Enquanto a contestacao estiver aberta, os <strong style="color:var(--ink)">${usdc(vaga.valorCentavos)} USDC</strong>
+        Enquanto a contestação estiver aberta, os <strong style="color:var(--ink)">${valorGrande(vaga.valorCentavos)}</strong>
         ficam parados: nem saem para o estudante, nem voltam para o contratante. Uma pessoa da
         equipe analisa e decide, com prazo.
       </p>
       <div class="campo">
-        <label for="ct-motivo">Qual e o problema?</label>
+        <label for="ct-motivo">Qual é o problema?</label>
         <select id="ct-motivo">
           ${motivos.map((m) => `<option value="${escapar(m.valor)}">${escapar(m.rotulo)}</option>`).join('')}
         </select>
@@ -1572,10 +1990,10 @@ function modalContestar (vaga) {
       <div class="campo">
         <label for="ct-detalhe">Conte o que aconteceu</label>
         <textarea id="ct-detalhe" placeholder="Datas, o que foi combinado, o que aconteceu de fato."></textarea>
-        <span class="dica">Minimo de 20 caracteres. As duas partes leem o que voce escrever.</span>
+        <span class="dica">Mínimo de 20 caracteres. As duas partes leem o que você escrever.</span>
       </div>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Voltar</button>
-             <button class="btn btn-azul" id="ct-ok">Abrir contestacao</button>`,
+             <button class="btn btn-primario" id="ct-ok">Abrir contestação</button>`,
     aoMontar (raiz) {
       $('#ct-motivo', raiz).addEventListener('change', (e) => { motivoEscolhido = e.target.value })
       $('#ct-ok', raiz).addEventListener('click', async () => {
@@ -1590,11 +2008,11 @@ function modalContestar (vaga) {
         try {
           await chamar(`/jobs/${vaga.id}/dispute`, { method: 'POST', body: { motivo: motivoEscolhido, detalhe } })
           fecharModal()
-          avisar('Contestacao aberta', 'O valor ficou parado e a equipe vai analisar dentro do prazo.', 'ok')
+          avisar('Contestação aberta', 'O valor ficou parado e a equipe vai analisar dentro do prazo.', 'ok')
           await abrirVaga(vaga.id)
         } catch {
           botao.disabled = false
-          botao.textContent = 'Abrir contestacao'
+          botao.textContent = 'Abrir contestação'
         }
       })
     }
@@ -1606,21 +2024,21 @@ function modalResolver (contestacao) {
   let divisao = 50
 
   abrirModal({
-    titulo: 'Decidir a contestacao',
+    titulo: 'Decidir a contestação',
     corpo: `<p style="font-size:13.5px;color:var(--ink-2);margin-bottom:16px">
         <strong>${escapar(contestacao.vagaTitulo ?? '')}</strong><br>
-        ${usdc(contestacao.valorCentavos)} USDC · ${escapar(contestacao.motivoRotulo)}
+        ${valorGrande(contestacao.valorCentavos)} · ${escapar(contestacao.motivoRotulo)}
       </p>
       <div class="painel" style="margin-bottom:18px">
-        <h4>O QUE FOI ALEGADO</h4>
+        <h4>O que foi alegado</h4>
         <p style="font-size:13px;color:var(--ink-2);white-space:pre-wrap">${escapar(contestacao.detalhe)}</p>
       </div>
       <div class="campo">
-        <label>Decisao</label>
+        <label>Decisão</label>
         <div class="escolha" id="r-resultado" style="grid-template-columns:1fr">
           <button type="button" data-resultado="split" aria-pressed="true"><strong>Dividir o valor</strong><span>Houve trabalho parcial</span></button>
           <button type="button" data-resultado="resolved_student" aria-pressed="false"><strong>Tudo para o estudante</strong><span>A entrega procede</span></button>
-          <button type="button" data-resultado="resolved_company" aria-pressed="false"><strong>Tudo de volta para o contratante</strong><span>Nao houve entrega</span></button>
+          <button type="button" data-resultado="resolved_company" aria-pressed="false"><strong>Tudo de volta para o contratante</strong><span>Não houve entrega</span></button>
         </div>
       </div>
       <div class="campo" id="r-divisao-campo">
@@ -1629,11 +2047,11 @@ function modalResolver (contestacao) {
         <span class="dica" id="r-previa"></span>
       </div>
       <div class="campo">
-        <label for="r-resolucao">Explique a decisao</label>
-        <textarea id="r-resolucao" placeholder="As duas partes leem isto. Diga no que voce se baseou."></textarea>
+        <label for="r-resolucao">Explique a decisão</label>
+        <textarea id="r-resolucao" placeholder="As duas partes leem isto. Diga no que você se baseou."></textarea>
       </div>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
-             <button class="btn btn-azul" id="r-ok">Confirmar decisao</button>`,
+             <button class="btn btn-primario" id="r-ok">Confirmar decisão</button>`,
     aoMontar (raiz) {
       const campoDivisao = $('#r-divisao-campo', raiz)
       const previa = $('#r-previa', raiz)
@@ -1643,7 +2061,7 @@ function modalResolver (contestacao) {
         const bps = resultado === 'resolved_student' ? 10000 : resultado === 'resolved_company' ? 0 : divisao * 100
         const bruto = Math.floor((total * bps) / 10000)
         const taxa = Math.floor((bruto * 500) / 10000)
-        previa.textContent = `Estudante recebe ${usdcExato(bruto - taxa)} USDC, contratante recebe ${usdcExato(total - bruto)} USDC.`
+        previa.textContent = `Estudante recebe ${valorGrande(bruto - taxa)}, contratante recebe ${valorGrande(total - bruto)}.`
       }
 
       $$('#r-resultado button', raiz).forEach((b) => b.addEventListener('click', () => {
@@ -1663,7 +2081,7 @@ function modalResolver (contestacao) {
       $('#r-ok', raiz).addEventListener('click', async () => {
         const resolucao = $('#r-resolucao', raiz).value.trim()
         if (resolucao.length < 20) {
-          avisar('Explique a decisao', 'Escreva pelo menos 20 caracteres: as duas partes vao ler.', 'erro')
+          avisar('Explique a decisão', 'Escreva pelo menos 20 caracteres: as duas partes vão ler.', 'erro')
           return
         }
         const botao = $('#r-ok', raiz)
@@ -1675,14 +2093,14 @@ function modalResolver (contestacao) {
             body: { resultado, divisaoBps: resultado === 'split' ? divisao * 100 : null, resolucao }
           })
           fecharModal()
-          avisar('Contestacao resolvida', saida.pagamentoEmProcessamento
-            ? 'A decisao foi registrada e o valor esta sendo movimentado.'
-            : 'A decisao foi registrada e o valor ja foi movimentado.', 'ok')
+          avisar('Contestação resolvida', saida.pagamentoEmProcessamento
+            ? 'A decisão foi registrada e o valor está sendo movimentado.'
+            : 'A decisão foi registrada e o valor já foi movimentado.', 'ok')
           await carregarContestacoes()
           render()
         } catch {
           botao.disabled = false
-          botao.textContent = 'Confirmar decisao'
+          botao.textContent = 'Confirmar decisão'
         }
       })
     }
@@ -1693,10 +2111,10 @@ function modalEditarPerfil () {
   const p = estado.perfilAberto
   abrirModal({
     titulo: 'Editar perfil',
-    corpo: `<div class="campo"><label for="pf-headline">Uma linha sobre voce</label>
-        <input id="pf-headline" maxlength="140" value="${escapar(p.headline ?? '')}" placeholder="Design de produto e pesquisa com usuario"></div>
+    corpo: `<div class="campo"><label for="pf-headline">Uma linha sobre você</label>
+        <input id="pf-headline" maxlength="140" value="${escapar(p.headline ?? '')}" placeholder="Design de produto e pesquisa com usuário"></div>
       <div class="campo"><label for="pf-bio">Sobre</label>
-        <textarea id="pf-bio" maxlength="600" placeholder="O que voce faz, o que ja fez, o que procura.">${escapar(p.bio ?? '')}</textarea></div>
+        <textarea id="pf-bio" maxlength="600" placeholder="O que você faz, o que já fez, o que procura.">${escapar(p.bio ?? '')}</textarea></div>
       ${p.perfil === 'student' ? `<div class="linha-2">
         <div class="campo"><label for="pf-universidade">Universidade</label><input id="pf-universidade" value="${escapar(p.universidade ?? '')}"></div>
         <div class="campo"><label for="pf-curso">Curso</label><input id="pf-curso" value="${escapar(p.curso ?? '')}"></div>
@@ -1706,10 +2124,10 @@ function modalEditarPerfil () {
         <span class="dica">Separadas por virgula.</span></div>` : ''}
       <div class="campo"><label for="pf-link">Link principal</label>
         <input id="pf-link" value="${escapar(p.links?.[0]?.url ?? '')}" placeholder="https://seu-site.com.br">
-        <span class="dica">Endereco completo, comecando com https://</span></div>`,
+        <span class="dica">Endereço completo, começando com https://</span></div>`,
     rodape: `<button class="btn btn-fantasma" data-fechar>Cancelar</button>
              <button class="btn btn-linha" data-enviar="avatar">Trocar foto</button>
-             <button class="btn btn-azul" id="pf-ok">Salvar</button>`,
+             <button class="btn btn-primario" id="pf-ok">Salvar</button>`,
     aoMontar (raiz) {
       $('#pf-ok', raiz).addEventListener('click', async () => {
         const link = $('#pf-link', raiz).value.trim()
@@ -1767,12 +2185,12 @@ async function enviarArquivo (tipo, vagaId = null) {
         body: arquivo
       })
       const dados = await resposta.json().catch(() => ({}))
-      if (!resposta.ok) return avisar(dados.error ?? 'Nao conseguimos enviar o arquivo', '', 'erro')
+      if (!resposta.ok) return avisar(dados.error ?? 'Não conseguimos enviar o arquivo', '', 'erro')
       avisar('Arquivo enviado', arquivo.name, 'ok')
       if (estado.view === 'perfil') await abrirPerfil(estado.perfilAberto.id)
       else if (estado.vagaAberta) await abrirVaga(estado.vagaAberta.id)
     } catch {
-      avisar('Nao conseguimos enviar o arquivo', 'Tente de novo em instantes.', 'erro')
+      avisar('Não conseguimos enviar o arquivo', 'Tente de novo em instantes.', 'erro')
     }
   })
   seletor.click()
@@ -1788,11 +2206,11 @@ async function carregarCamadaTecnica () {
     const dados = await chamar('/chain/status', { silencioso: true })
     estado.registros = dados.transacoes ?? []
     const resumo = $('#gaveta-resumo')
-    if (resumo) resumo.textContent = `${dados.cluster} · escrow ${dados.escrow.driver} · ${estado.registros.length} transacoes`
+    if (resumo) resumo.textContent = `${dados.cluster} · escrow ${dados.escrow.driver} · ${estado.registros.length} transações`
     renderCamadaTecnica(dados)
   } catch {
     const alvo = $('#gaveta-conteudo')
-    if (alvo) alvo.innerHTML = '<div class="gaveta-vazia">Status da rede indisponivel.</div>'
+    if (alvo) alvo.innerHTML = '<div class="gaveta-vazia">Status da rede indisponível.</div>'
   }
 }
 
@@ -1803,11 +2221,11 @@ function renderCamadaTecnica (dados) {
     <span class="gaveta-tipo">ambiente</span>
     <span class="gaveta-dado">
       cluster <b>${escapar(dados.cluster)}</b> · rpc <b>${escapar(dados.rpc)}</b><br>
-      rede alcancavel <b>${dados.rede.alcancavel ? 'sim' : 'nao'}</b>${dados.rede.versao ? ` · solana-core <b>${escapar(dados.rede.versao)}</b>` : ''}<br>
+      rede alcançável <b>${dados.rede.alcancavel ? 'sim' : 'nao'}</b>${dados.rede.versao ? ` · solana-core <b>${escapar(dados.rede.versao)}</b>` : ''}<br>
       escrow driver <b>${escapar(dados.escrow.driver)}</b>${dados.escrow.programId ? ` · program id <b>${escapar(dados.escrow.programId)}</b>` : ''}<br>
       certificado driver <b>${escapar(dados.certificado.driver)}</b> · indexador DAS <b>${dados.indexador.configurado ? 'configurado' : 'ausente'}</b><br>
-      mint de pagamento <b>${escapar(dados.plataforma.paymentMint ?? 'nao criado')}</b><br>
-      merkle tree <b>${escapar(dados.plataforma.merkleTree ?? 'nao criada')}</b>
+      mint de pagamento <b>${escapar(dados.plataforma.paymentMint ?? 'não criado')}</b><br>
+      merkle tree <b>${escapar(dados.plataforma.merkleTree ?? 'não criada')}</b>
     </span>
     <span></span>
   </div>`
@@ -1822,7 +2240,7 @@ function renderCamadaTecnica (dados) {
     ${t.link ? `<a class="gaveta-link" href="${escapar(t.link)}" target="_blank" rel="noopener">explorer ↗</a>` : '<span></span>'}
   </div>`).join('')
 
-  alvo.innerHTML = cabecalho + (linhas || '<div class="gaveta-vazia">Nenhuma transacao registrada ainda.</div>')
+  alvo.innerHTML = cabecalho + (linhas || '<div class="gaveta-vazia">Nenhuma transação registrada ainda.</div>')
 }
 
 /* camada-tecnica:fim */
@@ -1831,16 +2249,16 @@ function renderCamadaTecnica (dados) {
 
 async function executarAcao (acao, vaga) {
   const rotulos = {
-    reservar: ['Reservando…', 'Valor reservado', 'O dinheiro saiu da sua conta e esta separado para este trampo.'],
+    reservar: ['Reservando…', 'Valor reservado', 'O dinheiro saiu da sua conta e está separado para este trampo.'],
     confirmar: ['Confirmando…', 'Tudo certo', 'O pagamento foi liberado e o certificado foi emitido.'],
-    comecar: ['Iniciando…', 'Bom trabalho', 'O trampo esta em andamento.']
+    comecar: ['Iniciando…', 'Bom trabalho', 'O trampo está em andamento.']
   }
 
   if (acao === 'entregar') {
     return modalTexto({
       titulo: 'Enviar entrega',
-      rotulo: 'Quer deixar alguma observacao?',
-      dica: 'Onde esta o material, o que foi feito, o que ficou pendente.',
+      rotulo: 'Quer deixar alguma observação?',
+      dica: 'Onde está o material, o que foi feito, o que ficou pendente.',
       textoBotao: 'Enviar entrega',
       aoConfirmar: async (texto) => {
         await chamar(`/jobs/${vaga.id}/deliver`, { method: 'POST', body: { observacao: texto || null } })
@@ -1853,8 +2271,8 @@ async function executarAcao (acao, vaga) {
   if (acao === 'candidatar') {
     return modalTexto({
       titulo: 'Quero esse trampo',
-      rotulo: 'Conte por que voce e boa escolha',
-      dica: 'Experiencia parecida, disponibilidade, o que te faz encaixar.',
+      rotulo: 'Conte por que você é boa escolha',
+      dica: 'Experiência parecida, disponibilidade, o que te faz encaixar.',
       textoBotao: 'Enviar candidatura',
       aoConfirmar: async (texto) => {
         await chamar(`/jobs/${vaga.id}/apply`, { method: 'POST', body: { apresentacao: texto || null } })
@@ -1891,7 +2309,7 @@ async function executarAcao (acao, vaga) {
     avisar(ok, detalhe, 'ok')
     if (acao === 'confirmar') {
       if (resposta.certificado) {
-        avisar('Certificado emitido', `${resposta.certificado.horas}h · codigo ${resposta.certificado.codigo}`, 'ok')
+        avisar('Certificado emitido', `${resposta.certificado.horas}h · código ${resposta.certificado.codigo}`, 'ok')
       } else if (resposta.pagamento?.emProcessamento) {
         avisar('Estamos concluindo', resposta.pagamento.mensagem, 'info')
       }
@@ -1918,7 +2336,7 @@ async function carregarConversa (vagaId) {
       : '<p style="color:var(--ink-3);font-size:13px">Nenhuma mensagem ainda. Diga oi.</p>'
     alvo.scrollTop = alvo.scrollHeight
   } catch {
-    alvo.innerHTML = '<p style="color:var(--ink-3);font-size:13px">Nao conseguimos carregar a conversa agora.</p>'
+    alvo.innerHTML = '<p style="color:var(--ink-3);font-size:13px">Não conseguimos carregar a conversa agora.</p>'
   }
 }
 
@@ -1936,7 +2354,7 @@ async function enviarMensagem (vagaId, texto) {
     await carregarConversa(vagaId)
   } catch {
     provisorio.remove()
-    avisar('Mensagem nao enviada', 'Tente de novo em um instante.', 'erro')
+    avisar('Mensagem não enviada', 'Tente de novo em um instante.', 'erro')
   }
 }
 
@@ -2051,12 +2469,12 @@ async function recarregar () {
  */
 async function ligarPushDoNavegador () {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    avisar('Este navegador nao suporta avisos', 'Voce continua recebendo dentro do aplicativo.', 'info')
+    avisar('Este navegador não suporta avisos', 'Você continua recebendo dentro do aplicativo.', 'info')
     return false
   }
   const permissao = await Notification.requestPermission()
   if (permissao !== 'granted') {
-    avisar('Permissao negada', 'Voce pode mudar isso nas configuracoes do navegador.', 'info')
+    avisar('Permissão negada', 'Você pode mudar isso nas configurações do navegador.', 'info')
     return false
   }
   try {
@@ -2070,7 +2488,7 @@ async function ligarPushDoNavegador () {
     await chamar('/push/subscribe', { method: 'POST', body: { inscricao: inscricao.toJSON() } })
     return true
   } catch {
-    avisar('Nao conseguimos ligar os avisos', 'Tente de novo em instantes.', 'erro')
+    avisar('Não conseguimos ligar os avisos', 'Tente de novo em instantes.', 'erro')
     return false
   }
 }
@@ -2112,7 +2530,7 @@ async function entrarComEmail (email) {
 }
 
 async function entrarNoApp () {
-  estado.view = 'feed'
+  estado.view = viewInicial()
   await recarregar()
   render()
   ligarEventos()
@@ -2170,16 +2588,16 @@ async function telaVerificacao (codigo) {
   let dados
   try {
     const resposta = await fetch(`/api/verify/${encodeURIComponent(codigo)}`)
-    if (!resposta.ok) throw new Error('nao encontrado')
+    if (!resposta.ok) throw new Error('não encontrado')
     dados = await resposta.json()
   } catch {
     alvo.innerHTML = `<div class="verificacao">
-      <a class="marca" href="/" aria-label="Uni.work, ir para o inicio" style="margin-bottom:30px">
+      <a class="marca" href="/" aria-label="Uni.work, ir para o início" style="margin-bottom:30px">
         <span class="marca-imagem"></span>
       </a>
-      ${vazio('❓', 'Certificado nao encontrado',
-        `Nao existe certificado com o codigo ${codigo}. Confira se o codigo foi copiado inteiro.`,
-        '<a class="btn btn-linha" href="/">Voltar ao inicio</a>')}
+      ${vazio('❓', 'Certificado não encontrado',
+        `Não existe certificado com o código ${codigo}. Confira se o código foi copiado inteiro.`,
+        '<a class="btn btn-linha" href="/">Voltar ao início</a>')}
     </div>`
     return
   }
@@ -2187,11 +2605,11 @@ async function telaVerificacao (codigo) {
   const c = dados.certificado
   const conf = dados.confirmacaoIndependente
   const selo = dados.valido
-    ? (conf.confirmado ? ['valido', '✓', 'Certificado autentico e confirmado'] : ['parcial', '✓', 'Certificado autentico'])
-    : ['invalido', '✕', 'Este certificado nao confere']
+    ? (conf.confirmado ? ['valido', '✓', 'Certificado autêntico e confirmado'] : ['parcial', '✓', 'Certificado autêntico'])
+    : ['invalido', '✕', 'Este certificado não confere']
 
   alvo.innerHTML = `<div class="verificacao">
-    <a class="marca" href="/" aria-label="Uni.work, ir para o inicio" style="margin-bottom:30px">
+    <a class="marca" href="/" aria-label="Uni.work, ir para o início" style="margin-bottom:30px">
       <span class="marca-imagem"></span>
     </a>
     <div class="selo ${selo[0]}"><span aria-hidden="true">${selo[1]}</span> ${selo[2]}</div>
@@ -2206,34 +2624,34 @@ async function telaVerificacao (codigo) {
 
     <div class="grade">
       <div class="painel">
-        <h4>O QUE FOI CONFERIDO</h4>
+        <h4>${ico('check')} O que foi conferido</h4>
         <dl class="dados">
-          <div class="linha-dado"><dt>Conteudo integro</dt><dd style="color:${dados.integridade.confere ? 'var(--verde)' : '#f87171'};font-family:var(--sans)">${dados.integridade.confere ? 'sim' : 'nao'}</dd></div>
-          <div class="linha-dado"><dt>Registro publico</dt><dd style="color:${conf.confirmado ? 'var(--verde)' : 'var(--laranja)'};font-family:var(--sans)">${conf.confirmado ? 'confirmado' : 'aguardando'}</dd></div>
+          <div class="linha-dado"><dt>Conteúdo integro</dt><dd style="color:${dados.integridade.confere ? 'var(--verde-txt)' : 'var(--vermelho-txt)'};font-family:var(--sans)">${dados.integridade.confere ? 'sim' : 'não'}</dd></div>
+          <div class="linha-dado"><dt>Registro público</dt><dd style="color:${conf.confirmado ? 'var(--verde-txt)' : 'var(--laranja-txt)'};font-family:var(--sans)">${conf.confirmado ? 'confirmado' : 'aguardando'}</dd></div>
           <div class="linha-dado"><dt>Emitido em</dt><dd>${dataBR(c.emitidoEm)}</dd></div>
-          <div class="linha-dado"><dt>Codigo</dt><dd>${escapar(c.codigo)}</dd></div>
+          <div class="linha-dado"><dt>Código</dt><dd>${escapar(c.codigo)}</dd></div>
         </dl>
         <p style="font-size:12.5px;color:var(--ink-3);margin-top:12px;line-height:1.6">
           ${conf.confirmado
-            ? 'A confirmacao veio de um servico independente, nao do banco de dados da Uni.work.'
+            ? 'A confirmação veio de um serviço independente, não do banco de dados da Uni.work.'
             : conf.motivo === 'indexador_nao_configurado'
-              ? 'A confirmacao independente nao esta configurada neste ambiente. A integridade do conteudo foi conferida localmente.'
-              : 'O registro publico ainda esta sendo processado. A integridade do conteudo ja confere.'}
+              ? 'A confirmação independente não está configurada neste ambiente. A integridade do conteúdo foi conferida localmente.'
+              : 'O registro público ainda está sendo processado. A integridade do conteúdo já confere.'}
         </p>
       </div>
       <div class="painel">
-        <h4>DETALHES DA ATIVIDADE</h4>
+        <h4>Detalhes da atividade</h4>
         <dl class="dados">
           <div class="linha-dado"><dt>Categoria</dt><dd style="font-family:var(--sans)">${escapar(c.categoria)}</dd></div>
           <div class="linha-dado"><dt>Modalidade</dt><dd style="font-family:var(--sans)">${escapar(c.modalidade)}</dd></div>
-          <div class="linha-dado"><dt>Carga horaria</dt><dd>${c.horas}h</dd></div>
+          <div class="linha-dado"><dt>Carga horária</dt><dd>${c.horas}h</dd></div>
           <div class="linha-dado"><dt>Contratante</dt><dd style="font-family:var(--sans)">${escapar(c.contratante)}</dd></div>
         </dl>
       </div>
     </div>
 
     <p style="margin-top:28px;font-size:13px;color:var(--ink-3)">
-      Ambiente de demonstracao. Este certificado comprova uma atividade registrada na Uni.work.
+      Ambiente de demonstração. Este certificado comprova uma atividade registrada na Uni.work.
     </p>
   </div>`
 }
@@ -2348,6 +2766,15 @@ function ligarInterface () {
       return
     }
 
+    // Acao disparada da fila de decisoes, onde nao existe vaga aberta: a vaga
+    // vem do proprio botao.
+    const fila = alvo('[data-fila]')
+    if (fila) {
+      const vaga = estado.minhasVagas.find((v) => v.id === fila.dataset.filaVaga)
+      if (vaga) executarAcao(fila.dataset.fila, vaga)
+      return
+    }
+
     const cartao = alvo('[data-vaga]')
     if (cartao) return void abrirVaga(cartao.dataset.vaga)
 
@@ -2419,7 +2846,7 @@ function ligarInterface () {
       assumir.disabled = true
       chamar(`/disputes/${assumir.dataset.assumir}/assumir`, { method: 'POST' })
         .then(async () => {
-          avisar('Analise assumida', 'A contestacao aparece como em analise para as duas partes.', 'ok')
+          avisar('Análise assumida', 'A contestação aparece como em análise para as duas partes.', 'ok')
           await carregarContestacoes()
           render()
         })
@@ -2439,7 +2866,7 @@ function ligarInterface () {
       aceitar.disabled = true
       chamar(`/jobs/applications/${aceitar.dataset.aceitar}/accept`, { method: 'POST' })
         .then(() => {
-          avisar('Estudante escolhido', 'Agora e so acompanhar a entrega.', 'ok')
+          avisar('Estudante escolhido', 'Agora é só acompanhar a entrega.', 'ok')
           return abrirVaga(estado.vagaAberta.id)
         })
         .catch(() => { aceitar.disabled = false })
@@ -2453,7 +2880,7 @@ function ligarInterface () {
 
     if (alvo('#ir-inicio')) {
       e.preventDefault()
-      estado.view = estado.usuario ? 'feed' : 'entrar'
+      estado.view = estado.usuario ? viewInicial() : 'entrar'
       render()
       return
     }
@@ -2470,15 +2897,10 @@ function ligarInterface () {
       const nome = acao.dataset.acao
       if (nome === 'publicar') modalPublicar()
       if (nome === 'criar-conta') modalCriarConta('student')
-      if (nome === 'voltar') { estado.view = estado.usuario ? 'feed' : 'entrar'; render() }
+      if (nome === 'voltar') { estado.view = estado.usuario ? viewInicial() : 'entrar'; render() }
       if (nome === 'meu-perfil') abrirPerfil(estado.usuario.id)
       if (nome === 'editar-perfil') modalEditarPerfil()
       if (nome === 'rever-guia') mostrarGuia(estado.usuario.perfil, { forcado: true })
-      if (nome === 'abrir-gaveta') {
-        $('#gaveta').classList.add('aberta')
-        $('#gaveta-puxador').setAttribute('aria-expanded', 'true')
-        carregarCamadaTecnica()
-      }
       if (nome === 'marcar-lidas') {
         chamar('/notifications/read', { method: 'POST', body: {} })
           .then(() => carregarNotificacoes()).then(render).catch(() => {})
@@ -2493,12 +2915,19 @@ function ligarInterface () {
     }
   })
 
-  const puxador = $('#gaveta-puxador')
-  puxador.addEventListener('click', () => {
-    const aberta = $('#gaveta').classList.toggle('aberta')
-    puxador.setAttribute('aria-expanded', String(aberta))
-    if (aberta) carregarCamadaTecnica()
+  // A gaveta tecnica e um <details>: quem abre e fecha e o proprio navegador,
+  // e o unico trabalho daqui e buscar o conteudo quando ela abre.
+  $('#gaveta').addEventListener('toggle', () => {
+    if ($('#gaveta').open) carregarCamadaTecnica()
   })
+
+  $('#btn-tema').addEventListener('click', alternarTema)
+
+  // Enquanto a pessoa nao escolheu nada, o sistema manda: se ele trocar de
+  // tema no meio da visita, o rotulo do botao acompanha.
+  try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', pintarBotaoDoTema)
+  } catch { /* navegador antigo: o rotulo so muda no clique */ }
 
   window.addEventListener('online', () => marcarOffline(false))
   window.addEventListener('offline', () => marcarOffline(true))
@@ -2515,15 +2944,21 @@ async function iniciar () {
   const rotaPerfil = window.location.pathname.match(/^\/perfil\/(.+)$/)
   if (rotaPerfil) estado.perfilPendente = decodeURIComponent(rotaPerfil[1])
 
-  // Decide o modo: se a API nao responde, a interface segue em simulacao.
+  pintarBotaoDoTema()
+
+  // Decide o modo: se a API nao responde, a interface segue em simulacao. A
+  // mesma resposta traz a cotacao, que e o unico jeito de a tela mostrar reais
+  // sem ter um numero de cambio escrito aqui dentro.
   try {
     const resposta = await fetch('/api/health')
-    if (!resposta.ok) throw new Error('sem saude')
+    if (!resposta.ok) throw new Error('sem saúde')
+    const saude = await resposta.json().catch(() => null)
+    if (saude?.cotacaoBrlPorUsdc) estado.cotacao = Number(saude.cotacaoBrlPorUsdc)
   } catch {
     estado.modo = 'simulacao'
     marcarOffline(true)
     $('#faixa-offline').innerHTML =
-      '<span aria-hidden="true">⚠</span><span>Modo de demonstracao: o servico nao respondeu, entao a tela esta com dados de exemplo. Nenhuma operacao real acontece agora.</span>'
+      '<span aria-hidden="true">⚠</span><span>Modo de demonstração: o serviço não respondeu, então a tela está com dados de exemplo. Nenhuma operação real acontece agora.</span>'
   }
 
   $('#app').classList.add('ativo')
@@ -2535,7 +2970,7 @@ async function iniciar () {
     try {
       const { usuario } = await chamar('/me', { silencioso: true })
       estado.usuario = usuario
-      estado.view = 'feed'
+      estado.view = viewInicial()
       await recarregar()
       render()
       ligarEventos()

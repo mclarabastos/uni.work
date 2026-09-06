@@ -59,7 +59,7 @@ export function anchorDiscriminator (name) {
 export function escrowProgramId () {
   const id = config.escrow.programId || readPlatformState()?.escrowProgramId
   if (!id) {
-    throw new Error('ESCROW_PROGRAM_ID nao configurado. Rode: npm run setup (com o toolchain Anchor instalado)')
+    throw new Error('ESCROW_PROGRAM_ID não configurado. Rode: npm run setup (com o toolchain Anchor instalado)')
   }
   return new PublicKey(id)
 }

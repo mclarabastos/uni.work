@@ -47,7 +47,7 @@ export const pushRouter = Router()
 pushRouter.get('/key', (_req, res) => {
   if (!pushConfigurado()) {
     return res.status(503).json({
-      error: 'Os avisos no navegador nao estao disponiveis neste ambiente.',
+      error: 'Os avisos no navegador não estão disponíveis neste ambiente.',
       codigo: 'push_nao_configurado',
       detalhes: null
     })
@@ -59,7 +59,7 @@ pushRouter.post('/subscribe', requireAuth, asyncRoute(async (req, res) => {
   if (!pushConfigurado()) {
     // Aceitar a inscricao e nunca enviar nada seria pior do que recusar.
     return res.status(503).json({
-      error: 'Os avisos no navegador nao estao disponiveis neste ambiente.',
+      error: 'Os avisos no navegador não estão disponíveis neste ambiente.',
       codigo: 'push_nao_configurado',
       detalhes: null
     })

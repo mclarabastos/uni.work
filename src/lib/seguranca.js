@@ -81,7 +81,7 @@ export function idempotencia () {
     if (!chave || !['POST', 'PUT', 'PATCH'].includes(req.method)) return next()
     if (chave.length < 8 || chave.length > 200) {
       return res.status(400).json({
-        error: 'A chave de idempotencia precisa ter entre 8 e 200 caracteres.',
+        error: 'A chave de idempotência precisa ter entre 8 e 200 caracteres.',
         codigo: 'chave_invalida',
         detalhes: null
       })
@@ -100,7 +100,7 @@ export function idempotencia () {
       // A mesma chave com corpo diferente e erro de quem chamou, nao repeticao.
       if (guardada.request_hash !== hashDoPedido) {
         return res.status(409).json({
-          error: 'Esta chave ja foi usada para outra operacao.',
+          error: 'Esta chave já foi usada para outra operação.',
           codigo: 'chave_reutilizada',
           detalhes: null
         })
@@ -113,7 +113,7 @@ export function idempotencia () {
       }
       // Existe mas nao terminou: a primeira ainda esta rodando.
       return res.status(409).json({
-        error: 'Esta operacao ainda esta sendo processada. Aguarde um instante.',
+        error: 'Esta operação ainda está sendo processada. Aguarde um instante.',
         codigo: 'em_processamento',
         detalhes: null
       })
@@ -128,7 +128,7 @@ export function idempotencia () {
     } catch {
       // Outra requisicao inseriu no mesmo instante.
       return res.status(409).json({
-        error: 'Esta operacao ainda esta sendo processada. Aguarde um instante.',
+        error: 'Esta operação ainda está sendo processada. Aguarde um instante.',
         codigo: 'em_processamento',
         detalhes: null
       })

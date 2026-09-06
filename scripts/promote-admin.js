@@ -14,10 +14,10 @@ if (!email) {
 
 const usuario = await one('select id, name, is_admin from users where email = $1', [email])
 if (!usuario) {
-  console.error(`\n  nao encontrei uma conta com ${email}\n`)
+  console.error(`\n  não encontrei uma conta com ${email}\n`)
   process.exitCode = 1
 } else if (usuario.is_admin) {
-  console.log(`\n  ${usuario.name} ja e mediador.\n`)
+  console.log(`\n  ${usuario.name} já e mediador.\n`)
 } else {
   await query('update users set is_admin = true where id = $1', [usuario.id])
   await registrarAuditoria({

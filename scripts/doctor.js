@@ -39,7 +39,7 @@ const comTempo = async (rotulo, fn, limiteMs = 8000) => {
   }
 }
 
-console.log('\n  diagnostico do Uni.work\n')
+console.log('\n  diagnóstico do Uni.work\n')
 
 // ─── ambiente ────────────────────────────────────────────────────────────────
 const nodeMajor = Number(process.versions.node.split('.')[0])
@@ -47,21 +47,21 @@ if (nodeMajor >= 20) registrar(OK, 'node', `${process.version}`)
 else registrar(ERRO, 'node', `${process.version} e antigo demais`, 'instale o Node 20 ou mais novo')
 
 if (fs.existsSync(path.join(rootDir, '.env'))) registrar(OK, 'env', '.env encontrado')
-else registrar(AVISO, 'env', '.env nao existe, rodando so com os padroes', 'copie .env.example para .env')
+else registrar(AVISO, 'env', '.env não existe, rodando só com os padroes', 'copie .env.example para .env')
 
 if (config.security.masterKeyIsEphemeral) {
   registrar(AVISO, 'seguranca',
-    'WALLET_MASTER_KEY nao configurada: usando uma chave derivada do caminho do projeto',
+    'WALLET_MASTER_KEY não configurada: usando uma chave derivada do caminho do projeto',
     'gere uma: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))" e coloque no .env')
 } else {
   registrar(OK, 'seguranca', 'chave mestra configurada')
 }
 
 if (config.isProduction && config.publicBaseUrlIsLocal) {
-  registrar(ERRO, 'seguranca', 'PUBLIC_BASE_URL aponta para localhost em producao',
-    'aponte para o dominio publico: o certificado emitido carrega essa URL para sempre')
+  registrar(ERRO, 'seguranca', 'PUBLIC_BASE_URL aponta para localhost em produção',
+    'aponte para o dominio público: o certificado emitido carrega essa URL para sempre')
 } else if (config.publicBaseUrlIsLocal) {
-  registrar(AVISO, 'certificado', 'PUBLIC_BASE_URL e localhost: um indexador externo nao alcanca os metadados',
+  registrar(AVISO, 'certificado', 'PUBLIC_BASE_URL e localhost: um indexador externo não alcança os metadados',
     'para demonstrar a leitura de fora, use um tunel (cloudflared, ngrok) e coloque a URL no .env')
 } else {
   registrar(OK, 'certificado', `metadados servidos de ${config.publicBaseUrl}`)
@@ -91,15 +91,15 @@ if (!banco.ok) {
     registrar(OK, 'migrations', `${m.aplicadas.length} aplicadas, schema ${m.aplicadas.at(-1)}`)
   }
   if (m.alteradas?.length) {
-    registrar(ERRO, 'migrations', `migration ja aplicada foi editada: ${m.alteradas.join(', ')}`,
-      'o banco nao tem o que o arquivo diz que tem. Crie uma migration nova')
+    registrar(ERRO, 'migrations', `migration já aplicada foi editada: ${m.alteradas.join(', ')}`,
+      'o banco não tem o que o arquivo diz que tem. Crie uma migration nova')
   }
   const c = banco.valor.contagem
   registrar(c.usuarios ? OK : AVISO, 'dados',
     `${c.usuarios} contas, ${c.vagas} vagas, ${c.certificados} certificados`,
     c.usuarios ? null : 'npm run seed')
   if (c.fila > 0) {
-    registrar(AVISO, 'fila', `${c.fila} operacao(oes) on-chain aguardando reprocessamento`,
+    registrar(AVISO, 'fila', `${c.fila} operação(oes) on-chain aguardando reprocessamento`,
       'o worker cuida sozinho; veja o detalhe em /api/chain/status')
   }
 }
@@ -107,7 +107,7 @@ if (!banco.ok) {
 // ─── plataforma e rede ───────────────────────────────────────────────────────
 const plataforma = platformSummary()
 if (!plataforma.ready) {
-  registrar(ERRO, 'plataforma', 'o ambiente de rede ainda nao foi preparado', 'npm run bootstrap')
+  registrar(ERRO, 'plataforma', 'o ambiente de rede ainda não foi preparado', 'npm run bootstrap')
 } else {
   registrar(OK, 'plataforma', `conta ${plataforma.publicKey}`)
   registrar(OK, 'pagamento', `token de teste ${plataforma.paymentMint}`)
@@ -119,20 +119,20 @@ if (!plataforma.ready) {
   }
   if (plataforma.outdated) {
     registrar(AVISO, 'plataforma',
-      `o estado de bootstrap e da versao ${plataforma.schemaVersion}, a atual e ${SCHEMA_VERSION}`,
+      `o estado de bootstrap e da versão ${plataforma.schemaVersion}, a atual e ${SCHEMA_VERSION}`,
       'npm run bootstrap para completar o que falta')
   }
   if (plataforma.bootstrappedAt) {
     const dias = Math.floor((Date.now() - new Date(plataforma.bootstrappedAt)) / 86400000)
     if (dias > 30) {
-      registrar(AVISO, 'plataforma', `ultimo bootstrap ha ${dias} dias`,
+      registrar(AVISO, 'plataforma', `último bootstrap há ${dias} dias`,
         'devnet e limpa de tempos em tempos; rode npm run bootstrap se algo parar de responder')
     }
   }
   if (fs.existsSync(platformStatePath())) {
     const ignorado = fs.readFileSync(path.join(rootDir, '.gitignore'), 'utf8').includes('.uniwork')
     registrar(ignorado ? OK : ERRO, 'seguranca',
-      ignorado ? 'o estado com a chave privada esta fora do versionamento' : 'o estado com a chave privada NAO esta no .gitignore',
+      ignorado ? 'o estado com a chave privada está fora do versionamento' : 'o estado com a chave privada NÃO está no .gitignore',
       ignorado ? null : 'adicione .uniwork/ ao .gitignore imediatamente')
   }
 }
@@ -145,8 +145,8 @@ const rede = await comTempo('rede', async () => {
 if (rede.ok) {
   registrar(OK, 'rede', `${config.solana.cluster} respondeu em ${rede.ms}ms (solana-core ${rede.valor})`)
 } else {
-  registrar(ERRO, 'rede', `${config.solana.cluster} nao respondeu: ${rede.erro}`,
-    'confira SOLANA_RPC_URL, ou use uma chave do Helius para um RPC mais estavel')
+  registrar(ERRO, 'rede', `${config.solana.cluster} não respondeu: ${rede.erro}`,
+    'confira SOLANA_RPC_URL, ou use uma chave do Helius para um RPC mais estável')
 }
 
 if (rede.ok && plataforma.ready) {
@@ -161,9 +161,9 @@ if (rede.ok && plataforma.ready) {
     const emReais = Number(pagamento) / 10 ** 6
     registrar(pagamento > 0n ? OK : AVISO, 'suprimento',
       `${emReais.toLocaleString('pt-BR')} unidades de teste na conta da plataforma`,
-      pagamento > 0n ? null : 'npm run bootstrap emite o suprimento de demonstracao')
+      pagamento > 0n ? null : 'npm run bootstrap emite o suprimento de demonstração')
   } else {
-    registrar(AVISO, 'saldos', `nao consegui ler os saldos: ${saldos.erro}`)
+    registrar(AVISO, 'saldos', `não consegui ler os saldos: ${saldos.erro}`)
   }
 }
 
@@ -171,7 +171,7 @@ if (rede.ok && plataforma.ready) {
 if (config.escrow.driver === 'anchor') {
   const programId = config.escrow.programId || plataforma.escrowProgramId
   if (!programId) {
-    registrar(ERRO, 'escrow', 'driver anchor selecionado, mas nao ha ESCROW_PROGRAM_ID',
+    registrar(ERRO, 'escrow', 'driver anchor selecionado, mas não há ESCROW_PROGRAM_ID',
       'rode npm run setup com o toolchain Anchor instalado, ou volte para ESCROW_DRIVER=vault')
   } else {
     // O endereco declarado dentro do programa tem que ser o endereco onde ele
@@ -185,8 +185,8 @@ if (config.escrow.driver === 'anchor') {
       : null
 
     if (declarado && declarado !== programId) {
-      registrar(ERRO, 'escrow', `o programa declara ${declarado}, mas o deploy esta em ${programId}`,
-        'anchor keys sync, depois anchor build e anchor deploy (npm run setup faz os tres)')
+      registrar(ERRO, 'escrow', `o programa declara ${declarado}, mas o deploy está em ${programId}`,
+        'anchor keys sync, depois anchor build e anchor deploy (npm run setup faz os três)')
     }
 
     if (rede.ok) {
@@ -197,8 +197,8 @@ if (config.escrow.driver === 'anchor') {
       if (conta.ok && conta.valor?.executable) {
         registrar(OK, 'escrow', `programa Anchor deployado em ${programId}`)
       } else {
-        registrar(ERRO, 'escrow', `nao encontrei um programa executavel em ${programId}`,
-          'anchor deploy, ou volte para ESCROW_DRIVER=vault ate o deploy sair')
+        registrar(ERRO, 'escrow', `não encontrei um programa executável em ${programId}`,
+          'anchor deploy, ou volte para ESCROW_DRIVER=vault até o deploy sair')
       }
     }
   }
@@ -208,7 +208,7 @@ if (config.escrow.driver === 'anchor') {
 }
 
 if (config.certificate.driver === 'bubblegum' && !plataforma.merkleTree) {
-  registrar(AVISO, 'certificado', 'driver bubblegum sem arvore: vai cair no fallback de memo')
+  registrar(AVISO, 'certificado', 'driver bubblegum sem árvore: vai cair no fallback de memo')
 } else {
   registrar(OK, 'certificado', `driver ${config.certificate.driver}`)
 }
@@ -216,30 +216,30 @@ if (config.certificate.driver === 'bubblegum' && !plataforma.merkleTree) {
 if (emailConfigurado()) {
   registrar(OK, 'e-mail', `envio por ${driverDeEmail()}`)
 } else {
-  registrar(AVISO, 'e-mail', 'nenhum servico de e-mail configurado: o link de acesso sai no terminal',
+  registrar(AVISO, 'e-mail', 'nenhum serviço de e-mail configurado: o link de acesso sai no terminal',
     'configure RESEND_API_KEY (https://resend.com) ou SMTP_URL no .env')
 }
 
 if (armazenamentoPronto()) {
   registrar(OK, 'arquivos', `armazenamento ${driverDeArmazenamento()}`)
 } else {
-  registrar(ERRO, 'arquivos', `armazenamento ${driverDeArmazenamento()} nao esta utilizavel`,
+  registrar(ERRO, 'arquivos', `armazenamento ${driverDeArmazenamento()} não está utilizável`,
     driverDeArmazenamento() === 's3'
       ? 'confira S3_BUCKET, S3_ACCESS_KEY_ID e S3_SECRET_ACCESS_KEY no .env'
-      : 'confira a permissao de escrita em .uniwork/uploads')
+      : 'confira a permissão de escrita em .uniwork/uploads')
 }
 
 if (pushConfigurado()) {
   registrar(OK, 'push', 'avisos no navegador configurados')
 } else {
-  registrar(AVISO, 'push', 'sem VAPID: os avisos no navegador ficam indisponiveis',
+  registrar(AVISO, 'push', 'sem VAPID: os avisos no navegador ficam indisponíveis',
     'gere um par com npx web-push generate-vapid-keys e coloque VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY no .env')
 }
 
 if (indexerAvailable()) {
-  registrar(OK, 'indexador', 'DAS API configurada: a confirmacao do certificado vem de fora do nosso banco')
+  registrar(OK, 'indexador', 'DAS API configurada: a confirmação do certificado vem de fora do nosso banco')
 } else {
-  registrar(AVISO, 'indexador', 'sem HELIUS_API_KEY: nao ha confirmacao independente do certificado',
+  registrar(AVISO, 'indexador', 'sem HELIUS_API_KEY: não há confirmação independente do certificado',
     'pegue uma chave gratuita em https://dashboard.helius.dev e coloque em HELIUS_API_KEY')
 }
 
@@ -259,9 +259,9 @@ console.log(`
 `)
 
 if (erros) {
-  console.log('  Com erro, o fluxo completo nao roda. Resolva os itens marcados com X.\n')
+  console.log('  Com erro, o fluxo completo não roda. Resolva os itens marcados com X.\n')
 } else if (avisos) {
-  console.log('  Sem erro. Os avisos sao coisas que funcionam em modo reduzido.\n')
+  console.log('  Sem erro. Os avisos são coisas que funcionam em modo reduzido.\n')
 } else {
   console.log('  Tudo pronto.\n')
 }

@@ -3,77 +3,176 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Uni.work · trampos curtos para universitarios</title>
-<meta name="description" content="Trampos curtos para universitarios. O contratante reserva o valor antes de voce comecar, e cada trabalho concluido vira um certificado que ninguem consegue falsificar.">
-<meta name="color-scheme" content="dark">
+<title>Uni.work · trampos curtos para universitários</title>
+<meta name="description" content="Trampos curtos para universitários. O contratante reserva o valor antes de você começar, e cada trabalho concluído vira um certificado que ninguém consegue falsificar.">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" href="/favicon.png" sizes="256x256">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Sincrono e antes do CSS: aplica o tema salvo antes da primeira pintura.
+     Arquivo separado porque a politica de seguranca da pagina nao permite
+     script escrito dentro do HTML. -->
+<script src="/tema.js"></script>
 <style>
+/* ─── tokens ─────────────────────────────────────────────────────────────────
+   Claro e o padrao. Escuro entra por prefers-color-scheme na primeira visita e
+   por data-tema="escuro" no <html> quando a pessoa escolhe no botao da barra.
+   Nenhuma cor e declarada so dentro de um dos dois blocos: as duas listas tem
+   exatamente as mesmas chaves. */
 :root{
-  --bg:#08090a;
-  --lateral:#0b0c0e;
-  --card:#101113;
-  --card-2:#15171a;
-  --card-3:#1a1d21;
-  --line:#1b1e22;
-  --line-2:#262a30;
+  --bg:#EEF1E7;
+  --lateral:#F6F8F1;
+  --card:#FFFFFF;
+  --card-2:#F6F8F1;
+  --card-3:#EAEFE1;
+  --line:#DCE3D3;
+  --line-2:#C7D2B9;
 
-  --ink:#f2f3f5;
-  --ink-2:#9aa1ab;
-  --ink-3:#7e858f;      /* 4.8:1 no fundo mais claro que existe (--card-3) */
-  --ink-4:#868d97;      /* 5.5:1 no mesmo fundo, para texto pequeno em barra */
+  --ink:#13231A;
+  --ink-2:#55675C;
+  --ink-3:#626E66;
+  --ink-4:#6B7C71;
 
-  --azul:#3b82f6;       /* acento: barras, bordas, foco */
-  --azul-forte:#2563eb; /* fundo de botao: 5.2:1 com texto branco */
-  --azul-2:#60a5fa;
-  --laranja:#f59e0b;
-  --verde:#22c55e;
-  --roxo:#8b5cf6;
-  --roxo-2:#a78bfa;     /* 7:1 sobre o cartao, para texto */
-  --vermelho:#ef4444;
+  --verde:#12B866;
+  --laranja:#FFC93C;
+  --roxo:#6B5BFF;
+  --azul:#6B5BFF;
+  --vermelho:#FF6F4E;
 
-  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
-  --sombra:0 20px 60px -20px rgba(0,0,0,.95);
+  --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:30px;
 
-  --sans:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  /* Derivados: cada acento precisa de tres papeis, e usar a cor cheia nos tres
+     reprova em contraste. -txt e para texto, -base e a borda inferior solida do
+     botao, -suave e fundo de etiqueta e de painel. */
+  --verde-txt:#0A7C45; --verde-base:#0A8C4C; --verde-suave:#DDF3E5;
+  --laranja-txt:#7A5600; --laranja-base:#D9A200; --laranja-suave:#FFF1CC;
+  --roxo-txt:#4534D6; --roxo-base:#4534D6; --roxo-suave:#E9E6FF;
+  --vermelho-txt:#A83B1F; --vermelho-suave:#FFE6DF;
+  --azul-forte:#4534D6; --azul-2:#4534D6; --roxo-2:#4534D6;
+
+  /* O texto do botao principal e escuro de proposito: branco sobre o verde vivo
+     fica em 2,6:1 e reprova em acessibilidade. */
+  --btn-ink:#0A1B12;
+  --btn-ink-dinheiro:#241A00;
+
+  --orbe-1:#FFFFFF; --orbe-2:#EAEFE1; --orbe-3:#DCE3D3; --orbe-sombra:.10;
+
+  /* Tintas de capa de cartao, estaveis por categoria. */
+  --t0:#EFE9FF; --t1:#E4F0FF; --t2:#DFF4E8; --t3:#FFE8F1; --t4:#FFF3D9;
+
+  --sombra:0 22px 44px -28px rgba(16,40,28,.55);
+
+  --sans:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --display:'Fredoka','Trebuchet MS',system-ui,sans-serif;
+  --mono:'DM Mono',ui-monospace,Consolas,monospace;
 
   --esq:245px;
   --dir:300px;
 }
 
+@media (prefers-color-scheme: dark){
+  :root:not([data-tema="claro"]){
+    --bg:#0C1611;
+    --lateral:#182821;
+    --card:#13201A;
+    --card-2:#182821;
+    --card-3:#1E3128;
+    --line:#23372C;
+    --line-2:#2F4A3B;
+
+    --ink:#E9F2EC;
+    --ink-2:#A2B7A9;
+    --ink-3:#8BA195;
+    --ink-4:#93A99A;
+
+    --verde:#2FE083;
+    --laranja:#FFCF52;
+    --roxo:#9A8CFF;
+    --azul:#9A8CFF;
+    --vermelho:#FF8A6B;
+
+    --verde-txt:#63EDA5; --verde-base:#159A5B; --verde-suave:#123626;
+    --laranja-txt:#FFD980; --laranja-base:#C99400; --laranja-suave:#382C0F;
+    --roxo-txt:#BCB2FF; --roxo-base:#5B4ACC; --roxo-suave:#241F47;
+    --vermelho-txt:#FFAA92; --vermelho-suave:#3A1D14;
+    --azul-forte:#5B4ACC; --azul-2:#BCB2FF; --roxo-2:#BCB2FF;
+
+    --orbe-1:#1E3128; --orbe-2:#182821; --orbe-3:#0C1611; --orbe-sombra:.5;
+
+    --t0:#241F47; --t1:#152A40; --t2:#123626; --t3:#3A1D2B; --t4:#382C0F;
+
+    --sombra:0 22px 44px -26px rgba(0,0,0,.75);
+  }
+}
+
+[data-tema="escuro"]{
+  --bg:#0C1611;
+  --lateral:#182821;
+  --card:#13201A;
+  --card-2:#182821;
+  --card-3:#1E3128;
+  --line:#23372C;
+  --line-2:#2F4A3B;
+
+  --ink:#E9F2EC;
+  --ink-2:#A2B7A9;
+  --ink-3:#8BA195;
+  --ink-4:#93A99A;
+
+  --verde:#2FE083;
+  --laranja:#FFCF52;
+  --roxo:#9A8CFF;
+  --azul:#9A8CFF;
+  --vermelho:#FF8A6B;
+
+  --verde-txt:#63EDA5; --verde-base:#159A5B; --verde-suave:#123626;
+  --laranja-txt:#FFD980; --laranja-base:#C99400; --laranja-suave:#382C0F;
+  --roxo-txt:#BCB2FF; --roxo-base:#5B4ACC; --roxo-suave:#241F47;
+  --vermelho-txt:#FFAA92; --vermelho-suave:#3A1D14;
+  --azul-forte:#5B4ACC; --azul-2:#BCB2FF; --roxo-2:#BCB2FF;
+
+  --orbe-1:#1E3128; --orbe-2:#182821; --orbe-3:#0C1611; --orbe-sombra:.5;
+
+  --t0:#241F47; --t1:#152A40; --t2:#123626; --t3:#3A1D2B; --t4:#382C0F;
+
+  --sombra:0 22px 44px -26px rgba(0,0,0,.75);
+}
+
+/* ─── base ──────────────────────────────────────────────────────────────────*/
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;background:var(--bg);color:var(--ink);
-  font-family:var(--sans);font-size:14px;line-height:1.5;
+  font-family:var(--sans);font-size:14.5px;line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3,h4{margin:0;line-height:1.15;letter-spacing:-.022em}
+h1,h2,h3,h4{margin:0;font-family:var(--display);font-weight:600;line-height:1.15;letter-spacing:-.018em}
 p{margin:0}
 button,input,textarea,select{font:inherit;color:inherit}
 a{color:inherit;text-decoration:none}
-:focus-visible{outline:2px solid var(--azul);outline-offset:2px;border-radius:6px}
-::selection{background:rgba(59,130,246,.35)}
+:focus-visible{outline:3px solid var(--roxo);outline-offset:2px;border-radius:6px}
+::selection{background:var(--verde-suave)}
+/* A monoespacada fica so onde o caractere exato importa: codigo de certificado,
+   hash, endereco de conta e nome da rede. */
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* O atributo hidden perde para qualquer display declarado depois. Sem esta
    linha, esconder um elemento por hidden nao esconde nada. */
 [hidden]{display:none!important}
 .dados{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 .pular{
   position:absolute;left:12px;top:-60px;z-index:100;
   padding:10px 18px;border-radius:0 0 var(--r-md) var(--r-md);
-  background:var(--ink);color:#000;font-weight:700;transition:top .15s;
+  background:var(--ink);color:var(--bg);font-weight:700;transition:top .15s;
 }
 .pular:focus{top:0}
 
-/* ─── marca ─────────────────────────────────────────────────────────────── */
-/* A marca e uma imagem, mas entra como mascara: assim ela toma a cor do tema
-   em vez de trazer o branco cravado do arquivo. */
+/* ─── marca ─────────────────────────────────────────────────────────────────*/
+/* A marca e uma imagem, mas entra como mascara: assim ela toma a cor do tema em
+   vez de trazer o branco cravado do arquivo. */
 .marca{display:flex;align-items:center}
 .marca-imagem{
   display:block;width:161px;height:29px;flex:none;background:var(--ink);
@@ -81,49 +180,57 @@ a{color:inherit;text-decoration:none}
           mask:url('/marca') left center/contain no-repeat;
 }
 
-/* ─── esqueleto ─────────────────────────────────────────────────────────── */
+/* ─── esqueleto ─────────────────────────────────────────────────────────────*/
 .app{display:none;min-height:100dvh}
 .app.ativo{display:grid;grid-template-columns:var(--esq) minmax(0,1fr) var(--dir)}
 
 .esq{
   position:sticky;top:0;height:100dvh;overflow-y:auto;
   background:var(--lateral);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;padding:22px 14px 18px;
+  display:flex;flex-direction:column;padding:20px 12px 16px;
 }
 .esq::-webkit-scrollbar{width:0}
-.esq .marca{padding:0 8px 26px}
+.esq .marca{padding:0 8px 22px}
 
-.nav{display:flex;flex-direction:column;gap:2px}
+.nav{display:flex;flex-direction:column;gap:3px}
 .nav-grupo{
-  margin:20px 0 7px;padding:0 10px;
-  font-size:10.5px;font-weight:700;letter-spacing:.13em;color:var(--ink-3);
+  margin:18px 0 6px;padding:0 10px;
+  font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
 }
 .nav-item{
   display:flex;align-items:center;gap:11px;width:100%;
-  padding:9px 10px;border:0;border-radius:var(--r-md);
+  padding:10px;border:0;border-radius:13px;
   background:none;cursor:pointer;text-align:left;
-  color:var(--ink-2);font-size:14px;font-weight:500;
+  color:var(--ink-2);font-size:14.5px;font-weight:700;
   transition:background .13s,color .13s;
 }
-.nav-item:hover{background:var(--card-2);color:var(--ink)}
-.nav-item[aria-current="page"]{background:var(--card-3);color:var(--ink);font-weight:600}
-.nav-glifo{width:14px;flex:none;text-align:center;font-size:11px;color:var(--ink-3)}
-.nav-item[aria-current="page"] .nav-glifo{color:var(--azul-2)}
-.nav-conta{margin-left:auto;font-size:11px;font-weight:700;color:var(--ink-3);font-family:var(--mono)}
-
-.esq-rodape{margin-top:auto;padding:22px 10px 0;border-top:1px solid var(--line)}
-.esq-rodape h4{font-size:13.5px;font-weight:700;margin-bottom:7px}
-.esq-rodape p{font-size:12.5px;color:var(--ink-3);line-height:1.55;margin-bottom:14px}
-.esq-cta{
-  display:flex;align-items:center;gap:9px;width:100%;
-  padding:0;border:0;background:none;cursor:pointer;
-  font-size:14px;font-weight:700;color:var(--ink);
+.nav-item:hover{background:var(--card-3);color:var(--ink)}
+.nav-item[aria-current="page"]{background:var(--verde-suave);color:var(--verde-txt)}
+.nav-glifo{width:18px;height:18px;flex:none;opacity:.9}
+.nav-conta{
+  margin-left:auto;font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums;
+  background:var(--line);color:var(--ink-2);border-radius:999px;padding:1px 8px;
 }
-.esq-cta:hover{color:var(--azul-2)}
-.esq-cta .faisca{color:var(--laranja)}
+.nav-item[aria-current="page"] .nav-conta{background:var(--verde);color:var(--btn-ink)}
+/* O contador de avisos nao lidos. A classe e .alerta, e nao .aviso, porque
+   .aviso ja e o cartao de recado que aparece no canto da tela: reaproveitar o
+   nome trazia o estilo do cartao para dentro do item de menu. */
+.nav-item.alerta .nav-conta{background:var(--vermelho);color:#2A0C04}
+
+/* cartao de quem esta logado, no rodape do menu */
+.esq-rodape{margin-top:auto;padding-top:18px}
+.eu{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:13px}
+.eu-topo{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.eu-nome{font-family:var(--display);font-weight:600;font-size:14.5px;line-height:1.2;display:block}
+.eu-sub{font-size:12px;color:var(--ink-3);display:block}
+.eu p{font-size:12px;color:var(--ink-2);margin-top:8px}
+.eu p b{color:var(--ink)}
+.barra-selo{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.barra-selo i{display:block;height:100%;background:var(--verde);border-radius:999px}
+.esq-cta{margin-top:11px}
 .esq-vivo{
-  display:flex;align-items:center;gap:7px;margin:14px 0 16px;
-  font-family:var(--mono);font-size:11.5px;color:var(--ink-3);
+  display:flex;align-items:center;gap:7px;margin:12px 4px 0;
+  font-family:var(--mono);font-size:11px;color:var(--ink-3);
 }
 .ponto-vivo{width:6px;height:6px;border-radius:50%;background:var(--verde);flex:none}
 @media (prefers-reduced-motion:no-preference){
@@ -131,87 +238,120 @@ a{color:inherit;text-decoration:none}
   @keyframes pulsar{0%,100%{opacity:1}50%{opacity:.3}}
 }
 .esq-link{
-  display:block;width:100%;padding:4px 0;border:0;background:none;
-  text-align:left;font:inherit;font-size:12.5px;color:var(--ink-3);cursor:pointer;
+  display:block;width:100%;padding:4px;border:0;background:none;
+  text-align:left;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-3);cursor:pointer;
 }
 .esq-link:hover{color:var(--ink-2)}
 
 .centro{min-width:0;display:flex;flex-direction:column}
 .topo{
   position:sticky;top:0;z-index:30;
-  display:flex;align-items:center;gap:14px;
-  padding:16px 22px;background:rgba(8,9,10,.86);backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:12px;
+  padding:13px 22px;background:var(--bg);border-bottom:1px solid var(--line);
 }
-.busca{position:relative;flex:1;max-width:430px}
+.busca{position:relative;flex:1;max-width:400px}
 .busca input{
   width:100%;padding:9px 40px 9px 38px;
-  background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-md);
+  background:var(--card-2);border:1px solid var(--line);border-radius:999px;
   font-size:13.5px;transition:border-color .14s;
 }
 .busca input::placeholder{color:var(--ink-3)}
-.busca input:focus{border-color:var(--azul);outline:none}
-.busca-lupa{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none}
+.busca input:focus{border-color:var(--verde);outline:none}
+.busca-lupa{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none}
 .busca kbd{
-  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
   padding:2px 7px;border-radius:5px;background:var(--card-3);border:1px solid var(--line-2);
   font-family:var(--mono);font-size:11px;color:var(--ink-3);pointer-events:none;
 }
 .topo-acoes{margin-left:auto;display:flex;align-items:center;gap:9px}
 
-.conteudo{padding:6px 22px 70px;display:flex;flex-direction:column;gap:22px;min-width:0}
+/* alternador de tema: mora entre a busca e o perfil */
+.tema{
+  display:flex;align-items:center;gap:7px;
+  border:1px solid var(--line-2);background:var(--card-2);border-radius:999px;
+  padding:7px 13px;font-size:12.5px;font-weight:800;color:var(--ink-2);cursor:pointer;
+}
+.tema:hover{color:var(--ink);border-color:var(--verde)}
+.tema svg{width:15px;height:15px}
+
+.conteudo{padding:20px 22px 60px;display:flex;flex-direction:column;gap:20px;min-width:0}
 .conteudo:focus{outline:none}
 
 .dir{
   position:sticky;top:0;height:100dvh;overflow-y:auto;
-  padding:20px 20px 60px 0;display:flex;flex-direction:column;gap:14px;
+  background:var(--lateral);border-left:1px solid var(--line);
+  padding:18px 16px 40px;display:flex;flex-direction:column;gap:13px;
 }
 .dir::-webkit-scrollbar{width:4px}
 .dir::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:2px}
+#dir-widgets{display:flex;flex-direction:column;gap:13px}
 
-.widget{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px}
-.widget-topo{display:flex;align-items:center;gap:8px;margin-bottom:13px}
-.widget-topo h3{font-size:13.5px;font-weight:700;flex:1}
-.widget-selo{font-size:11.5px;font-weight:700;color:var(--laranja)}
-.widget-selo.vivo{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-weight:500}
-.widget p{font-size:12.5px;color:var(--ink-3);line-height:1.6}
+/* ─── cartoes da barra da direita ───────────────────────────────────────────*/
+.widget{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:15px}
+.widget-topo{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.widget-topo h3{font-size:14.5px;flex:1;display:flex;align-items:center;gap:7px}
+.widget-topo h3 svg{width:15px;height:15px;color:var(--verde-txt);flex:none}
+.widget-selo{font-size:11.5px;font-weight:800;color:var(--laranja-txt)}
+.widget-selo.vivo{display:flex;align-items:center;gap:6px;color:var(--ink-3);font-weight:700}
+.widget p{font-size:12.5px;color:var(--ink-2);line-height:1.6}
 
-.barra{
-  display:flex;align-items:center;gap:8px;padding:9px 11px;
-  background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:12px;
+.linha{
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-size:13px;padding:7px 0;border-bottom:1px dashed var(--line);
 }
-.barra-trilho{display:flex;gap:3px;flex:1}
-.barra-seg{height:4px;flex:1;border-radius:2px;background:var(--line-2)}
-.barra-seg.feito{background:var(--azul)}
-.barra-num{font-family:var(--mono);font-size:11px;color:var(--ink-4)}
+.linha:last-of-type{border-bottom:0}
+.linha span{color:var(--ink-2)}
+.linha b{font-family:var(--display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.linha b small{display:block;font-family:var(--sans);font-size:11px;font-weight:700;color:var(--ink-3)}
+.linha.destaque b{color:var(--verde-txt)}
 
-.linha-dado{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px}
-.linha-dado dt{color:var(--ink-3)}
-.linha-dado dd{margin:0;font-weight:700;font-family:var(--mono);font-size:13.5px}
+.mini-passo{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:6px 0}
+.mini-passo .n{
+  width:20px;height:20px;border-radius:50%;background:var(--verde-suave);color:var(--verde-txt);
+  display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:500;
+}
+.mini-passo b{display:block;font-size:13px;font-weight:800}
+.mini-passo p{font-size:12.5px;color:var(--ink-2)}
 
-.feed-item{display:flex;gap:9px;padding:7px 0}
-.feed-ponto{width:6px;height:6px;border-radius:50%;background:var(--azul);flex:none;margin-top:6px}
-.feed-texto{font-size:12.5px;color:var(--ink-2);line-height:1.45}
-.feed-quando{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+/* ─── gaveta tecnica ────────────────────────────────────────────────────────*/
+/* Fechada por padrao, no fim da barra da direita. */
+.tec{background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);padding:11px 13px;margin-top:auto}
+.tec summary{
+  cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
+  font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--ink-3);
+}
+.tec summary::-webkit-details-marker{display:none}
+.tec summary svg{width:12px;height:12px;flex:none;transition:transform .18s}
+.tec[open] summary svg{transform:rotate(180deg)}
+.tec-resumo{margin-left:auto;font-weight:500;letter-spacing:0;font-family:var(--mono);font-size:10.5px;text-align:right}
+.gaveta-conteudo{margin-top:10px;max-height:min(52dvh,420px);overflow-y:auto;font-family:var(--mono);font-size:11px}
+.gaveta-linha{padding:9px 0;border-top:1px solid var(--line);display:grid;gap:4px}
+.gaveta-tipo{color:var(--roxo-txt);font-weight:500}
+.gaveta-dado{color:var(--ink-3);word-break:break-all;line-height:1.7}
+.gaveta-dado b{color:var(--ink-2);font-weight:500}
+.gaveta-link{color:var(--roxo-txt);font-weight:500}
+.gaveta-link:hover{text-decoration:underline}
+.gaveta-vazia{padding:14px 0;color:var(--ink-3);text-align:center}
 
-/* ─── heroi ─────────────────────────────────────────────────────────────── */
+/* ─── heroi ─────────────────────────────────────────────────────────────────*/
 .heroi{
-  position:relative;overflow:hidden;border-radius:var(--r-xl);
-  border:1px solid var(--line);padding:28px 30px;min-height:186px;
+  position:relative;overflow:hidden;border-radius:var(--r-lg);
+  border:1px solid var(--line);background:var(--card-2);padding:26px 28px;min-height:170px;
   display:flex;flex-direction:column;justify-content:center;
 }
-.heroi::before{content:'';position:absolute;inset:0}
-.heroi.verde::before{background:radial-gradient(120% 150% at 76% 42%,#12694a 0%,#0d3d2c 32%,#0a1614 68%,#0a0f10 100%)}
-.heroi.azul::before{background:radial-gradient(120% 150% at 76% 42%,#1e4f96 0%,#153567 32%,#0d1526 68%,#0a0e14 100%)}
-.heroi.roxo::before{background:radial-gradient(120% 150% at 76% 42%,#4b3a94 0%,#332764 32%,#161327 68%,#0d0c14 100%)}
-.heroi.grafite::before{background:radial-gradient(120% 150% at 76% 42%,#2a2f38 0%,#1b1f26 38%,#101317 74%,#0b0d10 100%)}
+.heroi.verde{background:var(--verde-suave);border-color:var(--verde)}
+.heroi.azul,.heroi.roxo{background:var(--roxo-suave);border-color:var(--roxo)}
+.heroi.grafite{background:var(--card-2);border-color:var(--line-2)}
 .heroi > *{position:relative;z-index:1}
-.heroi-olho{font-size:12.5px;color:rgba(255,255,255,.62);margin-bottom:12px}
-.heroi h1{font-size:35px;font-weight:800;max-width:17ch;letter-spacing:-.03em}
-.heroi p{font-size:14px;color:rgba(255,255,255,.72);max-width:54ch;margin-top:12px;line-height:1.6}
-.heroi-dados{display:flex;gap:34px;margin-top:22px;flex-wrap:wrap}
-.heroi-dado span{display:block;font-size:11.5px;color:rgba(255,255,255,.55);margin-bottom:3px}
-.heroi-dado strong{font-size:15px;font-weight:700}
-.heroi-arte{position:absolute;right:30px;top:50%;transform:translateY(-50%);width:200px;height:200px;z-index:0;pointer-events:none}
+.heroi-olho{font-size:12.5px;font-weight:700;color:var(--ink-2);margin-bottom:11px}
+.heroi h1{font-size:32px;max-width:20ch;letter-spacing:-.022em}
+.heroi p{font-size:14.5px;color:var(--ink-2);max-width:56ch;margin-top:11px;line-height:1.6}
+.heroi-dados{display:flex;gap:30px;margin-top:20px;flex-wrap:wrap}
+/* Sobre a tinta do heroi, --ink-3 fica em 4,37:1 e reprova. Aqui o rotulo usa
+   --ink-2, que passa em qualquer um dos fundos tingidos. */
+.heroi-dado span{display:block;font-size:11.5px;font-weight:700;color:var(--ink-2);margin-bottom:2px}
+.heroi-dado strong{font-family:var(--display);font-weight:600;font-size:17px}
+.heroi-arte{position:absolute;right:28px;top:50%;transform:translateY(-50%);width:180px;height:180px;z-index:0;pointer-events:none}
 .heroi-glifo{
   position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);
   font-size:30px;line-height:1;
@@ -219,173 +359,252 @@ a{color:inherit;text-decoration:none}
 }
 .heroi-acoes{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap}
 
-/* ─── botoes ────────────────────────────────────────────────────────────── */
+/* ─── botoes ────────────────────────────────────────────────────────────────*/
+/* Todo botao tem base solida embaixo e afunda 3px no clique. E o gesto que faz
+   a interface responder ao toque sem depender de animacao. */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  padding:9px 17px;border-radius:999px;border:1px solid transparent;
-  font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;
-  transition:filter .14s,background .14s,border-color .14s,transform .1s;
+  padding:11px 19px;border-radius:14px;border:0;
+  font-family:var(--display);font-size:15px;font-weight:600;
+  cursor:pointer;white-space:nowrap;
+  transition:transform .1s ease,box-shadow .1s ease,background .14s;
 }
-.btn:active{transform:translateY(1px)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-azul{background:var(--azul-forte);color:#fff}
-.btn-azul:hover:not(:disabled){background:#1d4ed8}
-.btn-linha{background:transparent;border-color:var(--line-2);color:var(--ink)}
-.btn-linha:hover:not(:disabled){background:var(--card-2);border-color:#33383f}
-.btn-claro{background:var(--ink);color:#000}
-.btn-claro:hover:not(:disabled){filter:brightness(.93)}
+.btn svg{width:17px;height:17px}
+.btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-primario{background:var(--verde);color:var(--btn-ink);box-shadow:0 4px 0 var(--verde-base)}
+.btn-primario:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 0 var(--verde-base)}
+.btn-primario:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--verde-base)}
+.btn-dinheiro{background:var(--laranja);color:var(--btn-ink-dinheiro);box-shadow:0 4px 0 var(--laranja-base)}
+.btn-dinheiro:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 0 var(--laranja-base)}
+.btn-dinheiro:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--laranja-base)}
+.btn-linha{background:var(--card);color:var(--ink);border:2px solid var(--line-2);box-shadow:0 4px 0 var(--line-2)}
+.btn-linha:hover:not(:disabled){transform:translateY(-1px);border-color:var(--verde)}
+.btn-linha:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--line-2)}
+.btn-claro{background:var(--ink);color:var(--bg);box-shadow:0 4px 0 var(--ink-4)}
+.btn-claro:hover:not(:disabled){transform:translateY(-1px)}
+.btn-claro:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--ink-4)}
 .btn-fantasma{background:none;color:var(--ink-2)}
-.btn-fantasma:hover:not(:disabled){background:var(--card-2);color:var(--ink)}
-.btn-perigo{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#f87171}
-.btn-perigo:hover:not(:disabled){background:rgba(239,68,68,.2)}
+.btn-fantasma:hover:not(:disabled){background:var(--card-3);color:var(--ink)}
+.btn-perigo{background:var(--vermelho-suave);color:var(--vermelho-txt);box-shadow:0 4px 0 var(--vermelho)}
+.btn-perigo:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--vermelho)}
 .btn-bloco{width:100%}
-.btn-mini{padding:6px 13px;font-size:12.5px}
+.btn-mini{padding:8px 14px;font-size:13.5px;border-radius:11px}
 
-/* ─── cartao de vaga ────────────────────────────────────────────────────── */
-.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:16px}
+/* ─── cartao de vaga ────────────────────────────────────────────────────────*/
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:14px}
 .vaga{
   position:relative;background:var(--card);border:1px solid var(--line);
-  border-radius:var(--r-lg);overflow:hidden;cursor:pointer;text-align:left;
+  border-radius:var(--r-md);cursor:pointer;text-align:left;
   width:100%;font:inherit;color:inherit;padding:0;display:flex;flex-direction:column;
   transition:border-color .16s,transform .16s;
 }
-.vaga:hover{border-color:var(--line-2);transform:translateY(-2px)}
-/* Sem overflow:hidden aqui: o selo redondo avanca sobre a borda de proposito,
-   e quem arredonda os cantos e o cartao. */
-.vaga-capa{position:relative;padding:18px 18px 30px;border-bottom:1px solid var(--line)}
-.vaga-capa::before{content:'';position:absolute;inset:0}
-.vaga-capa.c0::before{background:linear-gradient(150deg,#2c2150 0%,#1b1733 46%,#121319 100%)}
-.vaga-capa.c1::before{background:linear-gradient(150deg,#1e3a63 0%,#16273f 46%,#111419 100%)}
-.vaga-capa.c2::before{background:linear-gradient(150deg,#123f3a 0%,#122a2a 46%,#111417 100%)}
-.vaga-capa.c3::before{background:linear-gradient(150deg,#4a2340 0%,#2c1a2b 46%,#141216 100%)}
-.vaga-capa.c4::before{background:linear-gradient(150deg,#3d3320 0%,#2a2417 46%,#151414 100%)}
-.vaga-capa > *{position:relative}
-.vaga-valor{font-size:26px;font-weight:800;letter-spacing:-.03em}
-.vaga-valor small{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:5px;letter-spacing:0}
+.vaga:hover{border-color:var(--verde);transform:translateY(-2px)}
+/* Sem overflow:hidden aqui: o selo avanca sobre a borda de proposito, e quem
+   arredonda os cantos e o cartao. */
+.vaga-capa{position:relative;padding:16px 16px 26px;border-bottom:1px solid var(--line);border-radius:var(--r-md) var(--r-md) 0 0}
+.vaga-capa.c0{background:var(--t0)} .vaga-capa.c1{background:var(--t1)}
+.vaga-capa.c2{background:var(--t2)} .vaga-capa.c3{background:var(--t3)}
+.vaga-capa.c4{background:var(--t4)}
+.vaga-valor{font-family:var(--display);font-weight:600;font-size:25px;letter-spacing:-.022em;line-height:1;font-variant-numeric:tabular-nums}
+.vaga-valor small{display:block;font-family:var(--sans);font-size:11.5px;font-weight:700;color:var(--ink-3);letter-spacing:0;margin-top:4px}
 .vaga-modo{
-  position:absolute;top:16px;right:16px;padding:3px 11px;border-radius:999px;
-  font-size:11.5px;font-weight:600;background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.85);
+  position:absolute;top:14px;right:14px;padding:4px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:800;background:var(--card);
+  border:1px solid var(--line);color:var(--ink-2);
 }
 .vaga-selo{
-  position:absolute;right:16px;bottom:-19px;width:38px;height:38px;border-radius:50%;
+  position:absolute;right:14px;bottom:-18px;width:38px;height:38px;border-radius:12px;
   display:grid;place-items:center;font-size:17px;
-  background:var(--card-3);border:1px solid var(--line-2);z-index:2;
+  background:var(--card);border:1px solid var(--line);z-index:2;
 }
-.vaga-corpo{padding:18px;display:flex;flex-direction:column;gap:11px;flex:1}
-.vaga-titulo{font-size:14.5px;font-weight:700;line-height:1.35}
+.vaga-corpo{padding:16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.vaga-titulo{font-family:var(--display);font-weight:600;font-size:15.5px;line-height:1.28}
 .vaga-desc{font-size:12.5px;color:var(--ink-3);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.trilha{display:flex;gap:4px}
-.trilha-seg{height:4px;flex:1;border-radius:2px;background:var(--line-2)}
-.trilha-seg.feito{background:var(--azul)}
-.trilha-seg.cancelado{background:rgba(239,68,68,.45)}
+.vaga-rodape{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--ink-2)}
+
+/* trilha das seis etapas, com o rotulo do estado atual embaixo */
+.trilha{display:flex;align-items:center;gap:5px}
+.trilha-seg{height:5px;flex:1;border-radius:999px;background:var(--line)}
+.trilha-seg.feito{background:var(--verde)}
+.trilha-seg.atual{background:var(--laranja)}
+.trilha-seg.cancelado{background:var(--vermelho)}
+.passo-nome{font-size:11.5px;font-weight:800;color:var(--ink-3)}
+.passo-nome.alerta{color:var(--laranja-txt)}
+
 .etiquetas{display:flex;gap:6px;flex-wrap:wrap}
-.etiqueta{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px;background:var(--card-2);border:1px solid var(--line);color:var(--ink-2)}
-.vaga-rodape{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px;font-size:12px;color:var(--ink-3)}
+.etiqueta{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;
+  background:var(--card-2);border:1px solid var(--line);color:var(--ink-2);
+}
+.etiqueta svg{width:12px;height:12px}
+.etiqueta.verde{background:var(--verde-suave);color:var(--verde-txt);border-color:transparent}
+.etiqueta.laranja{background:var(--laranja-suave);color:var(--laranja-txt);border-color:transparent}
+.etiqueta.roxa{background:var(--roxo-suave);color:var(--roxo-txt);border-color:transparent}
+.etiqueta.coral{background:var(--vermelho-suave);color:var(--vermelho-txt);border-color:transparent}
 
 .avatar{
-  width:20px;height:20px;flex:none;border-radius:6px;display:grid;place-items:center;
-  font-size:9px;font-weight:800;color:#fff;background:var(--azul);
+  width:22px;height:22px;flex:none;border-radius:7px;display:grid;place-items:center;
+  font-family:var(--display);font-size:10px;font-weight:600;color:#161616;background:var(--verde);
 }
-.avatar.g{width:34px;height:34px;border-radius:10px;font-size:13px}
+.avatar.g{width:38px;height:38px;border-radius:12px;font-size:14px}
 .avatar.gg{width:56px;height:56px;border-radius:16px;font-size:19px}
-.avatar.c0{background:linear-gradient(135deg,#8b5cf6,#6366f1)}
-.avatar.c1{background:linear-gradient(135deg,#3b82f6,#06b6d4)}
-.avatar.c2{background:linear-gradient(135deg,#22c55e,#84cc16)}
-.avatar.c3{background:linear-gradient(135deg,#ec4899,#f43f5e)}
-.avatar.c4{background:linear-gradient(135deg,#f59e0b,#ef4444)}
+.avatar.c0{background:#C7B3FF} .avatar.c1{background:#7FD1F5}
+.avatar.c2{background:#8FE3B4} .avatar.c3{background:#FF8A5B}
+.avatar.c4{background:#FFD166}
 
-/* ─── paineis ───────────────────────────────────────────────────────────── */
-.painel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px}
-.painel h4{font-size:11px;font-weight:700;letter-spacing:.11em;color:var(--ink-3);margin-bottom:13px}
-.secao{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
-.secao h2{font-size:17px;font-weight:700}
-.secao .conta{font-size:11.5px;font-weight:700;color:var(--ink-3);padding:2px 8px;border-radius:999px;background:var(--card-2);border:1px solid var(--line)}
+/* ─── paineis ───────────────────────────────────────────────────────────────*/
+.painel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:17px}
+/* Linha de dado dentro de painel: rotulo a esquerda, valor a direita, na mesma
+   régua da barra da direita. Sem esta regra o <dt>/<dd> volta ao empilhamento
+   padrao do navegador, com o valor indentado embaixo do rotulo. */
+.linha-dado{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px;
+}
+.linha-dado:last-child{border-bottom:0}
+.linha-dado dt{color:var(--ink-2)}
+.linha-dado dd{
+  margin:0;font-family:var(--display);font-weight:600;font-size:14.5px;
+  font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;
+}
+
+/* ─── barras por categoria ──────────────────────────────────────────────────
+   Uma serie so (quantas vagas abertas por categoria), entao uma cor so: hue
+   categorica aqui seria decoracao, nao informacao. O tom e --verde-base porque
+   --verde cheio fica em 2,53:1 contra o cartao e nao se sustenta como marca
+   grafica; este passa de 3:1 nos dois temas. A barra e proporcional a maior
+   categoria, e o numero aparece sempre — a leitura nunca depende da cor. */
+/* Largura limitada: barra que atravessa o cartao inteiro le como regua, e
+   nao como grafico. */
+.cats{display:flex;flex-direction:column;max-width:560px}
+.cat{
+  /* Coluna do rotulo com largura fixa: cada linha e um grid proprio, entao
+     minmax(auto) faria a barra comecar num lugar diferente em cada linha. */
+  display:grid;grid-template-columns:120px minmax(0,1fr) 3ch;
+  align-items:center;gap:12px;padding:7px 0;border-radius:8px;
+}
+.cat:hover{background:var(--card-2)}
+.cat-nome{font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-trilho{height:8px;border-radius:0 4px 4px 0;background:var(--card-3);overflow:hidden}
+.cat-barra{display:block;height:100%;background:var(--verde-base);border-radius:0 4px 4px 0}
+.cat-total{
+  font-family:var(--display);font-weight:600;font-size:14.5px;
+  font-variant-numeric:tabular-nums;min-width:2ch;text-align:right;
+}
+@media (max-width:640px){
+  .cat{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .cat-trilho{grid-column:1 / -1;order:3}
+}
+.painel h4{font-size:14px;letter-spacing:0;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.painel h4 svg{width:15px;height:15px;color:var(--verde-txt);flex:none}
+.secao{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.secao h2{font-size:19px}
+.secao .conta{font-size:12.5px;font-weight:800;color:var(--ink-3)}
 .filtros{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto;align-items:center}
-.aba{padding:6px 15px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;border:1px solid transparent;color:var(--ink-3);transition:all .13s}
-.aba:hover{color:var(--ink-2)}
-.aba[aria-pressed="true"]{background:var(--card-3);border-color:var(--line-2);color:var(--ink)}
-.campo-filtro{padding:8px 13px;background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-md);font-size:13px;min-width:190px}
+.aba{
+  padding:6px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:700;
+  background:var(--card);border:1px solid var(--line-2);color:var(--ink-2);transition:all .13s;
+}
+.aba:hover{color:var(--ink);border-color:var(--verde)}
+.aba[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.campo-filtro{padding:8px 13px;background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-sm);font-size:13px;min-width:190px}
 .campo-filtro::placeholder{color:var(--ink-3)}
-.campo-filtro:focus{border-color:var(--azul);outline:none}
+.campo-filtro:focus{border-color:var(--verde);outline:none}
 
-.entrar-grade{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.entrar-grade{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .pessoa{
   display:flex;align-items:center;gap:12px;width:100%;text-align:left;
-  padding:13px 14px;margin-bottom:9px;border-radius:var(--r-md);
+  padding:11px 13px;margin-bottom:8px;border-radius:13px;
   background:var(--card-2);border:1px solid var(--line);cursor:pointer;
   font:inherit;color:inherit;transition:border-color .14s,background .14s;
 }
 .pessoa:last-child{margin-bottom:0}
-.pessoa:hover{border-color:var(--line-2);background:var(--card-3)}
-.pessoa-nome{font-size:14px;font-weight:700}
-.pessoa-sub{font-size:12px;color:var(--ink-3);margin-top:1px}
+.pessoa:hover{border-color:var(--verde);background:var(--card-3)}
+.pessoa-nome{font-family:var(--display);font-weight:600;font-size:14px;display:block}
+.pessoa-sub{font-size:12px;color:var(--ink-3);margin-top:1px;display:block}
+.pessoa .btn{margin-left:auto}
+
+/* ─── fila de decisoes ──────────────────────────────────────────────────────*/
+.fila{display:flex;flex-direction:column;gap:10px}
+.acao{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:13px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--laranja);
+  border-radius:var(--r-md);padding:13px 15px;
+}
+.acao.pronto{border-left-color:var(--verde)}
+.acao-ico{width:36px;height:36px;border-radius:12px;background:var(--laranja-suave);color:var(--laranja-txt);display:grid;place-items:center;flex:none}
+.acao.pronto .acao-ico{background:var(--verde-suave);color:var(--verde-txt)}
+.acao-ico svg{width:18px;height:18px}
+.acao h4{font-size:15px;margin:0}
+.acao p{font-size:13px;color:var(--ink-2);margin-top:2px}
+.acao-bts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
 .vazio{
-  display:flex;flex-direction:column;align-items:center;gap:9px;padding:48px 26px;text-align:center;
-  background:var(--card);border:1px dashed var(--line-2);border-radius:var(--r-lg);
+  display:flex;flex-direction:column;align-items:center;gap:9px;padding:44px 26px;text-align:center;
+  background:var(--card);border:1px dashed var(--line-2);border-radius:var(--r-md);
 }
-.vazio-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:18px;background:var(--card-3);border:1px solid var(--line-2)}
-.vazio h3{font-size:15px;font-weight:700}
-.vazio p{font-size:13px;color:var(--ink-3);max-width:44ch;line-height:1.6}
+.vazio-ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:18px;background:var(--card-3);border:1px solid var(--line-2)}
+.vazio h3{font-size:16px}
+.vazio p{font-size:13.5px;color:var(--ink-2);max-width:46ch;line-height:1.6}
 
-/* ─── formularios ───────────────────────────────────────────────────────── */
+/* ─── formularios ───────────────────────────────────────────────────────────*/
 .campo{display:flex;flex-direction:column;gap:6px;margin-bottom:15px}
-.campo label{font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.campo label{font-size:12.5px;font-weight:800;color:var(--ink-2)}
 .campo .dica{font-size:11.5px;color:var(--ink-3)}
 .campo input,.campo textarea,.campo select{
   padding:10px 13px;background:var(--card-2);border:1px solid var(--line-2);
-  border-radius:var(--r-md);width:100%;transition:border-color .14s;font-size:13.5px;
+  border-radius:var(--r-sm);width:100%;transition:border-color .14s;font-size:13.5px;
 }
-.campo input:focus,.campo textarea:focus,.campo select:focus{border-color:var(--azul);outline:none}
+.campo input:focus,.campo textarea:focus,.campo select:focus{border-color:var(--verde);outline:none}
 .campo textarea{resize:vertical;min-height:96px;font-family:inherit}
 .linha-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .escolha{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.escolha button{padding:13px;border-radius:var(--r-md);cursor:pointer;text-align:left;background:var(--card-2);border:1px solid var(--line-2);color:var(--ink-2);transition:all .14s}
-.escolha button:hover{border-color:#33383f}
-.escolha button[aria-pressed="true"]{border-color:var(--azul);background:rgba(59,130,246,.1);color:var(--ink)}
-.escolha strong{display:block;font-size:13.5px;margin-bottom:2px;color:var(--ink)}
+.escolha button{padding:13px;border-radius:13px;cursor:pointer;text-align:left;background:var(--card-2);border:1px solid var(--line-2);color:var(--ink-2);transition:all .14s}
+.escolha button:hover{border-color:var(--verde)}
+.escolha button[aria-pressed="true"]{border-color:var(--verde);background:var(--verde-suave);color:var(--ink)}
+.escolha strong{display:block;font-family:var(--display);font-weight:600;font-size:13.5px;margin-bottom:2px;color:var(--ink)}
 .escolha span{font-size:12px;color:var(--ink-3)}
 
 .codigo-caixa{display:flex;gap:10px;align-items:center;max-width:520px}
 .codigo-caixa input{
-  flex:1;padding:12px 16px;background:var(--card);border:1px solid var(--line-2);
-  border-radius:var(--r-md);font-family:var(--mono);font-size:15px;letter-spacing:.09em;
+  flex:1;padding:12px 16px;background:var(--card-2);border:1px solid var(--line-2);
+  border-radius:var(--r-sm);font-family:var(--mono);font-size:15px;letter-spacing:.09em;
 }
 .codigo-caixa input::placeholder{color:var(--ink-3)}
-.codigo-caixa input:focus{border-color:var(--azul);outline:none}
+.codigo-caixa input:focus{border-color:var(--verde);outline:none}
 
-/* ─── modal ─────────────────────────────────────────────────────────────── */
-.modal-fundo{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);display:grid;place-items:center;padding:22px}
-.modal{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-xl);width:min(600px,100%);max-height:88dvh;overflow-y:auto;box-shadow:var(--sombra)}
-.modal-topo{display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
-.modal-topo h2{font-size:17px;font-weight:700;flex:1}
-.modal-corpo{padding:24px}
-.modal-rodape{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--card)}
-.fechar{width:30px;height:30px;border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);cursor:pointer;color:var(--ink-3);display:grid;place-items:center}
+/* ─── modal ─────────────────────────────────────────────────────────────────*/
+.modal-fundo{position:fixed;inset:0;z-index:80;background:rgba(9,20,14,.62);backdrop-filter:blur(6px);display:grid;place-items:center;padding:22px}
+.modal{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-lg);width:min(600px,100%);max-height:88dvh;overflow-y:auto;box-shadow:var(--sombra)}
+.modal-topo{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
+.modal-topo h2{font-size:18px;flex:1}
+.modal-corpo{padding:22px}
+.modal-rodape{display:flex;gap:10px;justify-content:flex-end;padding:15px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--card);flex-wrap:wrap}
+.fechar{width:32px;height:32px;border-radius:10px;border:1px solid var(--line-2);background:var(--card-2);cursor:pointer;color:var(--ink-3);display:grid;place-items:center}
 .fechar:hover{color:var(--ink)}
 
-/* ─── onboarding ────────────────────────────────────────────────────────── */
-.guia{position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.86);backdrop-filter:blur(8px);display:grid;place-items:center;padding:22px}
-.guia-cartao{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-xl);width:min(540px,100%);overflow:hidden;box-shadow:var(--sombra)}
-.guia-arte{position:relative;height:124px;display:grid;place-items:center;font-size:40px;border-bottom:1px solid var(--line);background:radial-gradient(100% 140% at 50% 20%,#1e3a63 0%,#141a26 55%,#101113 100%)}
-.guia-corpo{padding:26px}
-.guia-corpo h2{font-size:21px;font-weight:800;margin-bottom:9px}
-.guia-corpo p{font-size:14px;color:var(--ink-2);line-height:1.65}
-.guia-rodape{display:flex;align-items:center;gap:12px;padding:16px 26px;border-top:1px solid var(--line)}
+/* ─── onboarding ────────────────────────────────────────────────────────────*/
+.guia{position:fixed;inset:0;z-index:85;background:rgba(9,20,14,.74);backdrop-filter:blur(8px);display:grid;place-items:center;padding:22px}
+.guia-cartao{background:var(--card);border:1px solid var(--line-2);border-radius:var(--r-lg);width:min(540px,100%);overflow:hidden;box-shadow:var(--sombra)}
+.guia-arte{height:118px;display:grid;place-items:center;font-size:40px;border-bottom:1px solid var(--line);background:var(--verde-suave)}
+.guia-corpo{padding:24px}
+.guia-corpo h2{font-size:22px;margin-bottom:9px}
+.guia-corpo p{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.guia-rodape{display:flex;align-items:center;gap:12px;padding:15px 24px;border-top:1px solid var(--line)}
 .guia-pontos{display:flex;gap:6px}
 .guia-ponto{width:6px;height:6px;border-radius:50%;background:var(--line-2)}
-.guia-ponto.atual{background:var(--azul);width:20px;border-radius:3px}
+.guia-ponto.atual{background:var(--verde);width:20px;border-radius:3px}
 
-/* ─── avisos ────────────────────────────────────────────────────────────── */
-.avisos{position:fixed;bottom:56px;right:20px;z-index:90;display:flex;flex-direction:column;gap:9px;max-width:370px}
-.aviso{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-md);background:var(--card-3);border:1px solid var(--line-2);box-shadow:var(--sombra);font-size:13.5px}
-.aviso.ok{border-color:rgba(34,197,94,.35)} .aviso.ok .aviso-ico{color:var(--verde)}
-.aviso.erro{border-color:rgba(239,68,68,.35)} .aviso.erro .aviso-ico{color:#f87171}
-.aviso.info .aviso-ico{color:var(--azul-2)}
-.aviso-ico{flex:none;font-size:14px}
-.aviso strong{display:block;margin-bottom:1px}
-.aviso p{color:var(--ink-3);font-size:12.5px}
+/* ─── avisos ────────────────────────────────────────────────────────────────*/
+.avisos{position:fixed;bottom:20px;right:20px;z-index:90;display:flex;flex-direction:column;gap:9px;max-width:370px}
+.aviso{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-md);background:var(--card);border:1px solid var(--line-2);box-shadow:var(--sombra);font-size:13.5px}
+.aviso.ok{border-color:var(--verde)} .aviso.ok .aviso-ico{color:var(--verde-txt)}
+.aviso.erro{border-color:var(--vermelho)} .aviso.erro .aviso-ico{color:var(--vermelho-txt)}
+.aviso.info .aviso-ico{color:var(--roxo-txt)}
+.aviso-ico{flex:none;font-weight:800}
+.aviso strong{display:block;font-family:var(--display);font-weight:600;margin-bottom:1px}
+.aviso p{color:var(--ink-2);font-size:12.5px}
 @media (prefers-reduced-motion:no-preference){
   .aviso{animation:subir .26s ease}
   @keyframes subir{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -394,83 +613,68 @@ a{color:inherit;text-decoration:none}
 .faixa-offline{
   position:fixed;top:0;left:0;right:0;z-index:95;display:none;
   align-items:center;justify-content:center;gap:9px;
-  padding:9px 16px;background:var(--vermelho);color:#fff;font-weight:700;font-size:13px;
+  padding:9px 16px;background:var(--vermelho);color:#2A0C04;font-weight:800;font-size:13px;
 }
 .faixa-offline.ativa{display:flex}
 
-/* ─── gaveta tecnica ────────────────────────────────────────────────────── */
-.gaveta{
-  position:fixed;bottom:0;left:var(--esq);right:0;z-index:70;
-  background:var(--card);border-top:1px solid var(--line-2);
-  transform:translateY(calc(100% - 38px));transition:transform .28s cubic-bezier(.4,0,.2,1);
-  max-height:min(70dvh,620px);display:flex;flex-direction:column;
-}
-.gaveta.aberta{transform:translateY(0)}
-@media (prefers-reduced-motion:reduce){.gaveta{transition:none}}
-.gaveta-puxador{display:flex;align-items:center;gap:10px;padding:0 20px;height:38px;width:100%;cursor:pointer;background:none;border:0;color:var(--ink-3);font-size:11px;font-weight:700;letter-spacing:.1em}
-.gaveta-puxador:hover{color:var(--ink-2)}
-.gaveta-conteudo{padding:0 20px 20px;overflow-y:auto;font-family:var(--mono);font-size:11.5px}
-.gaveta-linha{padding:10px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:120px 1fr auto;gap:14px}
-.gaveta-tipo{color:var(--roxo-2);font-weight:700}
-.gaveta-dado{color:var(--ink-3);word-break:break-all;line-height:1.65}
-.gaveta-dado b{color:var(--ink-2);font-weight:500}
-.gaveta-link{color:var(--azul-2)}
-.gaveta-link:hover{text-decoration:underline}
-.gaveta-vazia{padding:24px 0;color:var(--ink-3);text-align:center}
-
-/* ─── detalhe ───────────────────────────────────────────────────────────── */
-.detalhe-grade{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px}
+/* ─── detalhe ───────────────────────────────────────────────────────────────*/
+.detalhe-grade{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:16px}
 .etapas{display:flex;flex-direction:column}
 .etapa{display:flex;gap:12px;padding-bottom:15px;position:relative}
-.etapa:not(:last-child)::before{content:'';position:absolute;left:9px;top:21px;bottom:0;width:2px;background:var(--line-2)}
-.etapa.feita:not(:last-child)::before{background:var(--azul)}
+.etapa:not(:last-child)::before{content:'';position:absolute;left:9px;top:21px;bottom:0;width:2px;background:var(--line)}
+.etapa.feita:not(:last-child)::before{background:var(--verde)}
 .etapa-bola{width:20px;height:20px;flex:none;border-radius:50%;background:var(--card-3);border:2px solid var(--line-2);display:grid;place-items:center;font-size:10px;z-index:1}
-.etapa.feita .etapa-bola{background:var(--azul);border-color:var(--azul);color:#fff}
-.etapa.atual .etapa-bola{border-color:var(--azul-2);box-shadow:0 0 0 4px rgba(96,165,250,.16)}
-.etapa-texto{font-size:13.5px;font-weight:600;padding-top:1px}
-.etapa:not(.feita):not(.atual) .etapa-texto{color:var(--ink-3);font-weight:500}
+.etapa.feita .etapa-bola{background:var(--verde);border-color:var(--verde);color:var(--btn-ink)}
+.etapa.atual .etapa-bola{background:var(--laranja);border-color:var(--laranja)}
+.etapa-texto{font-size:13.5px;font-weight:800;padding-top:1px}
+.etapa:not(.feita):not(.atual) .etapa-texto{color:var(--ink-3);font-weight:700}
 
 .conversa{display:flex;flex-direction:column;gap:9px;max-height:320px;overflow-y:auto;padding:2px}
-.balao{max-width:78%;padding:9px 13px;border-radius:13px;font-size:13.5px;line-height:1.45}
+.balao{max-width:78%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.45}
 .balao.deles{background:var(--card-3);border-bottom-left-radius:4px;align-self:flex-start}
-.balao.meu{background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.3);border-bottom-right-radius:4px;align-self:flex-end}
-.balao-autor{font-size:11px;color:var(--ink-3);margin-bottom:2px;font-weight:700}
+.balao.meu{background:var(--verde-suave);border-bottom-right-radius:4px;align-self:flex-end}
+.balao-autor{font-size:11px;color:var(--ink-3);margin-bottom:2px;font-weight:800}
 .balao.pendente{opacity:.55}
 
-/* ─── certificados ──────────────────────────────────────────────────────── */
-.cert-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
-.cert{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;padding:0;transition:border-color .16s,transform .16s;display:block}
-.cert:hover{border-color:var(--line-2);transform:translateY(-2px)}
+/* ─── certificados ──────────────────────────────────────────────────────────*/
+.cert-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.cert{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line);background:var(--card);cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;padding:0;transition:border-color .16s,transform .16s;display:block}
+.cert:hover{border-color:var(--verde);transform:translateY(-2px)}
 .cert img{display:block;width:100%;aspect-ratio:1000/620;object-fit:cover;background:var(--card-2)}
-.cert-info{padding:13px 15px;display:flex;align-items:center;gap:11px}
-.cert-horas{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--azul-2)}
-.cert-titulo{font-size:13px;font-weight:700;line-height:1.3}
+.cert-info{padding:12px 14px;display:flex;align-items:center;gap:11px}
+.cert-horas{font-family:var(--display);font-weight:600;font-size:19px;color:var(--roxo-txt)}
+.cert-titulo{font-size:13.5px;font-weight:800;line-height:1.3}
 .cert-sub{font-size:11.5px;color:var(--ink-3);margin-top:1px}
-.cert-estado{margin-left:auto;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px}
-.cert-estado.pronto{background:rgba(34,197,94,.12);color:var(--verde)}
-.cert-estado.processando{background:rgba(245,158,11,.12);color:var(--laranja)}
+.cert-estado{margin-left:auto;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px}
+.cert-estado.pronto{background:var(--verde-suave);color:var(--verde-txt)}
+.cert-estado.processando{background:var(--laranja-suave);color:var(--laranja-txt)}
 
-/* ─── metricas ──────────────────────────────────────────────────────────── */
-.metricas{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:13px}
-.metrica{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px}
-.metrica-valor{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1.1}
-.metrica-rotulo{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+/* ─── metricas ──────────────────────────────────────────────────────────────*/
+.metricas{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.metrica{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:16px}
+.metrica-valor{font-family:var(--display);font-weight:600;font-size:25px;line-height:1.1;font-variant-numeric:tabular-nums}
+.metrica-rotulo{font-size:12px;color:var(--ink-3);margin-top:4px}
 
-/* ─── verificacao publica ───────────────────────────────────────────────── */
+/* ─── verificacao publica ───────────────────────────────────────────────────*/
 .verificacao{max-width:900px;margin:0 auto;padding:40px 22px 90px}
-.selo{display:inline-flex;align-items:center;gap:9px;padding:7px 15px;border-radius:999px;font-weight:700;font-size:13.5px;margin-bottom:20px}
-.selo.valido{background:rgba(34,197,94,.11);border:1px solid rgba(34,197,94,.3);color:var(--verde)}
-.selo.parcial{background:rgba(245,158,11,.11);border:1px solid rgba(245,158,11,.3);color:var(--laranja)}
-.selo.invalido{background:rgba(239,68,68,.11);border:1px solid rgba(239,68,68,.3);color:#f87171}
+.selo{display:inline-flex;align-items:center;gap:9px;padding:8px 16px;border-radius:999px;font-weight:800;font-size:13.5px;margin-bottom:20px}
+.selo.valido{background:var(--verde-suave);color:var(--verde-txt)}
+.selo.parcial{background:var(--laranja-suave);color:var(--laranja-txt)}
+.selo.invalido{background:var(--vermelho-suave);color:var(--vermelho-txt)}
 
-/* ─── responsivo ────────────────────────────────────────────────────────── */
+/* ─── responsivo ────────────────────────────────────────────────────────────*/
 @media (max-width:1280px){
+  /* A barra da direita nao desaparece: ela desce para baixo do conteudo. E onde
+     mora "sua grana", que e a informacao mais util da tela. */
   .app.ativo{grid-template-columns:var(--esq) minmax(0,1fr)}
-  .dir{display:none}
+  .dir{grid-column:2;position:static;height:auto;border-left:0;border-top:1px solid var(--line);padding:18px 22px 60px}
+  #dir-widgets{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start}
+  .tec{margin-top:13px}
   .detalhe-grade{grid-template-columns:1fr}
 }
 @media (max-width:880px){
   .app.ativo{grid-template-columns:1fr}
+  .dir{grid-column:1}
   .esq{position:static;height:auto;flex-direction:row;align-items:center;gap:10px;padding:12px 14px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto}
   .esq .marca{padding:0 10px 0 0}
   /* Sem espaco para o nome: fica so o simbolo. */
@@ -482,84 +686,103 @@ a{color:inherit;text-decoration:none}
   .nav{flex-direction:row;gap:5px}
   .nav-grupo,.esq-rodape{display:none}
   .nav-item{white-space:nowrap;padding:8px 12px}
-  .gaveta{left:0}
   .entrar-grade,.linha-2,.escolha{grid-template-columns:1fr}
   .heroi{padding:22px}
   .heroi h1{font-size:26px}
   .heroi-arte{display:none}
   .topo{padding:12px 14px}
-  .conteudo{padding:4px 14px 70px}
+  .conteudo{padding:16px 14px 50px}
+  .acao{grid-template-columns:auto minmax(0,1fr)}
+  .acao-bts{grid-column:2}
 }
 </style>
 </head>
 <body>
 
-<a class="pular" href="#conteudo">Pular para o conteudo</a>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<!-- Biblioteca de ícones de traço. Um símbolo por ícone, referenciado com
+     <use>: o desenho existe uma vez só e toma a cor de quem o usa. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-bussola" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 4-4 2 2-4z"/></symbol>
+    <symbol id="i-mochila" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10a7 7 0 0 1 14 0v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M9 21v-6h6v6M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-pasta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-selo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 14.5-1 7 4.5-2.5 4.5 2.5-1-7"/></symbol>
+    <symbol id="i-sino" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15V10a6 6 0 1 0-12 0v5l-2 3h16z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
+    <symbol id="i-eng" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></symbol>
+    <symbol id="i-balanca" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M7 20h10M4 8h16M12 8H8l-3 6a3.5 3.5 0 0 0 6 0zM12 8h4l3 6a3.5 3.5 0 0 1-6 0z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></symbol>
+    <symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-raio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></symbol>
+    <symbol id="i-relogio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></symbol>
+    <symbol id="i-mais" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.5A7.5 7.5 0 1 1 20 12z"/></symbol>
+    <symbol id="i-baixo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.5 1.5m11.2 11.2 1.5 1.5M19.1 4.9l-1.5 1.5M6.4 17.6l-1.5 1.5"/></symbol>
+    <symbol id="i-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></symbol>
+  </defs>
+</svg>
 
 <div class="faixa-offline" id="faixa-offline" role="status">
   <span aria-hidden="true">⚠</span>
-  <span>Sem conexao com o servico. Suas acoes vao esperar aqui ate a conexao voltar.</span>
+  <span>Sem conexão com o serviço. Suas ações vão esperar aqui até a conexão voltar.</span>
 </div>
 
 <div class="app" id="app">
   <aside class="esq">
-    <a class="marca" href="#" id="ir-inicio" aria-label="Uni.work, ir para o inicio">
+    <a class="marca" href="#" id="ir-inicio" aria-label="Uni.work, ir para o início">
       <span class="marca-imagem"></span>
     </a>
 
-    <nav class="nav" id="nav" aria-label="Navegacao principal"></nav>
+    <nav class="nav" id="nav" aria-label="Navegação principal"></nav>
 
-    <div class="esq-rodape">
-      <h4 id="cta-titulo">Contrate com garantia</h4>
-      <p id="cta-texto">Publique um trampo, reserve o valor e pague na confirmacao.</p>
-      <button class="esq-cta" id="cta-botao">
-        <span class="faisca" aria-hidden="true">⚡</span>
-        <span id="cta-rotulo">Publicar vaga</span>
-      </button>
-      <div class="esq-vivo">
-        <span class="ponto-vivo" aria-hidden="true"></span>
-        <span>ao vivo</span>
-      </div>
-      <button class="esq-link" data-view="verificar">Verificar certificado</button>
-      <button class="esq-link" data-view="painel">Painel do ecossistema</button>
-    </div>
+    <div class="esq-rodape" id="esq-rodape"></div>
   </aside>
 
   <div class="centro">
     <header class="topo">
       <div class="busca">
-        <svg class="busca-lupa" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-        </svg>
+        <svg class="busca-lupa" width="15" height="15" aria-hidden="true"><use href="#i-lupa"></use></svg>
         <label class="sr" for="busca">Buscar trampos</label>
-        <input id="busca" type="search" placeholder="Buscar trampos">
+        <input id="busca" type="search" placeholder="Buscar trampo, curso ou campus">
         <kbd aria-hidden="true">/</kbd>
       </div>
+      <button class="tema" id="btn-tema" type="button" aria-pressed="false">
+        <svg id="ico-tema" aria-hidden="true"><use href="#i-lua"></use></svg>
+        <span id="rotulo-tema">Modo escuro</span>
+      </button>
       <div class="topo-acoes" id="topo-acoes"></div>
     </header>
 
     <main class="conteudo" id="conteudo" tabindex="-1"></main>
   </div>
 
-  <aside class="dir" id="dir" aria-label="Painel do ecossistema"></aside>
+  <aside class="dir" id="dir" aria-label="Sua grana e como funciona">
+    <div id="dir-widgets"></div>
+
+    <!-- A camada técnica é a única parte do produto que fala a língua da rede.
+         Ela existe para demonstração, fica fechada e é a última coisa da barra.
+         data-camada-tecnica marca o limite: o teste de vocabulário ignora tudo
+         que estiver dentro dela e só dentro dela. -->
+    <details class="tec" id="gaveta" data-camada-tecnica="true">
+      <summary id="gaveta-puxador">
+        <svg aria-hidden="true"><use href="#i-baixo"></use></svg>
+        <span>Camada técnica</span>
+        <span class="tec-resumo" id="gaveta-resumo"></span>
+      </summary>
+      <div class="gaveta-conteudo" id="gaveta-conteudo"></div>
+    </details>
+  </aside>
 </div>
 
 <div id="verificacao" hidden></div>
 
 <div class="avisos" id="avisos" role="status" aria-live="polite"></div>
 <div id="modal-raiz"></div>
-
-<!-- A gaveta tecnica e a unica parte do produto que fala a lingua da rede.
-     Ela existe para demonstracao. data-camada-tecnica marca o limite: o teste
-     de vocabulario ignora tudo que estiver dentro dela e so dentro dela. -->
-<section class="gaveta" id="gaveta" data-camada-tecnica="true" aria-label="Camada tecnica">
-  <button class="gaveta-puxador" id="gaveta-puxador" aria-expanded="false" aria-controls="gaveta-conteudo">
-    <span aria-hidden="true">◆</span>
-    <span>CAMADA TECNICA</span>
-    <span id="gaveta-resumo" style="margin-left:auto;font-weight:500;letter-spacing:0"></span>
-  </button>
-  <div class="gaveta-conteudo" id="gaveta-conteudo"></div>
-</section>
 
 <script src="/app.js" type="module"></script>
 </body>

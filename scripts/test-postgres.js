@@ -44,14 +44,14 @@ async function esperarPostgres (tentativas = 60) {
 
 if (!dockerDisponivel()) {
   console.error(`
-  Docker nao esta respondendo, entao a suite contra Postgres de verdade nao roda aqui.
+  Docker não esta respondendo, então a suite contra Postgres de verdade não roda aqui.
 
   Para rodar:
     1. abra o Docker Desktop e espere ele subir
     2. npm run test:pg
 
-  Alternativa sem Docker: aponte para qualquer Postgres que voce tenha e rode
-    DATABASE_URL=postgresql://usuario:senha@host:5432/banco npm test
+  Alternativa sem Docker: aponte para qualquer Postgres que você tenha e rode
+    DATABASE_URL=postgresql://usuário:senha@host:5432/banco npm test
 `)
   process.exit(1)
 }
@@ -67,11 +67,11 @@ for (const candidata of PORTAS) {
     IMAGEM
   )
   if (subiu.status === 0) { porta = candidata; break }
-  console.log(`  porta ${candidata} indisponivel, tentando a proxima`)
+  console.log(`  porta ${candidata} indisponível, tentando a próxima`)
   derrubar()
 }
 if (!porta) {
-  console.error('\n  nao consegui subir o container em nenhuma porta candidata.')
+  console.error('\n  não consegui subir o container em nenhuma porta candidata.')
   console.error('  Escolha uma porta livre: PGPORT_TESTE=6543 npm run test:pg\n')
   process.exit(1)
 }
@@ -81,7 +81,7 @@ process.on('exit', derrubar)
 process.on('SIGINT', () => { derrubar(); process.exit(130) })
 
 if (!await esperarPostgres()) {
-  console.error('  o Postgres nao ficou pronto a tempo')
+  console.error('  o Postgres não ficou pronto a tempo')
   derrubar()
   process.exit(1)
 }

@@ -14,7 +14,7 @@ import { asyncRoute, requireAuth } from './helpers.js'
 export const adminRouter = Router()
 
 function exigirMediacao (req, _res, next) {
-  if (!req.user?.is_admin) return next(forbidden('Esta area e da equipe de operacao.'))
+  if (!req.user?.is_admin) return next(forbidden('Esta área é da equipe de operação.'))
   next()
 }
 
@@ -56,9 +56,9 @@ adminRouter.get('/overview', asyncRoute(async (_req, res) => {
     disputas: { abertas: disputas.abertas, atrasadas: disputas.atrasadas },
     // O que precisa de olho humano agora.
     atencao: [
-      fila.falhadas > 0 && { tipo: 'fila', quantidade: fila.falhadas, texto: `${fila.falhadas} operacao(oes) desistiram apos varias tentativas` },
-      disputas.atrasadas > 0 && { tipo: 'disputa', quantidade: disputas.atrasadas, texto: `${disputas.atrasadas} contestacao(oes) passaram do prazo` },
-      (totais.certificadospendentes ?? 0) > 0 && { tipo: 'certificado', quantidade: totais.certificadospendentes, texto: `${totais.certificadospendentes} certificado(s) ainda sem registro publico` }
+      fila.falhadas > 0 && { tipo: 'fila', quantidade: fila.falhadas, texto: `${fila.falhadas} operação(oes) desistiram após várias tentativas` },
+      disputas.atrasadas > 0 && { tipo: 'disputa', quantidade: disputas.atrasadas, texto: `${disputas.atrasadas} contestação(oes) passaram do prazo` },
+      (totais.certificadospendentes ?? 0) > 0 && { tipo: 'certificado', quantidade: totais.certificadospendentes, texto: `${totais.certificadospendentes} certificado(s) ainda sem registro público` }
     ].filter(Boolean),
     ultimasAcoes: ultimas.map((a) => ({
       acao: a.action, entidade: a.entity, id: a.entity_id, quem: a.quem ?? 'sistema', quando: a.created_at
@@ -118,13 +118,13 @@ adminRouter.get('/users', asyncRoute(async (req, res) => {
 
 adminRouter.post('/users/:id/block', asyncRoute(async (req, res) => {
   const alvo = await one('select id, name, blocked_at, is_admin from users where id = $1', [req.params.id])
-  if (!alvo) throw notFound('Nao encontramos essa conta.')
-  if (alvo.id === req.user.id) throw badRequest('Voce nao pode suspender a propria conta.')
-  if (alvo.is_admin) throw badRequest('Contas de mediacao nao sao suspensas por aqui.')
+  if (!alvo) throw notFound('Não encontramos essa conta.')
+  if (alvo.id === req.user.id) throw badRequest('Você não pode suspender a própria conta.')
+  if (alvo.is_admin) throw badRequest('Contas de mediação não são suspensas por aqui.')
 
   const motivo = String(req.body?.motivo ?? '').trim()
   if (motivo.length < 10) {
-    throw badRequest('Escreva o motivo da suspensao, com pelo menos 10 caracteres.', { campo: 'motivo' })
+    throw badRequest('Escreva o motivo da suspensão, com pelo menos 10 caracteres.', { campo: 'motivo' })
   }
 
   await query('update users set blocked_at = now() where id = $1', [req.params.id])
@@ -141,7 +141,7 @@ adminRouter.post('/users/:id/block', asyncRoute(async (req, res) => {
 
 adminRouter.post('/users/:id/unblock', asyncRoute(async (req, res) => {
   const alvo = await one('select id, blocked_at from users where id = $1', [req.params.id])
-  if (!alvo) throw notFound('Nao encontramos essa conta.')
+  if (!alvo) throw notFound('Não encontramos essa conta.')
   await query('update users set blocked_at = null where id = $1', [req.params.id])
   await registrarAuditoria({
     actorId: req.user.id, action: 'conta.reativada', entity: 'user', entityId: req.params.id,
@@ -159,7 +159,7 @@ adminRouter.get('/chain-jobs', asyncRoute(async (req, res) => {
 
 adminRouter.post('/chain-jobs/:id/retry', asyncRoute(async (req, res) => {
   const voltou = await reenfileirar(req.params.id)
-  if (!voltou) throw notFound('Nao encontramos essa operacao na fila.')
+  if (!voltou) throw notFound('Não encontramos essa operação na fila.')
   await registrarAuditoria({
     actorId: req.user.id, action: 'fila.reenfileirada', entity: 'chain_job', entityId: req.params.id, ip: req.ip
   })

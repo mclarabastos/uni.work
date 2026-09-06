@@ -71,7 +71,14 @@ export function createApp () {
   // em /api/health/live e /api/health/ready.
   app.get('/api/health', asyncRoute(async (_req, res) => {
     const info = await dbInfo()
-    res.json({ ok: true, banco: info.driver, cluster: config.solana.cluster })
+    res.json({
+      ok: true,
+      banco: info.driver,
+      cluster: config.solana.cluster,
+      // A interface mostra reais e converte com isto. Sem o numero vindo daqui,
+      // ela teria uma cotacao propria escrita dentro dela.
+      cotacaoBrlPorUsdc: config.cotacao.brlPorUsdc
+    })
   }))
 
   /**
@@ -111,7 +118,7 @@ export function createApp () {
   })
 
   app.use('/api', (_req, res) => {
-    res.status(404).json({ error: 'Rota nao encontrada.', codigo: 'rota_nao_encontrada', detalhes: null })
+    res.status(404).json({ error: 'Rota não encontrada.', codigo: 'rota_nao_encontrada', detalhes: null })
   })
 
   app.use(errorHandler)
@@ -140,7 +147,7 @@ export async function startServer () {
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 if (isMain) {
   startServer().catch((err) => {
-    console.error('Nao foi possivel subir o servidor:', err.message)
+    console.error('Não foi possível subir o servidor:', err.message)
     process.exit(1)
   })
 }

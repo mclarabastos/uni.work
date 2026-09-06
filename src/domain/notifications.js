@@ -28,7 +28,7 @@ export const preferenciasSchema = z.object({
   email: z.boolean().optional(),
   push: z.boolean().optional(),
   digest: z.enum(['instant', 'daily', 'off'], {
-    errorMap: () => ({ message: 'Escolha entre na hora, resumo diario ou desligado.' })
+    errorMap: () => ({ message: 'Escolha entre na hora, resumo diário ou desligado.' })
   }).optional()
 })
 
@@ -60,7 +60,7 @@ export async function notificacaoPara (evento) {
         para: [vaga.company_id],
         tipo: type,
         titulo: 'Nova candidatura',
-        corpo: `Alguem se candidatou a "${titulo}". Veja o perfil e escolha quando quiser.`,
+        corpo: `Alguém se candidatou a "${titulo}". Veja o perfil e escolha quando quiser.`,
         link
       }
 
@@ -70,7 +70,7 @@ export async function notificacaoPara (evento) {
         para: [vaga.company_id],
         tipo: type,
         titulo: 'Valor reservado',
-        corpo: `O valor de ${formatBRL(vaga.amount_cents)} saiu da sua conta e esta separado para "${titulo}". Agora voce pode escolher o estudante.`,
+        corpo: `O valor de ${formatBRL(vaga.amount_cents)} saiu da sua conta e está separado para "${titulo}". Agora você pode escolher o estudante.`,
         link
       }
 
@@ -79,8 +79,8 @@ export async function notificacaoPara (evento) {
       return {
         para: [vaga.student_id],
         tipo: type,
-        titulo: 'Voce foi escolhido',
-        corpo: `Voce foi escolhido para "${titulo}". O pagamento de ${formatBRL(vaga.amount_cents)} ja esta reservado.`,
+        titulo: 'Você foi escolhido',
+        corpo: `Você foi escolhido para "${titulo}". O pagamento de ${formatBRL(vaga.amount_cents)} já está reservado.`,
         link
       }
 
@@ -100,7 +100,7 @@ export async function notificacaoPara (evento) {
         para: [vaga.student_id],
         tipo: type,
         titulo: 'Pagamento liberado',
-        corpo: `O contratante confirmou "${titulo}". Voce recebeu ${formatBRL(payload.recebidoCentavos ?? vaga.amount_cents)} e o certificado de ${Number(vaga.hours)}h foi emitido.`,
+        corpo: `O contratante confirmou "${titulo}". Você recebeu ${formatBRL(payload.recebidoCentavos ?? vaga.amount_cents)} e o certificado de ${Number(vaga.hours)}h foi emitido.`,
         link,
         modeloEspecial: 'pagamento'
       }
@@ -121,7 +121,7 @@ export async function notificacaoPara (evento) {
         para: [vaga.company_id, vaga.student_id].filter(Boolean),
         tipo: type,
         titulo: 'Confirmada por prazo',
-        corpo: `"${titulo}" passou do prazo de confirmacao e foi confirmada automaticamente. O pagamento esta sendo liberado.`,
+        corpo: `"${titulo}" passou do prazo de confirmação e foi confirmada automaticamente. O pagamento está sendo liberado.`,
         link
       }
 
@@ -133,8 +133,8 @@ export async function notificacaoPara (evento) {
       return {
         para: [outra],
         tipo: type,
-        titulo: 'Contestacao aberta',
-        corpo: `Uma contestacao foi aberta em "${titulo}". O valor fica parado ate a analise terminar. Voce pode responder pela pagina da vaga.`,
+        titulo: 'Contestação aberta',
+        corpo: `Uma contestação foi aberta em "${titulo}". O valor fica parado até a análise terminar. Você pode responder pela página da vaga.`,
         link
       }
     }
@@ -144,8 +144,8 @@ export async function notificacaoPara (evento) {
       return {
         para: [vaga.company_id, vaga.student_id].filter(Boolean),
         tipo: type,
-        titulo: 'Contestacao resolvida',
-        corpo: `A contestacao de "${titulo}" foi analisada e decidida. Veja o resultado na pagina da vaga.`,
+        titulo: 'Contestação resolvida',
+        corpo: `A contestação de "${titulo}" foi analisada e decidida. Veja o resultado na página da vaga.`,
         link
       }
 
@@ -155,7 +155,7 @@ export async function notificacaoPara (evento) {
         para: [vaga.student_id],
         tipo: type,
         titulo: 'Certificado pronto',
-        corpo: `Seu certificado de ${Number(vaga.hours)}h por "${titulo}" esta pronto e pode ser verificado por qualquer pessoa.`,
+        corpo: `Seu certificado de ${Number(vaga.hours)}h por "${titulo}" está pronto e pode ser verificado por qualquer pessoa.`,
         link: payload.codigo ? `/verificar/${payload.codigo}` : link
       }
 
@@ -167,7 +167,7 @@ export async function notificacaoPara (evento) {
         para: [destinatario],
         tipo: type,
         titulo: 'Nova mensagem',
-        corpo: `Voce recebeu uma mensagem sobre "${titulo}".`,
+        corpo: `Você recebeu uma mensagem sobre "${titulo}".`,
         link,
         // Conversa gera muita notificacao. Uma por vaga por hora basta.
         janelaDeDeduplicacao: 3600_000
@@ -368,7 +368,7 @@ export async function marcarComoLidas (userId, ids = null) {
 
 export async function removerNotificacao (userId, id) {
   const { rowCount } = await query('delete from notifications where user_id = $1 and id = $2', [userId, id])
-  if (rowCount === 0) throw notFound('Nao encontramos essa notificacao.')
+  if (rowCount === 0) throw notFound('Não encontramos essa notificação.')
   return { ok: true }
 }
 

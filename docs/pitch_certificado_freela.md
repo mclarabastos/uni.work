@@ -24,7 +24,7 @@ Uma plataforma de trabalhos temporários para universitários — freela de even
 
 O fluxo:
 
-1. Contratante publica a vaga e deposita o pagamento em escrow.
+1. Contratante pública a vaga e deposita o pagamento em escrow.
 2. Estudante aceita e realiza o trabalho.
 3. Conclusão é confirmada (check-in/check-out, entrega aprovada).
 4. No mesmo instante: o pagamento é liberado automaticamente, e um certificado é emitido — com carga horária, descrição da atividade e data — que o estudante pode apresentar à coordenação do seu curso como hora complementar, ou usar como portfólio verificável pro mercado.

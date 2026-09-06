@@ -23,10 +23,10 @@ export const perfilSchema = z.object({
   links: z.array(
     z.object({
       rotulo: z.string().trim().min(1).max(40),
-      url: z.string().trim().url('Escreva um endereco completo, comecando com https://').max(300)
+      url: z.string().trim().url('Escreva um endereço completo, começando com https://').max(300)
     })
-  ).max(6, 'No maximo seis links.').optional(),
-  habilidades: z.array(z.string().trim().min(1).max(40)).max(20, 'No maximo vinte habilidades.').optional()
+  ).max(6, 'No máximo seis links.').optional(),
+  habilidades: z.array(z.string().trim().min(1).max(40)).max(20, 'No máximo vinte habilidades.').optional()
 })
 
 export async function atualizarPerfil (usuario, input) {
@@ -77,7 +77,7 @@ export async function perfilPublico (userId, visitante = null) {
     'select id, role, name, headline, bio, university, course, accent, skills, links, avatar_key, created_at, blocked_at from users where id = $1',
     [userId]
   )
-  if (!pessoa || pessoa.blocked_at) throw notFound('Nao encontramos esse perfil.')
+  if (!pessoa || pessoa.blocked_at) throw notFound('Não encontramos esse perfil.')
 
   const ehEstudante = pessoa.role === 'student'
   const eu = visitante?.id === userId

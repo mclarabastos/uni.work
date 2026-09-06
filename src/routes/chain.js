@@ -60,7 +60,7 @@ chainRouter.get('/status', asyncRoute(async (req, res) => {
 
 chainRouter.get('/tx/:id', asyncRoute(async (req, res) => {
   const row = await one('select * from chain_tx where id = $1', [req.params.id])
-  if (!row) return res.status(404).json({ error: 'Registro nao encontrado.', codigo: 'nao_encontrado', detalhes: null })
+  if (!row) return res.status(404).json({ error: 'Registro não encontrado.', codigo: 'nao_encontrado', detalhes: null })
   res.json({
     id: row.id,
     tipo: row.kind,
@@ -93,7 +93,7 @@ chainRouter.post('/faucet', requireAuth, asyncRoute(async (req, res) => {
   const platform = platformSummary()
   if (!platform.ready) {
     return res.status(409).json({
-      error: 'O ambiente de rede ainda nao foi preparado.',
+      error: 'O ambiente de rede ainda não foi preparado.',
       codigo: 'bootstrap_pendente',
       detalhes: { comando: 'npm run bootstrap' }
     })
@@ -124,7 +124,7 @@ chainRouter.post('/retry', requireAuth, asyncRoute(async (req, res) => {
     const voltou = await reenfileirar(id)
     if (!voltou) {
       return res.status(404).json({
-        error: 'Nao encontramos essa operacao na fila.',
+        error: 'Não encontramos essa operação na fila.',
         codigo: 'nao_encontrado',
         detalhes: null
       })
@@ -139,13 +139,13 @@ chainRouter.post('/retry', requireAuth, asyncRoute(async (req, res) => {
       enfileirado: item.id,
       jaEstava: item.jaEstava,
       mensagem: item.jaEstava
-        ? 'Esta operacao ja estava na fila.'
+        ? 'Esta operação já estava na fila.'
         : 'Colocamos na fila. Vamos tentar de novo em instantes.'
     })
   }
 
   res.status(400).json({
-    error: 'Diga qual operacao reprocessar.',
+    error: 'Diga qual operação reprocessar.',
     codigo: 'requisicao_invalida',
     detalhes: { esperado: 'id, ou vagaId com tipo' }
   })

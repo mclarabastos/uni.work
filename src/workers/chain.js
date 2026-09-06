@@ -54,12 +54,12 @@ async function registrarTx ({ jobId, kind, signature, instructions = [], detail 
 async function liberarPagamento (item) {
   const jobId = item.job_id ?? item.payload?.jobId
   const vaga = await one('select * from jobs where id = $1', [jobId])
-  if (!vaga) return { pulou: 'a vaga nao existe mais' }
-  if (vaga.status === 'concluida') return { pulou: 'o pagamento ja foi liberado' }
+  if (!vaga) return { pulou: 'a vaga não existe mais' }
+  if (vaga.status === 'concluida') return { pulou: 'o pagamento já foi liberado' }
   if (vaga.status === 'cancelada') return { pulou: 'a vaga foi cancelada' }
-  if (!vaga.confirmed_at) return { pulou: 'o contratante ainda nao confirmou' }
-  if (!vaga.student_id) return { pulou: 'a vaga nao tem estudante' }
-  if (vaga.disputed_at) return { pulou: 'a vaga esta em contestacao' }
+  if (!vaga.confirmed_at) return { pulou: 'o contratante ainda não confirmou' }
+  if (!vaga.student_id) return { pulou: 'a vaga não tem estudante' }
+  if (vaga.disputed_at) return { pulou: 'a vaga está em contestação' }
 
   // Quando a liberacao vem de uma resolucao de disputa, o destino do valor e a
   // divisao que o mediador decidiu, e nao o pagamento integral.
@@ -119,14 +119,14 @@ async function liberarPagamento (item) {
 async function devolverValor (item) {
   const jobId = item.job_id ?? item.payload?.jobId
   const vaga = await one('select * from jobs where id = $1', [jobId])
-  if (!vaga) return { pulou: 'a vaga nao existe mais' }
-  if (vaga.status !== 'cancelada') return { pulou: 'a vaga nao esta cancelada' }
+  if (!vaga) return { pulou: 'a vaga não existe mais' }
+  if (vaga.status !== 'cancelada') return { pulou: 'a vaga não está cancelada' }
 
   const jaVoltou = await one(
     "select id from chain_tx where job_id = $1 and kind = 'escrow_refund' and status = 'confirmada'",
     [jobId]
   )
-  if (jaVoltou) return { pulou: 'o valor ja voltou' }
+  if (jaVoltou) return { pulou: 'o valor já voltou' }
 
   const conta = await accountKeyFor(vaga.company_id)
   const chave = await openAccount(conta.secret_cipher)
@@ -144,8 +144,8 @@ async function devolverValor (item) {
 async function reservarValor (item) {
   const jobId = item.job_id ?? item.payload?.jobId
   const vaga = await one('select * from jobs where id = $1', [jobId])
-  if (!vaga) return { pulou: 'a vaga nao existe mais' }
-  if (vaga.status !== 'aberta') return { pulou: `a vaga esta em ${vaga.status}` }
+  if (!vaga) return { pulou: 'a vaga não existe mais' }
+  if (vaga.status !== 'aberta') return { pulou: `a vaga está em ${vaga.status}` }
 
   const conta = await accountKeyFor(vaga.company_id)
   const chave = await openAccount(conta.secret_cipher)
@@ -174,11 +174,11 @@ async function reservarValor (item) {
 async function emitirCertificado (item) {
   const jobId = item.job_id ?? item.payload?.jobId
   const vaga = await one('select * from jobs where id = $1', [jobId])
-  if (!vaga) return { pulou: 'a vaga nao existe mais' }
-  if (vaga.status !== 'concluida') return { pulou: 'a vaga ainda nao foi concluida' }
+  if (!vaga) return { pulou: 'a vaga não existe mais' }
+  if (vaga.status !== 'concluida') return { pulou: 'a vaga ainda não foi concluída' }
 
   const existente = await one('select * from certificates where job_id = $1', [jobId])
-  if (existente?.asset_id) return { pulou: 'o certificado ja esta registrado' }
+  if (existente?.asset_id) return { pulou: 'o certificado já está registrado' }
 
   const contaEstudante = await accountKeyFor(vaga.student_id)
   const estudante = await one('select name from users where id = $1', [vaga.student_id])
@@ -245,13 +245,13 @@ async function emitirCertificado (item) {
 async function sincronizarCertificado (item) {
   const code = item.payload?.code
   const certificado = await one('select * from certificates where code = $1', [code ?? ''])
-  if (!certificado) return { pulou: 'o certificado nao existe' }
-  if (certificado.asset_id) return { pulou: 'o certificado ja tem registro' }
+  if (!certificado) return { pulou: 'o certificado não existe' }
+  if (certificado.asset_id) return { pulou: 'o certificado já tem registro' }
 
   const contaEstudante = await accountKeyFor(certificado.student_id)
   const consulta = await getAsset(certificado.asset_id ?? '')
-  if (!consulta.available) return { pulou: 'o indexador nao esta configurado' }
-  if (!consulta.ok) throw new Error(`o indexador nao respondeu: ${consulta.reason}`)
+  if (!consulta.available) return { pulou: 'o indexador não está configurado' }
+  if (!consulta.ok) throw new Error(`o indexador não respondeu: ${consulta.reason}`)
 
   const dono = consulta.result?.ownership?.owner
   if (dono !== contaEstudante.public_key) {

@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { TRAIL, TRANSITIONS, canTransition, assertTransition, trailProgress, STATUS_LABELS } from '../src/domain/jobs.js'
 
-test('a trilha de seis etapas anda na ordem e cada etapa conhece a proxima', () => {
+test('a trilha de seis etapas anda na ordem e cada etapa conhece a próxima', () => {
   assert.equal(TRAIL.length, 6, 'a trilha do produto tem seis etapas')
   assert.deepEqual(TRAIL, ['aberta', 'garantida', 'aceita', 'em_andamento', 'entregue', 'concluida'])
 
@@ -32,7 +32,7 @@ test('a trilha de seis etapas anda na ordem e cada etapa conhece a proxima', () 
   }
 })
 
-test('a maquina de estados recusa pular etapa, voltar no tempo e mexer no que ja terminou', () => {
+test('a maquina de estados recusa pular etapa, voltar no tempo e mexer no que já terminou', () => {
   // Pular a reserva do pagamento e o erro mais importante de barrar: o produto
   // promete que o estudante so aceita depois do valor reservado.
   assert.equal(canTransition('aberta', 'aceita'), false)

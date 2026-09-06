@@ -73,7 +73,7 @@ export function validarArquivo ({ buffer, kind, nomeInformado = '', mimeInformad
   const limite = LIMITES[kind]
   const aceitos = TIPOS_ACEITOS[kind]
   if (!limite || !aceitos) {
-    return { ok: false, motivo: 'tipo_de_anexo_desconhecido', mensagem: 'Este tipo de anexo nao existe.' }
+    return { ok: false, motivo: 'tipo_de_anexo_desconhecido', mensagem: 'Este tipo de anexo não existe.' }
   }
   if (!buffer?.length) {
     return { ok: false, motivo: 'arquivo_vazio', mensagem: 'O arquivo chegou vazio.' }
@@ -91,7 +91,7 @@ export function validarArquivo ({ buffer, kind, nomeInformado = '', mimeInformad
     return {
       ok: false,
       motivo: 'formato_nao_reconhecido',
-      mensagem: 'Nao reconhecemos este formato de arquivo. Envie imagem, PDF ou video.'
+      mensagem: 'Não reconhecemos este formato de arquivo. Envie imagem, PDF ou vídeo.'
     }
   }
   if (!aceitos.includes(mimeReal)) {
@@ -149,7 +149,7 @@ async function lerLocal (chave) {
   const destino = path.join(DIR_LOCAL, chave)
   // Sem isto, uma chave com ".." leria qualquer arquivo do disco.
   if (!path.resolve(destino).startsWith(path.resolve(DIR_LOCAL))) {
-    throw new Error('chave fora do diretorio de uploads')
+    throw new Error('chave fora do diretório de uploads')
   }
   return fsp.readFile(destino)
 }

@@ -40,7 +40,7 @@ export const magicLinkSchema = z.object({
 })
 
 export const verificarSchema = z.object({
-  token: z.string().trim().min(20, 'Este link nao parece completo.').max(200)
+  token: z.string().trim().min(20, 'Este link não parece completo.').max(200)
 })
 
 export const refreshSchema = z.object({
@@ -68,7 +68,7 @@ export async function pedirMagicLink (input, { ip = null } = {}) {
   const dados = magicLinkSchema.parse(input)
 
   await exigir(`magic:email:${dados.email}`, LIMITES.magicLinkPorEmail,
-    'Voce ja pediu varios links para este e-mail. Espere uma hora e tente de novo.')
+    'Você já pediu vários links para este e-mail. Espere uma hora e tente de novo.')
   if (ip) {
     await exigir(`magic:ip:${ip}`, LIMITES.magicLinkPorIp,
       'Muitos pedidos de link deste dispositivo. Espere uma hora e tente de novo.')
@@ -91,7 +91,7 @@ export async function pedirMagicLink (input, { ip = null } = {}) {
       }
     : {
         ok: true,
-        mensagem: 'O envio de e-mail nao esta configurado neste ambiente. O link esta no terminal do servidor.',
+        mensagem: 'O envio de e-mail não está configurado neste ambiente. O link está no terminal do servidor.',
         expiraEmMinutos: MINUTOS_DO_LINK,
         entregaConfigurada: false,
         entregue: false,
@@ -119,7 +119,7 @@ export async function pedirMagicLink (input, { ip = null } = {}) {
     // Falha de envio com o servico configurado e diferente de servico ausente:
     // a primeira e transitoria e vale pedir de novo.
     if (envio.motivo !== 'email_nao_configurado') {
-      resposta.mensagem = 'Nao conseguimos enviar o e-mail agora. Tente de novo em alguns instantes.'
+      resposta.mensagem = 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns instantes.'
     }
   }
 
@@ -172,12 +172,12 @@ export async function verificarMagicLink (input, { ip = null, userAgent = null }
 
   const registro = await one('select token, email, expires_at, used_at from login_tokens where token = $1', [hash])
   if (!registro) {
-    throw new AppError('Este link nao vale mais. Peca um novo para entrar.', {
+    throw new AppError('Este link não vale mais. Peca um novo para entrar.', {
       status: 400, codigo: 'link_invalido'
     })
   }
   if (registro.used_at) {
-    throw new AppError('Este link ja foi usado. Peca um novo para entrar.', {
+    throw new AppError('Este link já foi usado. Peca um novo para entrar.', {
       status: 400, codigo: 'link_ja_usado'
     })
   }
@@ -188,9 +188,9 @@ export async function verificarMagicLink (input, { ip = null, userAgent = null }
   }
 
   const usuario = await one('select * from users where email = $1', [registro.email])
-  if (!usuario) throw notFound('Nao encontramos uma conta com esse e-mail.')
+  if (!usuario) throw notFound('Não encontramos uma conta com esse e-mail.')
   if (usuario.blocked_at) {
-    throw new AppError('Esta conta esta suspensa. Fale com o suporte.', { status: 403, codigo: 'conta_suspensa' })
+    throw new AppError('Esta conta está suspensa. Fale com o suporte.', { status: 403, codigo: 'conta_suspensa' })
   }
 
   const sessao = await transaction(async (tx) => {
@@ -200,7 +200,7 @@ export async function verificarMagicLink (input, { ip = null, userAgent = null }
     )
     if (queimou.rowCount === 0) {
       // Outra requisicao chegou primeiro com o mesmo token.
-      throw new AppError('Este link ja foi usado. Peca um novo para entrar.', {
+      throw new AppError('Este link já foi usado. Peca um novo para entrar.', {
         status: 400, codigo: 'link_ja_usado'
       })
     }
@@ -227,14 +227,14 @@ export async function renovarSessao (input, { ip = null } = {}) {
       where s.refresh_token = $1`,
     [dados.refresh]
   )
-  if (!sessao) throw unauthorized('Sua sessao expirou. Entre de novo.')
-  if (sessao.revoked_at) throw unauthorized('Esta sessao foi encerrada. Entre de novo.')
+  if (!sessao) throw unauthorized('Sua sessão expirou. Entre de novo.')
+  if (sessao.revoked_at) throw unauthorized('Esta sessão foi encerrada. Entre de novo.')
   if (sessao.blocked_at) {
-    throw new AppError('Esta conta esta suspensa. Fale com o suporte.', { status: 403, codigo: 'conta_suspensa' })
+    throw new AppError('Esta conta está suspensa. Fale com o suporte.', { status: 403, codigo: 'conta_suspensa' })
   }
   if (new Date(sessao.refresh_expires_at).getTime() < Date.now()) {
     await query('delete from sessions where token = $1', [sessao.token])
-    throw unauthorized('Sua sessao expirou. Entre de novo.')
+    throw unauthorized('Sua sessão expirou. Entre de novo.')
   }
 
   const novoAcesso = newToken(32)
@@ -255,7 +255,7 @@ export async function renovarSessao (input, { ip = null } = {}) {
       ip, sessao.token, dados.refresh
     ]
   )
-  if (atualizou.rowCount === 0) throw unauthorized('Sua sessao expirou. Entre de novo.')
+  if (atualizou.rowCount === 0) throw unauthorized('Sua sessão expirou. Entre de novo.')
 
   return {
     token: novoAcesso,
@@ -302,13 +302,13 @@ function descreverDispositivo (userAgent) {
 
 /** Revoga uma sessao pelo id curto. */
 export async function revogarSessao (userId, idCurto) {
-  if (!idCurto || idCurto.length < 8) throw badRequest('Sessao invalida.')
+  if (!idCurto || idCurto.length < 8) throw badRequest('Sessão inválida.')
   const { rowCount } = await query(
     `update sessions set revoked_at = now()
       where user_id = $1 and revoked_at is null and left(token, 12) = $2`,
     [userId, idCurto.slice(0, 12)]
   )
-  if (rowCount === 0) throw notFound('Nao encontramos essa sessao.')
+  if (rowCount === 0) throw notFound('Não encontramos essa sessão.')
   return { ok: true, encerradas: rowCount }
 }
 

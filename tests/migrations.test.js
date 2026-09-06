@@ -9,14 +9,14 @@ import { migrar, listarMigrations, statusDasMigrations, versaoDoSchema } from '.
 
 after(async () => { await closeDb() })
 
-test('as migrations aplicam do zero, sao idempotentes e detectam arquivo editado', async () => {
+test('as migrations aplicam do zero, são idempotentes e detectam arquivo editado', async () => {
   const disponiveis = listarMigrations()
-  assert.ok(disponiveis.length >= 2, 'precisa haver ao menos a inicial e a da versao completa')
+  assert.ok(disponiveis.length >= 2, 'precisa haver ao menos a inicial e a da versão completa')
   assert.equal(disponiveis[0].version, '0001_init')
 
   // Ordem por nome de arquivo precisa ser a ordem de aplicacao.
   const versoes = disponiveis.map((m) => m.version)
-  assert.deepEqual(versoes, [...versoes].sort(), 'as versoes precisam estar em ordem')
+  assert.deepEqual(versoes, [...versoes].sort(), 'as versões precisam estar em ordem')
 
   // Do zero: aplica todas.
   const primeira = await migrar()
@@ -24,7 +24,7 @@ test('as migrations aplicam do zero, sao idempotentes e detectam arquivo editado
 
   // De novo: nao faz nada. Rodar migrate duas vezes nao pode quebrar.
   const segunda = await migrar()
-  assert.deepEqual(segunda.aplicadas, [], 'a segunda passada nao aplica nada')
+  assert.deepEqual(segunda.aplicadas, [], 'a segunda passada não aplica nada')
   assert.deepEqual(segunda.jaEstavam, versoes)
 
   const status = await statusDasMigrations()
@@ -39,7 +39,7 @@ test('as migrations aplicam do zero, sao idempotentes e detectam arquivo editado
   await query('update schema_migrations set checksum = $1 where version = $2', [disponiveis[0].checksum, '0001_init'])
 })
 
-test('as tabelas, colunas e indices da versao completa existem depois de migrar', async () => {
+test('as tabelas, colunas e indices da versão completa existem depois de migrar', async () => {
   await migrar()
 
   const tabelas = (await many(
@@ -81,14 +81,14 @@ test('as tabelas, colunas e indices da versao completa existem depois de migrar'
   assert.ok(indices.includes('chain_jobs_unicidade_idx'))
 })
 
-test('a busca full-text entende portugues, com peso por campo e radicalizacao', async () => {
+test('a busca full-text entende português, com peso por campo e radicalizacao', async () => {
   await migrar()
   await query("insert into users (id, role, name, email) values ('u_busca','company','Produtora XPTO','busca@teste.br') on conflict do nothing")
 
   const vagas = [
-    ['jb1', 'Staff de credenciamento em congresso de tecnologia', 'Recepcao dos participantes no evento', 'Eventos'],
-    ['jb2', 'Monitoria de calculo para engenharia', 'Acompanhamento de alunos em listas de exercicios', 'Monitoria'],
-    ['jb3', 'Traducao de artigo cientifico', 'Traduzir um artigo do portugues para o ingles', 'Traducao']
+    ['jb1', 'Staff de credenciamento em congresso de tecnologia', 'Recepção dos participantes no evento', 'Eventos'],
+    ['jb2', 'Monitoria de cálculo para engenharia', 'Acompanhamento de alunos em listas de exercicios', 'Monitoria'],
+    ['jb3', 'Tradução de artigo científico', 'Traduzir um artigo do português para o inglês', 'Tradução']
   ]
   for (const [id, titulo, descricao, categoria] of vagas) {
     await query(
@@ -113,8 +113,8 @@ test('a busca full-text entende portugues, com peso por campo e radicalizacao', 
 
   // Peso: um termo no titulo pontua mais do que o mesmo termo na descricao.
   const porTitulo = await buscar('credenciamento')
-  const porDescricao = await buscar('recepcao')
-  assert.ok(Number(porTitulo[0].rank) > Number(porDescricao[0].rank), 'o titulo pesa mais que a descricao')
+  const porDescricao = await buscar('recepção')
+  assert.ok(Number(porTitulo[0].rank) > Number(porDescricao[0].rank), 'o título pesa mais que a descrição')
 
   // Palavra sem relacao nao traz nada.
   assert.equal((await buscar('astronauta')).length, 0)
@@ -125,7 +125,7 @@ test('a busca full-text entende portugues, com peso por campo e radicalizacao', 
   assert.ok((await buscar('formatura')).some((r) => r.id === 'jb1'))
 })
 
-test('a fila on-chain recusa duas operacoes pendentes iguais para a mesma vaga', async () => {
+test('a fila on-chain recusa duas operações pendentes iguais para a mesma vaga', async () => {
   await migrar()
   await query("insert into users (id, role, name, email) values ('u_fila','company','Empresa','fila@teste.br') on conflict do nothing")
   await query(`insert into jobs (id, company_id, title, description, category, modality, amount_cents, hours)
@@ -136,7 +136,7 @@ test('a fila on-chain recusa duas operacoes pendentes iguais para a mesma vaga',
 
   await assert.rejects(
     () => query("insert into chain_jobs (id, kind, job_id) values ('cj2','escrow_release','j_fila')"),
-    'duas liberacoes pendentes para a mesma vaga precisam ser recusadas pelo banco'
+    'duas liberações pendentes para a mesma vaga precisam ser recusadas pelo banco'
   )
 
   // Depois de concluida, uma nova pode entrar: e o caso do cert_sync.

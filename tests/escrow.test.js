@@ -25,7 +25,7 @@ test('reservar o valor monta um TransferChecked que sai da conta do contratante,
   const valorCentavos = 24000 // R$ 240,00
 
   const plano = await planFund({ jobId, companyPubkey: contratante, amountCents: valorCentavos, mint, driver: 'vault' })
-  assert.equal(plano.instructions.length, 1, 'reservar e uma instrucao so')
+  assert.equal(plano.instructions.length, 1, 'reservar e uma instrução só')
 
   const ix = plano.instructions[0]
   assert.ok(ix.programId.equals(TOKEN_PROGRAM_ID), 'precisa chamar o programa de token')
@@ -54,7 +54,7 @@ test('reservar o valor monta um TransferChecked que sai da conta do contratante,
   // 5. Quem autoriza e o proprio contratante, e ele assina.
   assert.ok(decodificada.keys.owner.pubkey.equals(new PublicKey(contratante)))
   const chaveContratante = ix.keys.find((k) => k.pubkey.equals(new PublicKey(contratante)))
-  assert.equal(chaveContratante.isSigner, true, 'o contratante precisa assinar a saida da propria conta')
+  assert.equal(chaveContratante.isSigner, true, 'o contratante precisa assinar a saida da própria conta')
 
   // 6. O mint conferido e o mint de pagamento, nao outro qualquer.
   assert.ok(decodificada.keys.mint.pubkey.equals(mint))
@@ -72,7 +72,7 @@ test('liberar o valor divide entre estudante e plataforma, e as duas saidas part
     amountCents: valorCentavos, mint, feeBps, driver: 'vault'
   })
 
-  assert.equal(plano.instructions.length, 2, 'uma transferencia para o estudante, uma para a plataforma')
+  assert.equal(plano.instructions.length, 2, 'uma transferência para o estudante, uma para a plataforma')
 
   const esperado = splitFee(valorCentavos, feeBps)
   const autoridade = deriveVaultAuthority(jobId)
@@ -130,12 +130,12 @@ test('o cofre e deterministico por vaga e diferente entre vagas', async () => {
   const plano = await planRefund({ jobId: 'job_alfa', companyPubkey: contratante, amountCents: 5000, mint, driver: 'vault' })
   const decodificada = decodeTransferCheckedInstruction(plano.instructions[0])
   const contaContratante = await getAssociatedTokenAddress(mint, new PublicKey(contratante), true)
-  assert.ok(decodificada.keys.destination.pubkey.equals(contaContratante), 'a devolucao volta para quem reservou')
-  assert.ok(decodificada.keys.owner.pubkey.equals(a1.publicKey), 'quem autoriza a devolucao e o cofre')
+  assert.ok(decodificada.keys.destination.pubkey.equals(contaContratante), 'a devolução volta para quem reservou')
+  assert.ok(decodificada.keys.owner.pubkey.equals(a1.publicKey), 'quem autoriza a devolução e o cofre')
   assert.equal(decodificada.data.amount.toString(), '50000000')
 })
 
-test('o driver anchor monta a instrucao com o discriminador e o endereco derivado corretos', async () => {
+test('o driver anchor monta a instrução com o discriminador e o endereço derivado corretos', async () => {
   // O program id vem da mesma funcao que o codigo de producao usa. Assim o
   // teste vale nos dois modos: com o driver vault ele cai no estado da
   // plataforma, e com ESCROW_DRIVER=anchor ele usa o id configurado.
@@ -150,7 +150,7 @@ test('o driver anchor monta a instrucao com o discriminador e o endereco derivad
   })
 
   const ix = plano.instructions[0]
-  assert.ok(ix.programId.equals(programa), 'precisa chamar o nosso programa, nao o de token')
+  assert.ok(ix.programId.equals(programa), 'precisa chamar o nosso programa, não o de token')
 
   // O discriminador Anchor sao os 8 primeiros bytes de sha256("global:<nome>").
   const esperado = crypto.createHash('sha256').update('global:initialize_and_deposit').digest().subarray(0, 8)
@@ -161,7 +161,7 @@ test('o driver anchor monta a instrucao com o discriminador e o endereco derivad
   const hashDaVaga = crypto.createHash('sha256').update(jobId).digest()
   assert.deepEqual([...ix.data.subarray(8, 40)], [...hashDaVaga])
   assert.equal(ix.data.readBigUInt64LE(40).toString(), centsToBase(30000).toString())
-  assert.equal(ix.data.readUInt16LE(48), 250, 'a taxa vai no proprio estado do escrow')
+  assert.equal(ix.data.readUInt16LE(48), 250, 'a taxa vai no próprio estado do escrow')
   assert.equal(ix.data.readBigInt64LE(50).toString(), '1893456000')
   assert.equal(ix.data.length, 58)
 

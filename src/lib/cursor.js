@@ -33,19 +33,19 @@ export function codificarCursor (valores) {
 export function decodificarCursor (cursor) {
   if (!cursor) return null
   const [corpo, assinatura] = String(cursor).split('.')
-  if (!corpo || !assinatura) throw badRequest('Cursor invalido.', { campo: 'cursor' })
+  if (!corpo || !assinatura) throw badRequest('Cursor inválido.', { campo: 'cursor' })
 
   const esperada = crypto
     .createHmac('sha256', config.security.masterKey)
     .update(corpo)
     .digest('base64url')
     .slice(0, 16)
-  if (assinatura !== esperada) throw badRequest('Cursor invalido.', { campo: 'cursor' })
+  if (assinatura !== esperada) throw badRequest('Cursor inválido.', { campo: 'cursor' })
 
   try {
     return JSON.parse(Buffer.from(corpo, 'base64url').toString('utf8'))
   } catch {
-    throw badRequest('Cursor invalido.', { campo: 'cursor' })
+    throw badRequest('Cursor inválido.', { campo: 'cursor' })
   }
 }
 

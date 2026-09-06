@@ -14,7 +14,7 @@ const base = {
   completedAt: '2026-08-20T15:00:00.000Z'
 }
 
-test('o hash do certificado e canonico: mesma informacao, mesmo hash, em qualquer ordem', () => {
+test('o hash do certificado e canonico: mesma informação, mesmo hash, em qualquer ordem', () => {
   // Duas maquinas diferentes precisam chegar no mesmo byte, senao o hash nao
   // serve para verificar nada.
   assert.equal(canonicalize({ b: 1, a: 2 }), '{"a":2,"b":1}')
@@ -39,13 +39,17 @@ test('o hash do certificado e canonico: mesma informacao, mesmo hash, em qualque
   assert.notEqual(contentHash(buildContent({ ...base, title: 'Outra atividade' })), hash)
 })
 
-test('os metadados e o cartao carregam os dados da atividade e nada de jargao', () => {
+test('os metadados e o cartão carregam os dados da atividade e nada de jargao', () => {
   const conteudo = buildContent(base)
   const hash = contentHash(conteudo)
   const metadados = buildMetadata({ content: conteudo, hash, code: base.code })
 
-  // O nome cabe no limite de 32 caracteres do padrao de metadados.
-  assert.ok(metadados.name.length <= 32, `nome tem ${metadados.name.length} caracteres`)
+  // O nome cabe no limite do padrao de metadados, que e contado em BYTES.
+  // Conferir caracteres deixava passar nome de 33 bytes com acento, e o mint
+  // do certificado falhava na rede com "Name in metadata is too long".
+  const bytesDoNome = Buffer.byteLength(metadados.name, 'utf8')
+  assert.ok(bytesDoNome <= 32, `nome tem ${bytesDoNome} bytes: ${metadados.name}`)
+  assert.ok(!metadados.name.includes('�'), 'o corte partiu um caractere ao meio')
 
   // O hash e o conteudo integral viajam junto: quem le os metadados consegue
   // recalcular o hash sozinho, sem consultar a nossa API.
@@ -55,28 +59,28 @@ test('os metadados e o cartao carregam os dados da atividade e nada de jargao', 
 
   // Os atributos descrevem a atividade em portugues.
   const atributos = Object.fromEntries(metadados.attributes.map((a) => [a.trait_type, a.value]))
-  assert.equal(atributos['Carga horaria'], '12h')
+  assert.equal(atributos['Carga horária'], '12h')
   assert.equal(atributos.Contratante, 'Produtora XPTO')
-  assert.equal(atributos.Codigo, base.code)
+  assert.equal(atributos['Código'], base.code)
   assert.equal(atributos.Hash, hash)
 
   // A URI dos metadados nao pode apontar para localhost: um indexador externo
   // precisa conseguir alcancar esse endereco.
-  assert.ok(!metadados.image.includes('localhost'), 'a imagem nao pode apontar para localhost')
+  assert.ok(!metadados.image.includes('localhost'), 'a imagem não pode apontar para localhost')
   assert.ok(!metadados.external_url.includes('localhost'))
   assert.ok(metadados.external_url.endsWith(`/verificar/${base.code}`))
 
   const svg = renderSvg({ content: conteudo, hash, code: base.code })
-  assert.ok(svg.startsWith('<svg'), 'o cartao precisa ser um SVG valido')
+  assert.ok(svg.startsWith('<svg'), 'o cartão precisa ser um SVG valido')
   assert.ok(svg.includes('Marina Alves'))
   assert.ok(svg.includes('12h'))
   assert.ok(svg.includes(base.code))
   assert.ok(svg.includes('20/08/2026'), 'a data aparece no formato brasileiro')
 
   // O cartao e mostrado ao usuario, entao ele tambem segue a regra de vocabulario.
-  const proibidas = ['wallet', 'blockchain', 'chave privada', 'assinar transacao']
+  const proibidas = ['wallet', 'blockchain', 'chave privada', 'assinar transação']
   for (const palavra of proibidas) {
-    assert.ok(!svg.toLowerCase().includes(palavra), `o cartao nao pode conter "${palavra}"`)
+    assert.ok(!svg.toLowerCase().includes(palavra), `o cartão não pode conter "${palavra}"`)
   }
 
   // Escapa conteudo perigoso em vez de injetar no SVG.
@@ -84,6 +88,6 @@ test('os metadados e o cartao carregam os dados da atividade e nada de jargao', 
     content: buildContent({ ...base, studentName: 'Ana <script>alert(1)</script>' }),
     hash, code: base.code
   })
-  assert.ok(!comAspas.includes('<script>'), 'o conteudo precisa ser escapado')
+  assert.ok(!comAspas.includes('<script>'), 'o conteúdo precisa ser escapado')
   assert.ok(comAspas.includes('&lt;script&gt;'))
 })

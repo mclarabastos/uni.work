@@ -58,8 +58,8 @@ function imprimirNoTerminal ({ para, assunto, texto }) {
   // Passar por JSON estruturado transformaria o link de acesso numa linha
   // ilegivel, e o objetivo aqui e exatamente que ele seja facil de copiar.
   console.log(`
-  ┌─ E-MAIL NAO ENVIADO ────────────────────────────────────────────────────
-  │ Nenhum servico de e-mail esta configurado, entao o conteudo abaixo NAO
+  ┌─ E-MAIL NÃO ENVIADO ────────────────────────────────────────────────────
+  │ Nenhum serviço de e-mail esta configurado, então o conteúdo abaixo NÃO
   │ saiu para lugar nenhum. Configure RESEND_API_KEY ou SMTP_URL no .env.
   │
   │ para:    ${para}
@@ -92,7 +92,7 @@ export async function enviarEmail ({ para, assunto, html, texto }) {
       driver,
       id: null,
       motivo: 'email_nao_configurado',
-      explicacao: 'Nenhum servico de e-mail esta configurado neste ambiente.'
+      explicacao: 'Nenhum serviço de e-mail está configurado neste ambiente.'
     }
   } catch (err) {
     log.error('email_falhou', { driver, detalhe: err.message })
@@ -114,8 +114,8 @@ function moldura (titulo, corpo) {
       </td></tr>
       <tr><td style="padding:0 32px 30px">
         <p style="margin:0;font-size:12px;color:#6e6e78;line-height:1.6">
-          Se voce nao pediu isto, pode ignorar esta mensagem com tranquilidade.
-          Ambiente de demonstracao.
+          Se você não pediu isto, pode ignorar esta mensagem com tranquilidade.
+          Ambiente de demonstração.
         </p>
       </td></tr>
     </table>
@@ -130,21 +130,21 @@ export function modeloMagicLink ({ nome, link, minutos }) {
     texto: `${saudacao}
 
 Use o link abaixo para entrar na sua conta. Ele vale por ${minutos} minutos e
-funciona uma vez so.
+funciona uma vez só.
 
 ${link}
 
-Se voce nao pediu isto, pode ignorar esta mensagem.`,
+Se você não pediu isto, pode ignorar esta mensagem.`,
     html: moldura('Seu link de acesso', `
         <p style="margin:0 0 22px;font-size:15px;color:#b9b9c4;line-height:1.6">
           ${saudacao} Toque no botao para entrar. O link vale por
-          <strong style="color:#f5f5f7">${minutos} minutos</strong> e funciona uma vez so.
+          <strong style="color:#f5f5f7">${minutos} minutos</strong> e funciona uma vez só.
         </p>
         <a href="${link}" style="display:inline-block;padding:13px 28px;border-radius:12px;background:linear-gradient(115deg,#7c5cff,#c04cf0,#ff7a45);color:#000;font-weight:700;text-decoration:none;font-size:15px">
           Entrar na minha conta
         </a>
         <p style="margin:24px 0 0;font-size:12px;color:#6e6e78;word-break:break-all;line-height:1.6">
-          Se o botao nao funcionar, cole este endereco no navegador:<br>${link}
+          Se o botao não funcionar, cole este endereço no navegador:<br>${link}
         </p>`)
   }
 }

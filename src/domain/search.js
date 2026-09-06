@@ -81,10 +81,10 @@ export async function buscarVagas (entrada = {}) {
   // Ordenar por relevancia sem termo de busca nao quer dizer nada.
   const ordem = (!termo && dados.ordem === 'relevancia') ? 'recentes' : (dados.ordem ?? (termo ? 'relevancia' : 'recentes'))
   const config = ORDEM_SQL[ordem]
-  if (!config) throw badRequest('Ordenacao desconhecida.', { campo: 'ordem' })
+  if (!config) throw badRequest('Ordenação desconhecida.', { campo: 'ordem' })
 
   if (dados.valorMin != null && dados.valorMax != null && dados.valorMin > dados.valorMax) {
-    throw badRequest('O valor minimo esta acima do maximo.', { campo: 'valorMin' })
+    throw badRequest('O valor mínimo está acima do máximo.', { campo: 'valorMin' })
   }
 
   const params = []
@@ -118,7 +118,7 @@ export async function buscarVagas (entrada = {}) {
   const posicao = decodificarCursor(dados.cursor)
   if (posicao) {
     if (posicao.o !== ordem) {
-      throw badRequest('O cursor e de outra ordenacao. Comece a lista de novo.', { campo: 'cursor' })
+      throw badRequest('O cursor é de outra ordenação. Comece a lista de novo.', { campo: 'cursor' })
     }
     const inicio = params.length + 1
     params.push(...posicao.v)
@@ -197,8 +197,13 @@ export async function minhasVagas (usuario, { cursor = null, limite = null } = {
   }
   params.push(tamanho + 1)
 
+  // A contagem de candidaturas em aberto vem junto, e nao numa consulta por
+  // vaga: e ela que monta a fila "precisam de voce hoje" na home do
+  // contratante, e sem ela a tela teria de abrir cada vaga para descobrir.
   const linhas = await many(
-    `select j.*, c.name as company_name, s.name as student_name
+    `select j.*, c.name as company_name, s.name as student_name,
+            (select count(*)::int from applications a
+              where a.job_id = j.id and a.status = 'pendente') as candidaturas_pendentes
        from jobs j join users c on c.id = j.company_id
        left join users s on s.id = j.student_id
       where ${where.join(' and ')}
@@ -208,7 +213,11 @@ export async function minhasVagas (usuario, { cursor = null, limite = null } = {
   )
   const { publicJob } = await import('./jobs.js')
   const pagina = montarPagina(linhas, tamanho, (l) => ({ o: 'recentes', v: [l.created_at, l.id] }))
-  return { vagas: pagina.itens.map((l) => publicJob(l)), proximoCursor: pagina.proximoCursor, temMais: pagina.temMais }
+  return {
+    vagas: pagina.itens.map((l) => publicJob(l, { candidaturasPendentes: l.candidaturas_pendentes ?? 0 })),
+    proximoCursor: pagina.proximoCursor,
+    temMais: pagina.temMais
+  }
 }
 
 /** Certificados do estudante, tambem por cursor. */

@@ -15,14 +15,14 @@ try {
     console.log(`  aplicadas: ${status.aplicadas.join(', ') || 'nenhuma'}`)
     console.log(`  pendentes: ${status.pendentes.join(', ') || 'nenhuma'}`)
     if (status.alteradas.length) {
-      console.log(`\n  ATENCAO: migration ja aplicada foi editada: ${status.alteradas.join(', ')}`)
-      console.log('  O banco nao tem o que o arquivo diz que tem. Crie uma migration nova em vez de editar.')
+      console.log(`\n  ATENÇÃO: migration já aplicada foi editada: ${status.alteradas.join(', ')}`)
+      console.log('  O banco não tem o que o arquivo diz que tem. Crie uma migration nova em vez de editar.')
     }
   } else {
     const resultado = await migrar({ log: (m) => console.log(`  ${m}`) })
     if (resultado.alteradas.length) {
-      console.log(`\n  ATENCAO: migration ja aplicada foi editada: ${resultado.alteradas.join(', ')}`)
-      console.log('  Crie uma migration nova em vez de editar uma que ja rodou.')
+      console.log(`\n  ATENÇÃO: migration já aplicada foi editada: ${resultado.alteradas.join(', ')}`)
+      console.log('  Crie uma migration nova em vez de editar uma que já rodou.')
     }
     if (resultado.aplicadas.length) {
       console.log(`\n  ${resultado.aplicadas.length} migration(s) aplicada(s).`)

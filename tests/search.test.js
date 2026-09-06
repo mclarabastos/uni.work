@@ -14,15 +14,15 @@ fakePlatform()
 let servidor
 let base
 
-const CATEGORIAS = ['Eventos', 'Monitoria', 'Design', 'Traducao', 'Pesquisa', 'Desenvolvimento']
-const CIDADES = ['Sao Paulo, SP', 'Campinas, SP', 'Belo Horizonte, MG', 'Rio de Janeiro, RJ']
+const CATEGORIAS = ['Eventos', 'Monitoria', 'Design', 'Tradução', 'Pesquisa', 'Desenvolvimento']
+const CIDADES = ['São Paulo, SP', 'Campinas, SP', 'Belo Horizonte, MG', 'Rio de Janeiro, RJ']
 const TITULOS = [
   'Staff de credenciamento no congresso de tecnologia',
-  'Monitoria de calculo para a turma de engenharia',
+  'Monitoria de cálculo para a turma de engenharia',
   'Redesenho da tela de assinatura do aplicativo',
-  'Traducao de artigo cientifico sobre energia renovavel',
+  'Tradução de artigo científico sobre energia renovável',
   'Pesquisa de campo sobre mobilidade urbana',
-  'Componente de calendario acessivel em React'
+  'Componente de calendário acessível em React'
 ]
 
 const QUANTIDADE = Number(process.env.VAGAS_DE_TESTE ?? 10000)
@@ -46,8 +46,8 @@ before(async () => {
       valores.push(`($${p + 1}, 'emp_busca', $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5}, $${p + 6}, $${p + 7}, $${p + 8}, $${p + 9}, now() - make_interval(mins => $${p + 10}))`)
       params.push(
         `job_perf_${i}`,
-        `${TITULOS[i % TITULOS.length]} numero ${i}`,
-        `Descricao detalhada da vaga numero ${i}, com contexto suficiente para a busca ter o que indexar em portugues.`,
+        `${TITULOS[i % TITULOS.length]} número ${i}`,
+        `Descrição detalhada da vaga número ${i}, com contexto suficiente para a busca ter o que indexar em português.`,
         CATEGORIAS[i % CATEGORIAS.length],
         i % 2 === 0 ? 'presencial' : 'remoto',
         i % 2 === 0 ? CIDADES[i % CIDADES.length] : null,
@@ -102,7 +102,7 @@ async function medir (fn, vezes = 3) {
 
 test('a base de teste tem mesmo as dez mil vagas', async () => {
   const total = await one('select count(*)::int as n from jobs')
-  assert.equal(total.n, QUANTIDADE + 1, 'sem a base cheia, o teste de desempenho nao vale nada')
+  assert.equal(total.n, QUANTIDADE + 1, 'sem a base cheia, o teste de desempenho não vale nada')
 })
 
 test('a busca full-text responde abaixo de 200 ms com dez mil vagas', async () => {
@@ -136,7 +136,7 @@ test('a busca full-text responde abaixo de 200 ms com dez mil vagas', async () =
   console.log(`      listagem inicial: ${inicial.ms.toFixed(1)}ms`)
 })
 
-test('a pagina 500 custa o mesmo que a pagina 1, que e o motivo do cursor', async () => {
+test('a página 500 custa o mesmo que a página 1, que e o motivo do cursor', async () => {
   // Com offset, chegar na pagina 500 significaria mandar o banco varrer e
   // descartar dez mil linhas. Com cursor, e a mesma consulta.
   const primeira = await medir(() => buscarVagas({ limite: 20 }))
@@ -148,15 +148,15 @@ test('a pagina 500 custa o mesmo que a pagina 1, que e o motivo do cursor', asyn
     cursor = saida.proximoCursor
     paginas += 1
   }
-  assert.ok(paginas > 50, `so consegui avancar ${paginas} paginas`)
+  assert.ok(paginas > 50, `só consegui avancar ${paginas} páginas`)
 
   const funda = await medir(() => buscarVagas({ cursor, limite: 20 }))
-  assert.ok(funda.ms < 200, `a pagina funda levou ${funda.ms.toFixed(1)}ms`)
+  assert.ok(funda.ms < 200, `a página funda levou ${funda.ms.toFixed(1)}ms`)
 
   // A pagina funda nao pode ser dramaticamente mais lenta que a primeira.
   assert.ok(funda.ms < primeira.ms + 100,
-    `pagina 1: ${primeira.ms.toFixed(1)}ms, pagina ${paginas}: ${funda.ms.toFixed(1)}ms`)
-  console.log(`      pagina 1: ${primeira.ms.toFixed(1)}ms | pagina ${paginas}: ${funda.ms.toFixed(1)}ms`)
+    `página 1: ${primeira.ms.toFixed(1)}ms, página ${paginas}: ${funda.ms.toFixed(1)}ms`)
+  console.log(`      página 1: ${primeira.ms.toFixed(1)}ms | página ${paginas}: ${funda.ms.toFixed(1)}ms`)
 })
 
 test('o cursor percorre a lista inteira sem pular nem repetir', async () => {
@@ -182,13 +182,13 @@ test('o cursor percorre a lista inteira sem pular nem repetir', async () => {
   assert.equal(vistos.length, noBanco.n, 'o cursor pulou algum item')
 })
 
-test('o cursor e assinado: adulterar o valor de comparacao nao funciona', async () => {
+test('o cursor e assinado: adulterar o valor de comparacao não funciona', async () => {
   const valido = codificarCursor({ o: 'recentes', v: ['2026-01-01', 'job_x'] })
   assert.deepEqual(decodificarCursor(valido), { o: 'recentes', v: ['2026-01-01', 'job_x'] })
 
   const [corpo] = valido.split('.')
   for (const adulterado of [`${corpo}.aaaaaaaaaaaaaaaa`, corpo, 'lixo', `${corpo}.`]) {
-    assert.throws(() => decodificarCursor(adulterado), /Cursor invalido/,
+    assert.throws(() => decodificarCursor(adulterado), /Cursor inválido/,
       `o cursor "${String(adulterado).slice(0, 20)}" deveria ser recusado`)
   }
 
@@ -197,11 +197,11 @@ test('o cursor e assinado: adulterar o valor de comparacao nao funciona', async 
   const porValor = await buscarVagas({ ordem: 'maior_valor', limite: 5 })
   await assert.rejects(
     () => buscarVagas({ ordem: 'menor_valor', cursor: porValor.proximoCursor }),
-    /outra ordenacao/
+    /outra ordenação/
   )
 })
 
-test('as ordenacoes ordenam de verdade, e relevancia sem termo nao existe', async () => {
+test('as ordenacoes ordenam de verdade, e relevância sem termo não existe', async () => {
   const maior = await buscarVagas({ ordem: 'maior_valor', limite: 10 })
   const valores = maior.vagas.map((v) => v.valorCentavos)
   assert.deepEqual(valores, [...valores].sort((a, b) => b - a), 'maior valor primeiro')
@@ -251,8 +251,8 @@ test('os filtros combinam entre si e cada um recorta de verdade', async () => {
   assert.ok(garantidas.vagas.length > 0)
   assert.ok(garantidas.vagas.every((v) => v.pagamentoGarantido))
 
-  const emSaoPaulo = await buscarVagas({ local: 'Sao Paulo', limite: 50 })
-  assert.ok(emSaoPaulo.vagas.every((v) => v.local?.includes('Sao Paulo')))
+  const emSaoPaulo = await buscarVagas({ local: 'São Paulo', limite: 50 })
+  assert.ok(emSaoPaulo.vagas.every((v) => v.local?.includes('São Paulo')))
 
   // Tudo junto.
   const combinado = await buscarVagas({
@@ -262,7 +262,7 @@ test('os filtros combinam entre si e cada um recorta de verdade', async () => {
     v.modalidade === 'presencial' && v.valorCentavos >= 2000 && v.horas <= 20))
 
   // Faixa impossivel e recusada com mensagem util.
-  await assert.rejects(() => buscarVagas({ valorMin: 9000, valorMax: 1000 }), /minimo esta acima/)
+  await assert.rejects(() => buscarVagas({ valorMin: 9000, valorMax: 1000 }), /mínimo está acima/)
 
   // Termo sem resultado devolve lista vazia, nao erro.
   const nada = await buscarVagas({ termo: 'astronauta interplanetario' })
@@ -285,7 +285,7 @@ test('o limite tem teto, e a rota HTTP entrega tudo isso', async () => {
     const segunda = await pedir(`/api/jobs/search?termo=monitoria&modalidade=remoto&limite=5&cursor=${encodeURIComponent(http.corpo.proximoCursor)}`)
     assert.equal(segunda.status, 200)
     const idsPrimeira = new Set(http.corpo.vagas.map((v) => v.id))
-    assert.ok(segunda.corpo.vagas.every((v) => !idsPrimeira.has(v.id)), 'a segunda pagina nao repete a primeira')
+    assert.ok(segunda.corpo.vagas.every((v) => !idsPrimeira.has(v.id)), 'a segunda página não repete a primeira')
   }
 
   // Cursor invalido pela rota vira erro de produto, nao erro de servidor.
