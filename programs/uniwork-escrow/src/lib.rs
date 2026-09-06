@@ -23,7 +23,7 @@ use anchor_spl::{
     token::{self, Mint, Token, TokenAccount, TransferChecked},
 };
 
-declare_id!("Escrow111111111111111111111111111111111111");
+declare_id!("8bv5TmYmf5WiTCKe8BS4rE2WApcdRsRqo7Dtc3Hi9Dtp");
 
 /// Teto da taxa da plataforma: 10%. Um valor gravado em codigo, e nao so
 /// validado fora da rede, para nenhuma configuracao errada conseguir cobrar

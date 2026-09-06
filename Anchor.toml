@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-uniwork_escrow = "Escrow111111111111111111111111111111111111"
+uniwork_escrow = "8bv5TmYmf5WiTCKe8BS4rE2WApcdRsRqo7Dtc3Hi9Dtp"
 
 [programs.localnet]
-uniwork_escrow = "Escrow111111111111111111111111111111111111"
+uniwork_escrow = "8bv5TmYmf5WiTCKe8BS4rE2WApcdRsRqo7Dtc3Hi9Dtp"
 
 [registry]
 url = "https://api.apr.dev"

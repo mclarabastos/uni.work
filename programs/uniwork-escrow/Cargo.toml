@@ -3,6 +3,7 @@ name = "uniwork-escrow"
 version = "0.1.0"
 description = "Escrow do Uni.work: trava o pagamento ate a confirmacao, com disputa, mediacao e liberacao por prazo"
 edition = "2021"
+rust-version = "1.75"
 
 [lib]
 crate-type = ["cdylib", "lib"]
