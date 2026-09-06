@@ -21,7 +21,7 @@ try {
   AxeBuilder = (await import('@axe-core/playwright')).default
 } catch {
   console.error(`
-  Faltam dependencias para a auditoria de acessibilidade:
+  Faltam dependências para a auditoria de acessibilidade:
 
       npm install --save-dev playwright @axe-core/playwright
       npx playwright install --with-deps chromium
@@ -67,15 +67,15 @@ const estudante = await api('/api/signup', {
 const vagasCriadas = []
 for (const [titulo, categoria, modalidade, valor, horas] of [
   ['Staff de credenciamento no congresso de tecnologia', 'Eventos', 'presencial', 24000, 12],
-  ['Traducao de artigo cientifico para o ingles', 'Traducao', 'remoto', 45000, 10],
-  ['Monitoria de calculo para engenharia', 'Monitoria', 'presencial', 60000, 20]
+  ['Tradução de artigo científico para o inglês', 'Tradução', 'remoto', 45000, 10],
+  ['Monitoria de cálculo para engenharia', 'Monitoria', 'presencial', 60000, 20]
 ]) {
   const { vaga } = await api('/api/jobs', {
     method: 'POST', token: empresa.sessao.token,
     body: {
       titulo,
-      descricao: `Descricao completa da atividade: ${titulo.toLowerCase()}, com contexto suficiente para a tela ficar realista.`,
-      categoria, modalidade, local: modalidade === 'presencial' ? 'Sao Paulo, SP' : null,
+      descricao: `Descrição completa da atividade: ${titulo.toLowerCase()}, com contexto suficiente para a tela ficar realista.`,
+      categoria, modalidade, local: modalidade === 'presencial' ? 'São Paulo, SP' : null,
       valorCentavos: valor, horas
     }
   })
@@ -147,7 +147,7 @@ async function passo (nome, fn) {
     // chegou a anunciar zero violacoes tendo pulado metade das telas.
     const primeiraLinha = String(err.message).split(/\r?\n/)[0]
     pulados.push({ tela: nome, motivo: primeiraLinha })
-    console.log(`  ${nome.padEnd(24)} NAO AUDITADA: ${primeiraLinha}`)
+    console.log(`  ${nome.padEnd(24)} NÃO AUDITADA: ${primeiraLinha}`)
   }
 }
 
@@ -170,8 +170,8 @@ async function auditar (nome) {
   }
   const total = porTela.reduce((s, v) => s + v.nodes.length, 0)
   const resumo = total === 0
-    ? 'sem violacoes'
-    : `${contagem.critical} criticas, ${contagem.serious} serias, ${contagem.moderate} moderadas, ${contagem.minor} leves`
+    ? 'sem violações'
+    : `${contagem.critical} críticas, ${contagem.serious} serias, ${contagem.moderate} moderadas, ${contagem.minor} leves`
   console.log(`  ${nome.padEnd(24)} ${resumo}`)
 }
 
@@ -210,13 +210,13 @@ try {
     await pagina.click('[data-view="notificacoes"]')
     await pagina.waitForTimeout(600)
   })
-  await passo('perfil publico', async () => {
+  await passo('perfil público', async () => {
     await pagina.click('[data-view="conta"]')
     await pagina.waitForTimeout(300)
     await pagina.click('[data-acao="meu-perfil"]')
     await pagina.waitForTimeout(600)
   })
-  await passo('camada tecnica', async () => {
+  await passo('camada técnica', async () => {
     await pagina.click('#gaveta-puxador')
     await pagina.waitForTimeout(500)
   })
@@ -241,7 +241,7 @@ try {
     await pagina.click('.nav-item[data-view="verificar"]')
     await pagina.waitForSelector('#form-codigo', { timeout: 15000 })
   })
-  await passo('verificacao publica', async () => {
+  await passo('verificação pública', async () => {
     const cert = await query('select code from certificates limit 1')
     await pagina.goto(`${base}/verificar/${cert.rows[0]?.code ?? 'UNI-AAAA-BBBB'}`, { waitUntil: 'networkidle' })
   })
@@ -257,7 +257,7 @@ const graves = [...achados.critical, ...achados.serious]
 const leves = [...achados.moderate, ...achados.minor]
 
 if (graves.length) {
-  console.log('\n  criticas e serias:\n')
+  console.log('\n  críticas e serias:\n')
   for (const a of graves) {
     console.log(`  X  [${a.tela}] ${a.regra}: ${a.descricao} (${a.quantos})`)
     if (a.exemplo) console.log(`       ${a.exemplo}`)
@@ -277,18 +277,18 @@ await fsp.mkdir(path.dirname(relatorio), { recursive: true })
 await fsp.writeFile(relatorio, `${JSON.stringify(achados, null, 2)}\n`)
 
 console.log(`
-  ${graves.length} grave(s), ${leves.length} de menor impacto${pulados.length ? `, ${pulados.length} tela(s) NAO auditada(s)` : ''}
-  relatorio em test-results/acessibilidade.json
+  ${graves.length} grave(s), ${leves.length} de menor impacto${pulados.length ? `, ${pulados.length} tela(s) NÃO auditada(s)` : ''}
+  relatório em test-results/acessibilidade.json
 `)
 
 if (pulados.length) {
-  console.log('  telas que nao foram auditadas:\n')
+  console.log('  telas que não foram auditadas:\n')
   for (const p of pulados) console.log(`  X  ${p.tela}: ${p.motivo}`)
-  console.log('\n  Uma tela que nao abriu nao e uma tela aprovada.\n')
+  console.log('\n  Uma tela que não abriu não e uma tela aprovada.\n')
   process.exitCode = 1
 }
 
 if (graves.length) {
-  console.log('  A fase 10 exige zero criticas e serias.\n')
+  console.log('  A fase 10 exige zero críticas e serias.\n')
   process.exitCode = 1
 }

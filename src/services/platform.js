@@ -51,9 +51,57 @@ export function clearPlatformStateCache () { cached = null }
 export function platformKeypair () {
   const state = readPlatformState()
   if (!state?.secretKey) {
-    throw new Error('Conta da plataforma ainda nao existe. Rode: npm run bootstrap')
+    throw new Error('Conta da plataforma ainda não existe. Rode: npm run bootstrap')
   }
   return Keypair.fromSecretKey(Uint8Array.from(state.secretKey))
+}
+
+/**
+ * Quanto de valor de teste uma conta de contratante nova recebe.
+ *
+ * Isto existe porque o ambiente e de demonstracao: o token e criado pelo
+ * bootstrap, tem zero valor financeiro, e sem saldo nenhum o contratante nao
+ * consegue reservar — a acao principal do produto ficaria impossivel para
+ * qualquer conta criada na tela, e a tela nao teria como explicar por que.
+ *
+ * Em producao, com USDC de verdade, isto nao roda: quem paga traz o proprio
+ * saldo. A porta e a existencia do token de teste no estado da plataforma.
+ */
+export const SALDO_DE_DEMONSTRACAO_CENTAVOS = 500_000_00
+
+/**
+ * Abastece uma conta com o token de teste, se o ambiente for de demonstracao.
+ *
+ * Nunca lanca: uma conta criada e uma conta criada, mesmo que a rede esteja
+ * fora. Devolve o que aconteceu para quem chamou registrar.
+ */
+export async function abastecerContaDeDemonstracao (publicKeyBase58, centavos = SALDO_DE_DEMONSTRACAO_CENTAVOS) {
+  const state = readPlatformState()
+  if (!state?.usdcMint) return { ok: false, motivo: 'bootstrap_pendente' }
+  if (config.solana.cluster !== 'devnet' && config.solana.cluster !== 'localnet') {
+    return { ok: false, motivo: 'cluster_de_producao' }
+  }
+
+  try {
+    const [{ PublicKey }, spl, { getConnection }, { centsToBase }] = await Promise.all([
+      import('@solana/web3.js'),
+      import('@solana/spl-token'),
+      import('./solana.js'),
+      import('../lib/money.js')
+    ])
+    const conexao = getConnection()
+    const plataforma = platformKeypair()
+    const mint = new PublicKey(state.usdcMint)
+    const conta = await spl.getOrCreateAssociatedTokenAccount(
+      conexao, plataforma, mint, new PublicKey(publicKeyBase58)
+    )
+    const assinatura = await spl.mintTo(
+      conexao, plataforma, mint, conta.address, plataforma, centsToBase(centavos)
+    )
+    return { ok: true, assinatura, centavos }
+  } catch (erro) {
+    return { ok: false, motivo: 'falha_na_rede', detalhe: erro.message }
+  }
 }
 
 /** Resumo sem segredo, seguro para log, doctor e resposta de API. */

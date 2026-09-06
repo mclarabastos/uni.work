@@ -43,6 +43,11 @@ function int (key, fallback) {
   return Number.isFinite(value) ? value : fallback
 }
 
+function decimal (key, fallback) {
+  const value = Number.parseFloat(String(env[key] ?? '').replace(',', '.'))
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
 function oneOf (key, allowed, fallback) {
   const value = str(key, fallback)
   return allowed.includes(value) ? value : fallback
@@ -60,7 +65,7 @@ function resolveMasterKey () {
   if (provided) return { key: provided, ephemeral: false }
   if (isProduction) {
     throw new Error(
-      'WALLET_MASTER_KEY nao configurada. Em producao ela precisa vir do gerenciador de segredos.'
+      'WALLET_MASTER_KEY não configurada. Em produção ela precisa vir do gerenciador de segredos.'
     )
   }
   const derived = crypto.createHash('sha256').update(`uniwork-dev:${rootDir}`).digest('hex')
@@ -119,6 +124,16 @@ export const config = Object.freeze({
 
   certificate: Object.freeze({
     driver: oneOf('CERT_DRIVER', ['bubblegum', 'memo'], 'bubblegum')
+  }),
+
+  // Quantos reais vale um USDC.
+  //
+  // O valor circula em USDC, mas quem le a tela pensa em real: um universitario
+  // nao sabe quanto vale 800 USDC. A conversao e ilustrativa e mora num lugar
+  // so, aqui, servida para a interface pela rota de saude. Mudar a cotacao e
+  // mudar esta linha, ou a variavel de ambiente.
+  cotacao: Object.freeze({
+    brlPorUsdc: decimal('COTACAO_BRL_POR_USDC', 5.4)
   })
 })
 

@@ -53,23 +53,43 @@ export function buildContent ({ code, title, hours, studentName, issuerName, cat
   }
 }
 
+/**
+ * Corta o texto no limite de BYTES, e nao de caracteres.
+ *
+ * O padrao de metadados da rede conta bytes, e o programa recusa o mint com
+ * "Name in metadata is too long" quando passa. Em portugues isso morde: "á"
+ * ocupa dois bytes e "·" tambem, entao um nome de 32 caracteres pode chegar a
+ * 40 bytes. Cortar por caractere passa no teste e falha na rede.
+ *
+ * O corte nunca parte um caractere ao meio: se a fatia terminar no meio de um,
+ * o pedaco quebrado sai fora.
+ */
+export function cortarPorBytes (texto, limite) {
+  const bytes = Buffer.from(String(texto ?? ''), 'utf8')
+  if (bytes.length <= limite) return String(texto ?? '')
+  return bytes.subarray(0, limite).toString('utf8').replace(/�+$/, '').trimEnd()
+}
+
+/** O limite do nome no padrao de metadados da rede, em bytes. */
+export const LIMITE_NOME_BYTES = 32
+
 /** Metadados no padrao de token da rede, ja com o hash dentro. */
 export function buildMetadata ({ content, hash, code }) {
   const base = config.publicBaseUrl
   return {
-    name: `Certificado ${content.horas}h · ${content.atividade}`.slice(0, 32),
+    name: cortarPorBytes(`Certificado ${content.horas}h · ${content.atividade}`, LIMITE_NOME_BYTES),
     symbol: 'UNIW',
-    description: `Certificado de ${content.horas} horas de atividade complementar emitido pela Uni.work para ${content.estudante}, referente a "${content.atividade}" realizada para ${content.contratante} e concluida em ${new Date(content.concluido_em).toLocaleDateString('pt-BR')}. Verificacao publica em ${base}/verificar/${code}`,
+    description: `Certificado de ${content.horas} horas de atividade complementar emitido pela Uni.work para ${content.estudante}, referente a "${content.atividade}" realizada para ${content.contratante} e concluída em ${new Date(content.concluido_em).toLocaleDateString('pt-BR')}. Verificação pública em ${base}/verificar/${code}`,
     image: `${base}/api/certificates/${code}/image.svg`,
     external_url: `${base}/verificar/${code}`,
     attributes: [
-      { trait_type: 'Carga horaria', value: `${content.horas}h` },
+      { trait_type: 'Carga horária', value: `${content.horas}h` },
       { trait_type: 'Atividade', value: content.atividade },
       { trait_type: 'Categoria', value: content.categoria },
       { trait_type: 'Modalidade', value: content.modalidade },
       { trait_type: 'Contratante', value: content.contratante },
-      { trait_type: 'Concluido em', value: new Date(content.concluido_em).toISOString().slice(0, 10) },
-      { trait_type: 'Codigo', value: content.codigo },
+      { trait_type: 'Concluído em', value: new Date(content.concluido_em).toISOString().slice(0, 10) },
+      { trait_type: 'Código', value: content.codigo },
       { trait_type: 'Hash', value: hash }
     ],
     properties: {
@@ -114,15 +134,15 @@ export function renderSvg ({ content, hash, code }) {
   <text x="62" y="310" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="30" font-weight="700" fill="#f5f5f7">${escapeXml(title)}</text>
   <text x="62" y="352" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="19" fill="#b9b9c4">para ${escapeXml(content.contratante)} · ${escapeXml(content.modalidade)} · ${escapeXml(content.categoria)}</text>
   <rect x="62" y="392" width="250" height="108" rx="18" fill="#121216" stroke="#26262e"/>
-  <text x="86" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CARGA HORARIA</text>
+  <text x="86" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CARGA HORÁRIA</text>
   <text x="86" y="478" font-family="JetBrains Mono, Consolas, monospace" font-size="40" font-weight="700" fill="#c04cf0">${escapeXml(content.horas)}h</text>
   <rect x="336" y="392" width="250" height="108" rx="18" fill="#121216" stroke="#26262e"/>
-  <text x="360" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CONCLUIDO EM</text>
+  <text x="360" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CONCLUÍDO EM</text>
   <text x="360" y="472" font-family="JetBrains Mono, Consolas, monospace" font-size="28" font-weight="700" fill="#f5f5f7">${escapeXml(dateBR)}</text>
   <rect x="610" y="392" width="328" height="108" rx="18" fill="#121216" stroke="#26262e"/>
-  <text x="634" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CODIGO DE VERIFICACAO</text>
+  <text x="634" y="428" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="13" letter-spacing="2" fill="#8b8b96">CÓDIGO DE VERIFICAÇÃO</text>
   <text x="634" y="472" font-family="JetBrains Mono, Consolas, monospace" font-size="26" font-weight="700" fill="#f5f5f7">${escapeXml(code)}</text>
-  <text x="62" y="552" font-family="JetBrains Mono, Consolas, monospace" font-size="14" fill="#6e6e78">registro publico ${escapeXml(shortHash)}</text>
+  <text x="62" y="552" font-family="JetBrains Mono, Consolas, monospace" font-size="14" fill="#6e6e78">registro público ${escapeXml(shortHash)}</text>
   <text x="62" y="578" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="14" fill="#6e6e78">confira em ${escapeXml(config.publicBaseUrl)}/verificar/${escapeXml(code)}</text>
 </svg>
 `
@@ -158,7 +178,7 @@ export async function issueViaMemo ({ code, hash, studentPubkey }) {
 export async function issueViaBubblegum ({ code, metadata, studentPubkey }) {
   const state = readPlatformState()
   if (!state?.merkleTree) {
-    throw new Error('Merkle tree do certificado ainda nao existe. Rode: npm run bootstrap')
+    throw new Error('Merkle tree do certificado ainda não existe. Rode: npm run bootstrap')
   }
 
   const [{ createUmi }, umiCore, bubblegum, adapters] = await Promise.all([
@@ -177,7 +197,12 @@ export async function issueViaBubblegum ({ code, metadata, studentPubkey }) {
     leafOwner: umiCore.publicKey(studentPubkey),
     merkleTree: umiCore.publicKey(state.merkleTree),
     metadata: {
-      name: metadata.name,
+      // O corte tambem acontece aqui, e nao so em buildMetadata: um
+      // certificado emitido antes desta regra tem o nome longo gravado, e a
+      // fila reaproveita os metadados salvos para nao mudar o conteudo que
+      // alguem ja verificou. Cortar no driver e o que faz esse certificado
+      // antigo conseguir virar cNFT na proxima tentativa.
+      name: cortarPorBytes(metadata.name, LIMITE_NOME_BYTES),
       symbol: metadata.symbol,
       uri,
       sellerFeeBasisPoints: 0,

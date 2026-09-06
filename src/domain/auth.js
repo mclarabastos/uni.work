@@ -10,6 +10,7 @@ import { newId } from '../lib/ids.js'
 import { AppError, conflict, notFound, unauthorized } from '../lib/errors.js'
 import { createAccount } from '../services/wallet.js'
 import { emitEvent } from './events.js'
+import { log } from '../lib/logger.js'
 
 export const ACCENTS = ['violeta', 'laranja', 'verde', 'azul', 'rosa']
 
@@ -56,7 +57,7 @@ export async function signup (input) {
   const data = signupSchema.parse(input)
   const existing = await one('select id from users where email = $1', [data.email])
   if (existing) {
-    throw conflict('Ja existe uma conta com esse e-mail. Entre em vez de cadastrar.', 'email_ja_cadastrado')
+    throw conflict('Já existe uma conta com esse e-mail. Entre em vez de cadastrar.', 'email_ja_cadastrado')
   }
 
   const id = newId('usr')
@@ -76,6 +77,23 @@ export async function signup (input) {
   })
 
   await emitEvent('conta.criada', { actorId: id, payload: { perfil: data.perfil } })
+
+  // Contratante novo em ambiente de demonstracao comeca com valor de teste na
+  // conta. Sem isso a acao principal dele — reservar o valor — falha na rede
+  // por saldo zero, e a tela so consegue dizer que nao deu. Nao bloqueia o
+  // cadastro: se a rede estiver fora, a conta nasce igual e o registro conta o
+  // que faltou.
+  if (data.perfil === 'company') {
+    const { abastecerContaDeDemonstracao } = await import('../services/platform.js')
+    const abastecida = await abastecerContaDeDemonstracao(account.publicKey)
+    log[abastecida.ok ? 'info' : 'warn']('conta_abastecida', {
+      userId: id,
+      ok: abastecida.ok,
+      motivo: abastecida.motivo,
+      centavos: abastecida.centavos
+    })
+  }
+
   const user = await one('select * from users where id = $1', [id])
   const session = await createSession(id)
   return { usuario: publicUser(user), sessao: session }
@@ -85,7 +103,7 @@ export async function login (input) {
   const data = loginSchema.parse(input)
   const user = await one('select * from users where email = $1', [data.email])
   if (!user) {
-    throw notFound('Nao encontramos uma conta com esse e-mail.')
+    throw notFound('Não encontramos uma conta com esse e-mail.')
   }
   const session = await createSession(user.id)
   return { usuario: publicUser(user), sessao: session }
@@ -125,7 +143,7 @@ export async function userForToken (token) {
   // encerra as sessoes dela, e sem esta ordem a pessoa receberia "voce nao esta
   // logado" em vez de saber que a conta foi suspensa e por que procurar alguem.
   if (row.blocked_at) {
-    throw new AppError('Esta conta esta suspensa. Fale com o suporte.', {
+    throw new AppError('Esta conta está suspensa. Fale com o suporte.', {
       status: 403, codigo: 'conta_suspensa'
     })
   }
@@ -146,7 +164,7 @@ export async function requireUser (token) {
 /** Chave publica da conta de rede do usuario. Uso interno: nunca vai para a tela. */
 export async function accountKeyFor (userId) {
   const row = await one('select public_key, secret_cipher from accounts where user_id = $1', [userId])
-  if (!row) throw new AppError('Conta de rede ausente para este usuario.', { status: 500, codigo: 'conta_ausente' })
+  if (!row) throw new AppError('Conta de rede ausente para este usuário.', { status: 500, codigo: 'conta_ausente' })
   return row
 }
 
@@ -189,6 +207,41 @@ export async function accountSummary (user) {
     [user.id]
   )
 
+  // "Esperando resposta" e a primeira linha da barra da direita do estudante: o
+  // valor das vagas em que ele se candidatou e ainda nao foi escolhido. Nao da
+  // para tirar isso da lista de vagas dele, que so traz o que ele ja ganhou.
+  const extras = {}
+  if (isStudent) {
+    const { rows: esperando } = await query(
+      `select count(*)::int as candidaturas,
+              coalesce(sum(j.amount_cents), 0)::bigint as valor
+         from applications a join jobs j on j.id = a.job_id
+        where a.student_id = $1 and a.status = 'pendente'
+          and j.status in ('aberta','garantida')`,
+      [user.id]
+    )
+    extras.candidaturasPendentes = esperando[0]?.candidaturas ?? 0
+    extras.esperandoRespostaCentavos = Number(esperando[0]?.valor ?? 0)
+  } else {
+    // Do lado do contratante: quantos certificados as vagas dele ja emitiram, e
+    // quanto ainda falta separar. As duas coisas ficam na barra da direita.
+    const { rows: emitidos } = await query(
+      `select count(*)::int as total
+         from certificates c join jobs j on j.id = c.job_id
+        where j.company_id = $1`,
+      [user.id]
+    )
+    const { rows: aReservar } = await query(
+      `select count(*)::int as vagas,
+              coalesce(sum(amount_cents), 0)::bigint as valor
+         from jobs where company_id = $1 and status = 'aberta'`,
+      [user.id]
+    )
+    extras.certificadosEmitidos = emitidos[0]?.total ?? 0
+    extras.vagasSemGarantia = aReservar[0]?.vagas ?? 0
+    extras.faltaReservarCentavos = Number(aReservar[0]?.valor ?? 0)
+  }
+
   return {
     usuario: publicUser(user),
     certificados: { total: certs?.total ?? 0, horas: Number(certs?.horas ?? 0) },
@@ -197,6 +250,7 @@ export async function accountSummary (user) {
       movimentadoCentavos: Number(money[0]?.recebido ?? 0),
       reservadoCentavos: Number(reserved[0]?.reservado ?? 0)
     },
-    avaliacao: { media: Number(rating[0]?.media ?? 0), total: rating[0]?.total ?? 0 }
+    avaliacao: { media: Number(rating[0]?.media ?? 0), total: rating[0]?.total ?? 0 },
+    ...extras
   }
 }

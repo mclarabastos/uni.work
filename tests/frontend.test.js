@@ -204,17 +204,17 @@ function nomesChamados (codigo) {
   return chamados
 }
 
-test('o proprio verificador enxerga o arquivo, em vez de examinar o vazio', () => {
+test('o próprio verificador enxerga o arquivo, em vez de examinar o vazio', () => {
   // Esta e a protecao contra o modo de falha mais traicoeiro deste arquivo:
   // um extrator quebrado engole o codigo, encontra zero chamadas e passa
   // alegremente sem ter verificado nada.
   const codigo = apenasCodigo(appJs)
   assert.ok(codigo.length > appJs.length * 0.2,
-    `sobrou pouco codigo depois da limpeza (${codigo.length} de ${appJs.length})`)
+    `sobrou pouco código depois da limpeza (${codigo.length} de ${appJs.length})`)
 
   const chamados = nomesChamados(appJs)
   assert.ok(chamados.size > 30,
-    `so ${chamados.size} chamadas encontradas: o extrator deve estar quebrado`)
+    `só ${chamados.size} chamadas encontradas: o extrator deve estar quebrado`)
 
   // Funcoes que sabidamente existem precisam aparecer como chamadas.
   for (const esperada of ['render', 'chamar', 'avisar', 'escapar', 'abrirVaga']) {
@@ -222,11 +222,11 @@ test('o proprio verificador enxerga o arquivo, em vez de examinar o vazio', () =
   }
 
   // E o texto dentro de template literal precisa ter sumido.
-  assert.ok(!codigo.includes('CANDIDATURAS'), 'texto de template vazou para a analise')
-  assert.ok(!codigo.includes('rgba('), 'CSS de template vazou para a analise')
+  assert.ok(!codigo.includes('CANDIDATURAS'), 'texto de template vazou para a análise')
+  assert.ok(!codigo.includes('rgba('), 'CSS de template vazou para a análise')
 })
 
-test('toda funcao chamada em app.js existe de verdade', () => {
+test('toda função chamada em app.js existe de verdade', () => {
   const declarados = nomesDeclarados(appJs)
   const chamados = nomesChamados(appJs)
 
@@ -237,7 +237,7 @@ test('toda funcao chamada em app.js existe de verdade', () => {
   }
 
   assert.deepEqual(orfas, [],
-    `estas funcoes sao chamadas mas nao existem em lugar nenhum:\n  ${orfas.join('\n  ')}`)
+    `estas funções são chamadas mas não existem em lugar nenhum:\n  ${orfas.join('\n  ')}`)
 })
 
 test('todo id procurado pelo script existe no HTML', () => {
@@ -255,7 +255,7 @@ test('todo id procurado pelo script existe no HTML', () => {
   }
 
   assert.deepEqual([...new Set(faltando)], [],
-    `o script procura ids que nao existem: ${faltando.join(', ')}`)
+    `o script procura ids que não existem: ${faltando.join(', ')}`)
 })
 
 test('toda rota chamada pelo script existe na API', async () => {
@@ -294,15 +294,15 @@ test('toda rota chamada pelo script existe na API', async () => {
 
   const inexistentes = [...rotas].filter((r) => !combina(r))
   assert.deepEqual(inexistentes, [],
-    `o script chama rotas que a API nao tem: ${inexistentes.join(', ')}`)
+    `o script chama rotas que a API não tem: ${inexistentes.join(', ')}`)
 })
 
-test('o service worker so faz o que precisa fazer', () => {
+test('o service worker só faz o que precisa fazer', () => {
   const sw = fs.readFileSync(path.join(PUBLIC_DIR, 'sw.js'), 'utf8')
   assert.match(sw, /addEventListener\('push'/, 'precisa receber o aviso')
   assert.match(sw, /addEventListener\('notificationclick'/, 'e reagir ao clique')
 
   // Cache em produto que muda de estado o tempo todo traz mais problema do que
   // resolve. Se algum dia entrar, que seja uma decisao, nao um descuido.
-  assert.ok(!/caches\.open|cache\.addAll/.test(sw), 'o service worker nao deve fazer cache')
+  assert.ok(!/caches\.open|cache\.addAll/.test(sw), 'o service worker não deve fazer cache')
 })

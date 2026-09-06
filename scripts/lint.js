@@ -47,7 +47,7 @@ for (const pasta of PASTAS) {
       execFileSync(process.execPath, ['--check', arquivo], { stdio: 'pipe' })
     } catch (err) {
       const saida = `${err.stderr ?? ''}`.split('\n').slice(0, 3).join(' ').trim()
-      problemas.push(`${relativo(arquivo)}: sintaxe invalida — ${saida}`)
+      problemas.push(`${relativo(arquivo)}: sintaxe inválida — ${saida}`)
     }
   }
 }
@@ -63,7 +63,7 @@ for (const pasta of ['src', 'scripts', 'tests']) {
     for (const m of alvos) {
       const destino = path.resolve(path.dirname(arquivo), m[1])
       if (!fs.existsSync(destino)) {
-        problemas.push(`${relativo(arquivo)}: importa "${m[1]}", que nao existe`)
+        problemas.push(`${relativo(arquivo)}: importa "${m[1]}", que não existe`)
       }
     }
   }
@@ -113,7 +113,7 @@ try {
   const versionados = execFileSync('git', ['ls-files'], { cwd: rootDir, encoding: 'utf8' })
   for (const linha of versionados.split('\n')) {
     if (linha.startsWith('.uniwork/') || linha === '.env') {
-      problemas.push(`${linha}: nao pode estar versionado`)
+      problemas.push(`${linha}: não pode estar versionado`)
     }
   }
 } catch {

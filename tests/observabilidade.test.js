@@ -67,7 +67,7 @@ async function mediador () {
   return c
 }
 
-test('o log nunca deixa passar segredo, chave ou conteudo de mensagem', () => {
+test('o log nunca deixa passar segredo, chave ou conteúdo de mensagem', () => {
   // lint-permitido: segredo de mentira. Os valores abaixo existem para provar
   // que sao removidos. Nenhum deles vale nada em lugar nenhum.
   const sujo = {
@@ -76,7 +76,7 @@ test('o log nunca deixa passar segredo, chave ou conteudo de mensagem', () => {
     refresh_token: 'segredissimo',
     secretKey: [1, 2, 3, 4],
     secret_cipher: 'v1.aaa.bbb',
-    WALLET_MASTER_KEY: 'nao pode sair',
+    WALLET_MASTER_KEY: 'não pode sair',
     authorization: 'Bearer xyz',
     senha: '123456',
     apiKey: 'sk_ao_vivo',
@@ -90,7 +90,7 @@ test('o log nunca deixa passar segredo, chave ou conteudo de mensagem', () => {
   const limpo = limpar(sujo)
   const texto = JSON.stringify(limpo)
 
-  for (const proibido of ['abc.def.ghi', 'segredissimo', 'v1.aaa.bbb', 'nao pode sair',
+  for (const proibido of ['abc.def.ghi', 'segredissimo', 'v1.aaa.bbb', 'não pode sair',
     'Bearer xyz', '123456', 'sk_ao_vivo', 'o texto inteiro', 'oi, tudo bem']) {
     assert.ok(!texto.includes(proibido), `o log vazou "${proibido}"`)
   }
@@ -106,7 +106,7 @@ test('o log nunca deixa passar segredo, chave ou conteudo de mensagem', () => {
   assert.ok(limpar({ descricao: 'x'.repeat(2000) }).descricao.length < 600)
 })
 
-test('cada resposta carrega um requestId, e ele volta no erro para referencia', async () => {
+test('cada resposta carrega um requestId, e ele volta no erro para referência', async () => {
   const primeira = await pedir('/api/health/live')
   assert.ok(primeira.cabecalhos['x-request-id'], 'toda resposta precisa de requestId')
 
@@ -135,7 +135,7 @@ test('vivo e pronto respondem perguntas diferentes', async () => {
   // instancia nao traria a rede de volta.
   rede.derrubar()
   const comRedeFora = await pedir('/api/health/ready')
-  assert.equal(comRedeFora.status, 200, 'rede fora e degradacao, nao indisponibilidade')
+  assert.equal(comRedeFora.status, 200, 'rede fora e degradacao, não indisponibilidade')
   assert.equal(comRedeFora.corpo.ok, true)
   assert.equal(comRedeFora.corpo.checagens.rede.ok, false)
   assert.equal(comRedeFora.corpo.checagens.rede.degradado, true)
@@ -169,7 +169,7 @@ test('os contadores contam o que aconteceu de verdade', async () => {
   assert.ok(metricas.corpo.processo.memoriaMb > 0)
 })
 
-test('os cabecalhos de seguranca chegam em toda resposta', async () => {
+test('os cabecalhos de segurança chegam em toda resposta', async () => {
   const r = await pedir('/api/health/live')
 
   assert.equal(r.cabecalhos['x-content-type-options'], 'nosniff')
@@ -180,8 +180,8 @@ test('os cabecalhos de seguranca chegam em toda resposta', async () => {
   const csp = r.cabecalhos['content-security-policy']
   assert.ok(csp, 'precisa haver CSP')
   assert.match(csp, /script-src 'self'/)
-  assert.ok(!/script-src[^;]*unsafe-inline/.test(csp), 'script inline nao pode ser permitido')
-  assert.ok(!/script-src[^;]*unsafe-eval/.test(csp), 'eval nao pode ser permitido')
+  assert.ok(!/script-src[^;]*unsafe-inline/.test(csp), 'script inline não pode ser permitido')
+  assert.ok(!/script-src[^;]*unsafe-eval/.test(csp), 'eval não pode ser permitido')
   assert.match(csp, /frame-ancestors 'none'/)
   assert.match(csp, /object-src 'none'/)
 
@@ -201,7 +201,7 @@ test('os cabecalhos de seguranca chegam em toda resposta', async () => {
   assert.equal(r.cabecalhos['cross-origin-resource-policy'], 'same-origin')
 })
 
-test('a mesma chave de idempotencia nao move dinheiro duas vezes', async () => {
+test('a mesma chave de idempotência não move dinheiro duas vezes', async () => {
   const contratante = await conta('company')
   const token = contratante.sessao.token
 
@@ -209,8 +209,8 @@ test('a mesma chave de idempotencia nao move dinheiro duas vezes', async () => {
     method: 'POST', token,
     body: {
       titulo: 'Staff de credenciamento no congresso',
-      descricao: 'Recepcao e credenciamento dos participantes durante o evento.',
-      categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP',
+      descricao: 'Recepção e credenciamento dos participantes durante o evento.',
+      categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP',
       valorCentavos: 24000, horas: 12
     }
   })).corpo
@@ -229,14 +229,14 @@ test('a mesma chave de idempotencia nao move dinheiro duas vezes', async () => {
     method: 'POST', token, headers: { 'idempotency-key': chave }
   })
   assert.equal(segunda.status, 200)
-  assert.equal(segunda.cabecalhos['idempotent-replay'], 'true', 'a segunda precisa ser repeticao')
+  assert.equal(segunda.cabecalhos['idempotent-replay'], 'true', 'a segunda precisa ser repetição')
   assert.deepEqual(segunda.corpo, primeira.corpo, 'a resposta repetida e identica')
 
   // Uma reserva so foi para a rede.
   const reservas = await query(
     "select id from chain_tx where job_id = $1 and kind = 'escrow_fund'", [vaga.id]
   )
-  assert.equal(reservas.rows.length, 1, 'o valor saiu uma vez so')
+  assert.equal(reservas.rows.length, 1, 'o valor saiu uma vez só')
 
   // A mesma chave com outro corpo e erro de quem chamou, nao repeticao.
   const outraOperacao = await pedir('/api/jobs/qualquer/confirm', {
@@ -253,14 +253,14 @@ test('a mesma chave de idempotencia nao move dinheiro duas vezes', async () => {
   assert.equal(curta.corpo.codigo, 'chave_invalida')
 })
 
-test('o painel de operacao e so da operacao', async () => {
+test('o painel de operação e só da operação', async () => {
   const comum = await conta()
   const operacao = await mediador()
 
   for (const rota of ['/api/admin/overview', '/api/admin/users', '/api/admin/chain-jobs']) {
-    assert.equal((await pedir(rota)).status, 401, `${rota} sem sessao`)
+    assert.equal((await pedir(rota)).status, 401, `${rota} sem sessão`)
     assert.equal((await pedir(rota, { token: comum.sessao.token })).status, 403, `${rota} para conta comum`)
-    assert.equal((await pedir(rota, { token: operacao.sessao.token })).status, 200, `${rota} para a operacao`)
+    assert.equal((await pedir(rota, { token: operacao.sessao.token })).status, 200, `${rota} para a operação`)
   }
 
   const visao = await pedir('/api/admin/overview', { token: operacao.sessao.token })
@@ -269,7 +269,7 @@ test('o painel de operacao e so da operacao', async () => {
   assert.ok(Array.isArray(visao.corpo.ultimasAcoes))
 })
 
-test('suspender uma conta encerra as sessoes dela na hora e fica registrado', async () => {
+test('suspender uma conta encerra as sessões dela na hora e fica registrado', async () => {
   const alvo = await conta()
   const operacao = await mediador()
 
@@ -297,7 +297,7 @@ test('suspender uma conta encerra as sessoes dela na hora e fica registrado', as
   const registro = await one(
     "select * from audit_log where action = 'conta.suspensa' and entity_id = $1", [alvo.usuario.id]
   )
-  assert.ok(registro, 'a suspensao precisa estar na auditoria')
+  assert.ok(registro, 'a suspensão precisa estar na auditoria')
   assert.equal(registro.actor_id, operacao.usuario.id)
   const depoisDoRegistro = typeof registro.after === 'string' ? JSON.parse(registro.after) : registro.after
   assert.match(depoisDoRegistro.motivo, /Uso indevido/)

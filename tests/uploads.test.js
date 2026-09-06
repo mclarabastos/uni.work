@@ -73,7 +73,7 @@ const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(200, 32)])
 const ZIP = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(100, 0)])
 // Um executavel do Windows. O byte de entrada e "MZ".
 const EXECUTAVEL = Buffer.concat([Buffer.from('MZ'), Buffer.alloc(300, 0x90)])
-const TEXTO = Buffer.from('isto aqui e so um texto comum, sem assinatura de formato nenhum')
+const TEXTO = Buffer.from('isto aqui e só um texto comum, sem assinatura de formato nenhum')
 
 test('o tipo do arquivo sai dos bytes, e nada mais', () => {
   assert.equal(detectarMime(PNG), 'image/png')
@@ -85,16 +85,16 @@ test('o tipo do arquivo sai dos bytes, e nada mais', () => {
   assert.equal(detectarMime(EXECUTAVEL), null)
   assert.equal(detectarMime(TEXTO), null)
   assert.equal(detectarMime(Buffer.alloc(0)), null)
-  assert.equal(detectarMime(Buffer.from([0x89])), null, 'assinatura truncada nao conta')
+  assert.equal(detectarMime(Buffer.from([0x89])), null, 'assinatura truncada não conta')
 
   // WEBP precisa dos dois pedacos: RIFF no inicio e WEBP no deslocamento 8.
   const riffFalso = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('AVI '), Buffer.alloc(50)])
-  assert.notEqual(detectarMime(riffFalso), 'image/webp', 'RIFF sozinho nao e WEBP')
+  assert.notEqual(detectarMime(riffFalso), 'image/webp', 'RIFF sozinho não e WEBP')
   const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP'), Buffer.alloc(50)])
   assert.equal(detectarMime(webp), 'image/webp')
 })
 
-test('renomear a extensao nao engana ninguem', () => {
+test('renomear a extensão não engana ninguém', () => {
   // Um executavel chamado de foto, com content-type de foto. Tudo mente, menos
   // os bytes.
   const disfarcado = validarArquivo({
@@ -185,7 +185,7 @@ test('o envio pela API recusa o arquivo disfarcado, e aceita o legitimo', async 
   assert.equal(depois.formato, 'image/png')
 })
 
-test('sem bilhete valido nao entra arquivo nenhum', async () => {
+test('sem bilhete valido não entra arquivo nenhum', async () => {
   const inventado = await pedir('/api/uploads/bilhete.inventado', {
     method: 'PUT', cru: true, body: PNG, headers: { 'content-type': 'image/png' }
   })
@@ -215,7 +215,7 @@ test('sem bilhete valido nao entra arquivo nenhum', async () => {
   assert.equal(tipoInvalido.status, 400)
 })
 
-test('comprovante de entrega e das partes da vaga, e de mais ninguem', async () => {
+test('comprovante de entrega e das partes da vaga, e de mais ninguém', async () => {
   const estudante = await conta()
   const contratante = await conta('company')
   const intruso = await conta()
@@ -223,9 +223,9 @@ test('comprovante de entrega e das partes da vaga, e de mais ninguem', async () 
   const { vaga } = (await pedir('/api/jobs', {
     method: 'POST', token: contratante.sessao.token,
     body: {
-      titulo: 'Traducao de artigo cientifico',
-      descricao: 'Traduzir um artigo de quatro mil palavras do portugues para o ingles.',
-      categoria: 'Traducao', modalidade: 'remoto', valorCentavos: 45000, horas: 10
+      titulo: 'Tradução de artigo científico',
+      descricao: 'Traduzir um artigo de quatro mil palavras do português para o inglês.',
+      categoria: 'Tradução', modalidade: 'remoto', valorCentavos: 45000, horas: 10
     }
   })).corpo
 
@@ -316,7 +316,7 @@ test('a foto de perfil substitui a anterior em vez de acumular', async () => {
     "select count(*)::int as n from attachments where owner_id = $1 and kind = 'avatar'",
     [estudante.usuario.id]
   )
-  assert.equal(quantas.n, 1, 'so pode existir uma foto de perfil')
+  assert.equal(quantas.n, 1, 'só pode existir uma foto de perfil')
 
   // E a que ficou e a nova.
   const atual = await one(
@@ -327,13 +327,13 @@ test('a foto de perfil substitui a anterior em vez de acumular', async () => {
   // A foto aparece no perfil publico, sem precisar de conta.
   const perfil = await pedir(`/api/perfis/${estudante.usuario.id}`)
   assert.equal(perfil.status, 200)
-  assert.ok(perfil.corpo.perfil.foto, 'o perfil publico precisa apontar para a foto')
+  assert.ok(perfil.corpo.perfil.foto, 'o perfil público precisa apontar para a foto')
 
   const imagem = await fetch(base + perfil.corpo.perfil.foto)
   assert.equal(imagem.status, 200)
 })
 
-test('o perfil publico do estudante mostra horas, certificados e avaliacoes', async () => {
+test('o perfil público do estudante mostra horas, certificados e avaliações', async () => {
   const estudante = await conta()
   const contratante = await conta('company')
 
@@ -349,7 +349,7 @@ test('o perfil publico do estudante mostra horas, certificados e avaliacoes', as
   const atualizado = await pedir('/api/me/perfil', {
     method: 'PUT', token: estudante.sessao.token,
     body: {
-      headline: 'Design de produto e pesquisa com usuario',
+      headline: 'Design de produto e pesquisa com usuário',
       bio: 'Estudo design na USP e trabalho com pesquisa qualitativa.',
       habilidades: ['Figma', 'Pesquisa', 'Prototipagem'],
       links: [{ rotulo: 'Portfolio', url: 'https://exemplo.com.br/marina' }]
@@ -371,7 +371,7 @@ test('o perfil publico do estudante mostra horas, certificados e avaliacoes', as
   const doContratante = await pedir(`/api/perfis/${contratante.usuario.id}`)
   assert.equal(doContratante.corpo.perfil.perfil, 'company')
   assert.equal(doContratante.corpo.perfil.vagasPublicadas, 0)
-  assert.equal(doContratante.corpo.perfil.taxaDeConfirmacao, null, 'sem entregas ainda, nao ha taxa')
+  assert.equal(doContratante.corpo.perfil.taxaDeConfirmacao, null, 'sem entregas ainda, não há taxa')
   assert.ok(Array.isArray(doContratante.corpo.vagas))
 
   // Perfil que nao existe.

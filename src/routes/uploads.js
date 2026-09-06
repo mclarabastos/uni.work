@@ -79,7 +79,7 @@ profilesRouter.get('/:id', asyncRoute(async (req, res) => {
 
 profilesRouter.get('/:id/foto', asyncRoute(async (req, res) => {
   const pessoa = await one('select avatar_key from users where id = $1', [req.params.id])
-  if (!pessoa?.avatar_key) throw notFound('Esta conta nao tem foto.')
+  if (!pessoa?.avatar_key) throw notFound('Esta conta não tem foto.')
   const buffer = await ler(pessoa.avatar_key)
   res.set('content-type', pessoa.avatar_key.endsWith('.png') ? 'image/png' : 'image/jpeg')
   res.set('cache-control', 'public, max-age=600')

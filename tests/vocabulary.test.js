@@ -14,12 +14,12 @@ import { rootDir } from '../src/config.js'
 const PUBLIC_DIR = path.join(rootDir, 'public')
 
 // Lista da secao 9.1: verificada em todo arquivo servido.
-const PROIBIDAS_EM_TODO_LUGAR = ['wallet', 'blockchain', 'gas', 'chave privada', 'assinar transacao']
+const PROIBIDAS_EM_TODO_LUGAR = ['wallet', 'blockchain', 'gas', 'chave privada', 'assinar transação']
 
 // Lista da secao 11: verificada no texto que o usuario efetivamente le.
 const PROIBIDAS_NO_TEXTO = [
   'carteira', 'wallet', 'chave privada', 'seed phrase', 'blockchain',
-  'gas', 'taxa de rede', 'mintar', 'cripto', 'assinar transacao', 'smart contract'
+  'gas', 'taxa de rede', 'mintar', 'cripto', 'assinar transação', 'smart contract'
 ]
 
 function arquivosDePublic () {
@@ -67,7 +67,7 @@ function ocorrencias (texto, palavra) {
   return [...texto.matchAll(regex)]
 }
 
-test('nenhum arquivo servido usa jargao de rede fora da gaveta tecnica', () => {
+test('nenhum arquivo servido usa jargao de rede fora da gaveta técnica', () => {
   const arquivos = arquivosDePublic()
   assert.ok(arquivos.length >= 2, 'a interface precisa existir para ser verificada')
 
@@ -83,10 +83,10 @@ test('nenhum arquivo servido usa jargao de rede fora da gaveta tecnica', () => {
     }
   }
 
-  assert.deepEqual(problemas, [], `jargao encontrado fora da gaveta tecnica:\n${problemas.join('\n')}`)
+  assert.deepEqual(problemas, [], `jargao encontrado fora da gaveta técnica:\n${problemas.join('\n')}`)
 })
 
-test('o texto que o usuario le fala de conta, garantia e certificado, nunca de rede', () => {
+test('o texto que o usuário le fala de conta, garantia e certificado, nunca de rede', () => {
   const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
   const script = fs.readFileSync(path.join(PUBLIC_DIR, 'app.js'), 'utf8')
 
@@ -106,8 +106,8 @@ test('o texto que o usuario le fala de conta, garantia e certificado, nunca de r
 
   // A gaveta tecnica precisa continuar existindo: ela e a valvula de escape
   // que permite demonstrar o mecanismo sem poluir o produto.
-  assert.match(html, /data-camada-tecnica/, 'a gaveta tecnica precisa estar marcada')
-  assert.match(html, /CAMADA TECNICA/i)
+  assert.match(html, /data-camada-tecnica/, 'a gaveta técnica precisa estar marcada')
+  assert.match(html, /camada t[eé]cnica/i)
 
   // E o vocabulario do produto precisa estar presente de fato.
   for (const palavra of ['conta', 'pagamento', 'certificado', 'garantido']) {
@@ -115,13 +115,13 @@ test('o texto que o usuario le fala de conta, garantia e certificado, nunca de r
   }
 })
 
-test('as mensagens do dominio e dos erros tambem seguem a regra', async () => {
+test('as mensagens do dominio e dos erros também seguem a regra', async () => {
   // A regra vale para mensagem de erro tambem: se a rede falhar, o usuario le
   // "nao conseguimos concluir agora", nao o erro cru.
   const { networkTrouble } = await import('../src/lib/errors.js')
   const erro = networkTrouble('Transaction simulation failed: blockhash not found')
 
-  assert.match(erro.message, /nao conseguimos concluir agora/i)
+  assert.match(erro.message, /n[aã]o conseguimos concluir agora/i)
   assert.equal(erro.codigo, 'tentando_novamente')
   assert.equal(erro.status, 503)
 

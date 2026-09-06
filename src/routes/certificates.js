@@ -22,7 +22,7 @@ async function loadCertificate (code) {
       where upper(c.code) = upper($1)`,
     [code]
   )
-  if (!row) throw notFound('Nao encontramos um certificado com esse codigo.')
+  if (!row) throw notFound('Não encontramos um certificado com esse código.')
   return row
 }
 
@@ -65,8 +65,8 @@ certificatesRouter.get('/verify/:code', asyncRoute(async (req, res) => {
     integridade: {
       confere: integro,
       explicacao: integro
-        ? 'O conteudo deste certificado e exatamente o que foi registrado na emissao.'
-        : 'O conteudo nao bate com o registro original.'
+        ? 'O conteúdo deste certificado e exatamente o que foi registrado na emissão.'
+        : 'O conteúdo não bate com o registro original.'
     },
     confirmacaoIndependente: {
       disponivel: indexerAvailable(),

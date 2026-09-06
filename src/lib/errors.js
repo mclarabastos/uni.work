@@ -17,9 +17,9 @@ export class AppError extends Error {
 }
 
 export const badRequest = (msg, detalhes) => new AppError(msg, { status: 400, codigo: 'requisicao_invalida', detalhes })
-export const unauthorized = (msg = 'Voce precisa entrar na sua conta para continuar.') => new AppError(msg, { status: 401, codigo: 'nao_autenticado' })
-export const forbidden = (msg = 'Esta acao nao esta disponivel para a sua conta.') => new AppError(msg, { status: 403, codigo: 'sem_permissao' })
-export const notFound = (msg = 'Nao encontramos o que voce procura.') => new AppError(msg, { status: 404, codigo: 'nao_encontrado' })
+export const unauthorized = (msg = 'Você precisa entrar na sua conta para continuar.') => new AppError(msg, { status: 401, codigo: 'nao_autenticado' })
+export const forbidden = (msg = 'Esta ação não está disponível para a sua conta.') => new AppError(msg, { status: 403, codigo: 'sem_permissao' })
+export const notFound = (msg = 'Não encontramos o que você procura.') => new AppError(msg, { status: 404, codigo: 'nao_encontrado' })
 export const conflict = (msg, codigo = 'conflito') => new AppError(msg, { status: 409, codigo })
 export const tooMany = (msg = 'Muitas tentativas em pouco tempo. Espere um instante e tente de novo.') => new AppError(msg, { status: 429, codigo: 'excesso_de_tentativas' })
 
@@ -29,7 +29,7 @@ export const tooMany = (msg = 'Muitas tentativas em pouco tempo. Espere um insta
  */
 export function networkTrouble (technicalDetail) {
   const err = new AppError(
-    'Nao conseguimos concluir agora, ja estamos tentando de novo.',
+    'Não conseguimos concluir agora, já estamos tentando de novo.',
     { status: 503, codigo: 'tentando_novamente' }
   )
   err.technicalDetail = technicalDetail

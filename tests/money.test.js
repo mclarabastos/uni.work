@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { splitFee, centsToBase, baseToCents, formatBRL } from '../src/lib/money.js'
 
-test('a divisao entre estudante e plataforma soma exatamente o total', () => {
+test('a divisão entre estudante e plataforma soma exatamente o total', () => {
   // Cada centavo precisa ter destino. Se a soma nao bate, sobra poeira presa
   // no cofre e o cofre nunca zera.
   const casos = [

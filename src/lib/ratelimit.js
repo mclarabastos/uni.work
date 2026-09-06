@@ -88,7 +88,7 @@ export function limitePorRequisicao () {
         const segundos = Math.ceil((resultado.resetEm - Date.now()) / 1000)
         res.set('retry-after', String(segundos))
         return res.status(429).json({
-          error: `Muitas acoes em pouco tempo. Espere ${segundos} segundos e tente de novo.`,
+          error: `Muitas ações em pouco tempo. Espere ${segundos} segundos e tente de novo.`,
           codigo: 'excesso_de_tentativas',
           detalhes: { tentarEm: resultado.resetEm.toISOString() }
         })

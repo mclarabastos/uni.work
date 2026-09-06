@@ -26,7 +26,7 @@ export function setConnection (fake) { connection = fake }
 export function paymentMint () {
   const state = readPlatformState()
   if (!state?.usdcMint) {
-    throw new Error('Token de pagamento ainda nao existe. Rode: npm run bootstrap')
+    throw new Error('Token de pagamento ainda não existe. Rode: npm run bootstrap')
   }
   return new PublicKey(state.usdcMint)
 }
@@ -170,7 +170,7 @@ export async function requestAirdrop (publicKeyBase58, sol = 2) {
       attempts.push({ source: 'helius', error: err.message })
     }
   } else {
-    attempts.push({ source: 'helius', error: 'HELIUS_API_KEY nao configurada' })
+    attempts.push({ source: 'helius', error: 'HELIUS_API_KEY não configurada' })
   }
 
   // 3. ultimo recurso: instrucao manual
@@ -181,7 +181,7 @@ export async function requestAirdrop (publicKeyBase58, sol = 2) {
     manual: {
       address: publicKeyBase58,
       url: 'https://faucet.solana.com',
-      hint: `Cole o endereco ${publicKeyBase58} em https://faucet.solana.com e peca ${sol} SOL de devnet.`
+      hint: `Cole o endereço ${publicKeyBase58} em https://faucet.solana.com e peca ${sol} SOL de devnet.`
     }
   }
 }

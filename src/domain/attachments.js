@@ -46,14 +46,14 @@ export function regrasDeEnvio () {
  * para dentro so por saber o endereco.
  */
 export async function pedirPermissao (usuario, { tipo, vagaId = null }) {
-  if (!TIPOS.includes(tipo)) throw badRequest('Este tipo de anexo nao existe.', { campo: 'tipo' })
+  if (!TIPOS.includes(tipo)) throw badRequest('Este tipo de anexo não existe.', { campo: 'tipo' })
 
   if (tipo === 'delivery' || tipo === 'contract') {
     if (!vagaId) throw badRequest('Diga de qual vaga e este anexo.', { campo: 'vagaId' })
     const vaga = await one('select company_id, student_id from jobs where id = $1', [vagaId])
-    if (!vaga) throw notFound('Nao encontramos essa vaga.')
+    if (!vaga) throw notFound('Não encontramos essa vaga.')
     if (vaga.company_id !== usuario.id && vaga.student_id !== usuario.id) {
-      throw forbidden('Esta vaga nao e sua.')
+      throw forbidden('Esta vaga não e sua.')
     }
   }
 
@@ -65,7 +65,7 @@ export async function pedirPermissao (usuario, { tipo, vagaId = null }) {
   )
   if (tipo !== 'avatar' && jaTem.total >= MAXIMOS[tipo]) {
     throw badRequest(
-      `Voce ja tem ${MAXIMOS[tipo]} ${tipo === 'avatar' ? 'foto' : 'arquivo(s)'} aqui. Apague um antes de enviar outro.`,
+      `Você já tem ${MAXIMOS[tipo]} ${tipo === 'avatar' ? 'foto' : 'arquivo(s)'} aqui. Apague um antes de enviar outro.`,
       { campo: 'tipo', maximo: MAXIMOS[tipo] }
     )
   }
@@ -89,7 +89,7 @@ export async function receber ({ bilhete, buffer, nomeInformado, mimeInformado, 
     throw new AppError(
       permissao.motivo === 'bilhete_vencido'
         ? 'O envio demorou demais. Tente de novo.'
-        : 'Este envio nao foi autorizado.',
+        : 'Este envio não foi autorizado.',
       { status: 403, codigo: permissao.motivo }
     )
   }
@@ -144,7 +144,7 @@ export async function receber ({ bilhete, buffer, nomeInformado, mimeInformado, 
 
 export async function conteudoDe (id, usuario = null) {
   const anexo = await one('select * from attachments where id = $1', [id])
-  if (!anexo) throw notFound('Nao encontramos esse arquivo.')
+  if (!anexo) throw notFound('Não encontramos esse arquivo.')
 
   // Avatar e portfolio sao publicos: e o que a pessoa mostra. Comprovante de
   // entrega e contrato sao das partes da vaga.
@@ -183,9 +183,9 @@ export async function listarDaVaga (jobId) {
 
 export async function remover (usuario, id) {
   const anexo = await one('select * from attachments where id = $1', [id])
-  if (!anexo) throw notFound('Nao encontramos esse arquivo.')
+  if (!anexo) throw notFound('Não encontramos esse arquivo.')
   if (anexo.owner_id !== usuario.id && !usuario.is_admin) {
-    throw forbidden('Este arquivo nao e seu.')
+    throw forbidden('Este arquivo não e seu.')
   }
   await apagar(anexo.storage_key)
   await query('delete from attachments where id = $1', [id])

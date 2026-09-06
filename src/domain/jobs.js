@@ -34,7 +34,7 @@ export const STATUS_LABELS = {
   aceita: 'Estudante escolhido',
   em_andamento: 'Em andamento',
   entregue: 'Entrega enviada',
-  concluida: 'Concluida',
+  concluida: 'Concluída',
   cancelada: 'Cancelada'
 }
 
@@ -56,7 +56,7 @@ export function canTransition (from, to) {
 export function assertTransition (from, to) {
   if (!canTransition(from, to)) {
     throw conflict(
-      `Esta vaga esta em "${STATUS_LABELS[from] ?? from}" e nao pode ir para "${STATUS_LABELS[to] ?? to}" agora.`,
+      `Esta vaga está em "${STATUS_LABELS[from] ?? from}" e não pode ir para "${STATUS_LABELS[to] ?? to}" agora.`,
       'transicao_invalida'
     )
   }
@@ -72,13 +72,13 @@ export function trailProgress (status) {
 // ─── validacao de entrada ────────────────────────────────────────────────────
 
 export const createJobSchema = z.object({
-  titulo: z.string().trim().min(6, 'O titulo precisa de pelo menos 6 caracteres.').max(120),
+  titulo: z.string().trim().min(6, 'O título precisa de pelo menos 6 caracteres.').max(120),
   descricao: z.string().trim().min(20, 'Descreva o trampo com pelo menos 20 caracteres.').max(4000),
   categoria: z.string().trim().min(2).max(60),
   modalidade: z.enum(['presencial', 'remoto'], { errorMap: () => ({ message: 'Escolha presencial ou remoto.' }) }),
   local: z.string().trim().max(160).optional().nullable(),
   valorCentavos: z.number().int().positive('O valor precisa ser maior que zero.').max(100_000_00),
-  horas: z.number().positive('A carga horaria precisa ser maior que zero.').max(999),
+  horas: z.number().positive('A carga horária precisa ser maior que zero.').max(999),
   comecaEm: z.string().datetime().optional().nullable(),
   prazoEm: z.string().datetime().optional().nullable()
 })
@@ -108,7 +108,7 @@ export const messageSchema = z.object({
  * momentos diferentes para quem esta olhando, mesmo sendo o mesmo status.
  */
 export function rotuloDe (row) {
-  if (row.disputed_at) return 'Em contestacao'
+  if (row.disputed_at) return 'Em contestação'
   if (row.confirmed_at && row.status !== 'concluida' && row.status !== 'cancelada') {
     return 'Confirmada, liberando o pagamento'
   }
@@ -143,6 +143,7 @@ export function publicJob (row, extras = {}) {
     criadoEm: row.created_at,
     concluidoEm: row.completed_at ?? null,
     candidaturas: extras.candidaturas,
+    candidaturasPendentes: extras.candidaturasPendentes,
     timeline: extras.timeline,
     certificado: extras.certificado,
     contestacao: extras.contestacao,
@@ -187,15 +188,22 @@ export async function getJob (jobId) {
 
 export async function getJobDetail (jobId, viewer = null) {
   const row = await getJob(jobId)
-  if (!row) throw notFound('Nao encontramos essa vaga.')
+  if (!row) throw notFound('Não encontramos essa vaga.')
 
   const { timelineForJob } = await import('./events.js')
   const isCompany = viewer?.id === row.company_id
   const isStudent = viewer?.id === row.student_id
 
+  // A candidatura vem com o que decide a escolha: curso, universidade, quantos
+  // trampos a pessoa ja fez e quantas horas ela tem certificadas. Sem isso,
+  // escolher entre dois nomes e chute.
   const candidaturas = isCompany
     ? (await many(
-        `select a.*, u.name, u.university, u.course, u.headline
+        `select a.*, u.name, u.university, u.course, u.headline,
+                (select count(*)::int from jobs t
+                  where t.student_id = a.student_id and t.status = 'concluida') as trampos,
+                (select coalesce(sum(hours), 0)::float from certificates c
+                  where c.student_id = a.student_id) as horas
            from applications a join users u on u.id = a.student_id
           where a.job_id = $1 order by a.created_at desc`, [jobId]
       )).map((a) => ({
@@ -203,7 +211,15 @@ export async function getJobDetail (jobId, viewer = null) {
         status: a.status,
         apresentacao: a.pitch,
         criadoEm: a.created_at,
-        estudante: { id: a.student_id, nome: a.name, universidade: a.university, curso: a.course, headline: a.headline }
+        estudante: {
+          id: a.student_id,
+          nome: a.name,
+          universidade: a.university,
+          curso: a.course,
+          headline: a.headline,
+          trabalhosConcluidos: a.trampos ?? 0,
+          horasCertificadas: Number(a.horas ?? 0)
+        }
       }))
     : undefined
 
@@ -225,6 +241,7 @@ export async function getJobDetail (jobId, viewer = null) {
     contestacao,
     anexos,
     candidaturas,
+    candidaturasPendentes: candidaturas?.filter((c) => c.status === 'pendente').length,
     timeline: (isCompany || isStudent) ? await timelineForJob(jobId) : undefined,
     minhaCandidatura: minhaCandidatura
       ? { id: minhaCandidatura.id, status: minhaCandidatura.status, apresentacao: minhaCandidatura.pitch }
@@ -258,7 +275,7 @@ async function recordChainTx ({ jobId, kind, signature, instructions = [], detai
 // ─── acoes ───────────────────────────────────────────────────────────────────
 
 export async function createJob (company, input) {
-  if (company.role !== 'company') throw forbidden('So contratantes publicam vagas.')
+  if (company.role !== 'company') throw forbidden('Só contratantes publicam vagas.')
   const data = createJobSchema.parse(input)
   if (data.modalidade === 'presencial' && !data.local) {
     throw badRequest('Vaga presencial precisa de local.', { campo: 'local' })
@@ -283,8 +300,8 @@ export async function createJob (company, input) {
  */
 export async function fundJob (company, jobId) {
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
-  if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
+  if (job.company_id !== company.id) throw forbidden('Você não publicou esta vaga.')
   assertTransition(job.status, 'garantida')
 
   const account = await accountKeyFor(company.id)
@@ -327,15 +344,15 @@ export async function fundJob (company, jobId) {
 }
 
 export async function applyToJob (student, jobId, input) {
-  if (student.role !== 'student') throw forbidden('So estudantes se candidatam.')
+  if (student.role !== 'student') throw forbidden('Só estudantes se candidatam.')
   const data = applySchema.parse(input ?? {})
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
   if (!['aberta', 'garantida'].includes(job.status)) {
-    throw conflict('Esta vaga nao esta mais recebendo candidaturas.', 'candidatura_encerrada')
+    throw conflict('Esta vaga não está mais recebendo candidaturas.', 'candidatura_encerrada')
   }
   const existing = await one('select id from applications where job_id = $1 and student_id = $2', [jobId, student.id])
-  if (existing) throw conflict('Voce ja se candidatou a esta vaga.', 'candidatura_duplicada')
+  if (existing) throw conflict('Você já se candidatou a esta vaga.', 'candidatura_duplicada')
 
   const id = newId('app')
   await query(
@@ -353,8 +370,8 @@ export async function acceptApplication (company, applicationId) {
        from applications a join jobs j on j.id = a.job_id
       where a.id = $1`, [applicationId]
   )
-  if (!app) throw notFound('Nao encontramos essa candidatura.')
-  if (app.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
+  if (!app) throw notFound('Não encontramos essa candidatura.')
+  if (app.company_id !== company.id) throw forbidden('Você não publicou esta vaga.')
   if (app.job_status === 'aberta') {
     throw conflict('Reserve o pagamento antes de escolher o estudante.', 'pagamento_nao_reservado')
   }
@@ -371,8 +388,8 @@ export async function acceptApplication (company, applicationId) {
 
 export async function startJob (actor, jobId) {
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
-  if (job.student_id !== actor.id && job.company_id !== actor.id) throw forbidden('Esta vaga nao e sua.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
+  if (job.student_id !== actor.id && job.company_id !== actor.id) throw forbidden('Esta vaga não e sua.')
   assertTransition(job.status, 'em_andamento')
   await query("update jobs set status = 'em_andamento', started_at = now() where id = $1", [jobId])
   await emitEvent('vaga.iniciada', { jobId, actorId: actor.id, payload: {} })
@@ -382,8 +399,8 @@ export async function startJob (actor, jobId) {
 export async function deliverJob (student, jobId, input) {
   const data = deliverSchema.parse(input ?? {})
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
-  if (job.student_id !== student.id) throw forbidden('Esta vaga nao e sua.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
+  if (job.student_id !== student.id) throw forbidden('Esta vaga não e sua.')
   assertTransition(job.status, 'entregue')
   // O relogio da auto confirmacao comeca aqui. Se o contratante nao confirmar
   // nem contestar dentro do prazo, o sistema confirma por ele: o estudante nao
@@ -410,13 +427,13 @@ export async function deliverJob (student, jobId, input) {
  */
 export async function confirmJob (company, jobId) {
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
-  if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
+  if (job.company_id !== company.id) throw forbidden('Você não publicou esta vaga.')
   assertTransition(job.status, 'concluida')
-  if (!job.student_id) throw conflict('Esta vaga ainda nao tem estudante.', 'sem_estudante')
+  if (!job.student_id) throw conflict('Esta vaga ainda não tem estudante.', 'sem_estudante')
   if (job.disputed_at) {
     throw conflict(
-      'Esta vaga esta em contestacao. A liberacao fica travada ate a mediacao decidir.',
+      'Esta vaga está em contestação. A liberação fica travada até a mediação decidir.',
       'vaga_em_contestacao'
     )
   }
@@ -455,7 +472,7 @@ export async function confirmJob (company, jobId) {
       vaga: await getJobDetail(jobId, company),
       pagamento: {
         emProcessamento: true,
-        mensagem: 'Recebemos a sua confirmacao. O pagamento esta sendo liberado e o certificado sai em seguida.'
+        mensagem: 'Recebemos a sua confirmação. O pagamento está sendo liberado e o certificado sai em seguida.'
       },
       certificado: null
     }
@@ -541,12 +558,12 @@ export async function issueCertificateForJob ({ job, studentPubkey }) {
 
 export async function cancelJob (company, jobId, motivo = null) {
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
-  if (job.company_id !== company.id) throw forbidden('Voce nao publicou esta vaga.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
+  if (job.company_id !== company.id) throw forbidden('Você não publicou esta vaga.')
   assertTransition(job.status, 'cancelada')
   if (job.disputed_at) {
     throw conflict(
-      'Esta vaga esta em contestacao e nao pode ser cancelada ate a mediacao decidir.',
+      'Esta vaga está em contestação e não pode ser cancelada até a mediação decidir.',
       'vaga_em_contestacao'
     )
   }
@@ -591,9 +608,9 @@ export async function cancelJob (company, jobId, motivo = null) {
 
 async function assertParticipant (jobId, user) {
   const job = await getJob(jobId)
-  if (!job) throw notFound('Nao encontramos essa vaga.')
+  if (!job) throw notFound('Não encontramos essa vaga.')
   if (job.company_id !== user.id && job.student_id !== user.id) {
-    throw forbidden('Esta conversa e so entre o contratante e o estudante da vaga.')
+    throw forbidden('Esta conversa é só entre o contratante e o estudante da vaga.')
   }
   return job
 }
@@ -624,11 +641,11 @@ export async function reviewJob (user, jobId, input) {
   const data = reviewSchema.parse(input)
   const job = await assertParticipant(jobId, user)
   if (job.status !== 'concluida') {
-    throw conflict('A avaliacao abre quando a vaga e concluida.', 'vaga_nao_concluida')
+    throw conflict('A avaliação abre quando a vaga é concluída.', 'vaga_nao_concluida')
   }
   const targetId = job.company_id === user.id ? job.student_id : job.company_id
   const existing = await one('select id from reviews where job_id = $1 and author_id = $2', [jobId, user.id])
-  if (existing) throw conflict('Voce ja avaliou esta vaga.', 'avaliacao_duplicada')
+  if (existing) throw conflict('Você já avaliou esta vaga.', 'avaliacao_duplicada')
 
   const id = newId('rev')
   await query(

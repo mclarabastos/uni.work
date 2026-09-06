@@ -32,7 +32,7 @@ export function esperaPara (tentativas) {
  * de novo, o worker reprocessa) e nao pode virar duas transacoes.
  */
 export async function enfileirar (kind, { jobId = null, payload = {}, atrasoMs = 0, maxTentativas = MAX_TENTATIVAS } = {}) {
-  if (!TIPOS.includes(kind)) throw new Error(`tipo de operacao desconhecido: ${kind}`)
+  if (!TIPOS.includes(kind)) throw new Error(`tipo de operação desconhecido: ${kind}`)
 
   if (jobId) {
     const existente = await one(

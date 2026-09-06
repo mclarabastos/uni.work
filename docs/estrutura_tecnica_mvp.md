@@ -122,7 +122,7 @@ Tudo que é lógica de produto comum, sem necessidade de estar na blockchain:
 ## 7. Fluxo técnico completo, do início ao fim
 
 1. Estudante se cadastra com e-mail → embedded wallet é criada automaticamente por trás.
-2. Contratante publica vaga e deposita valor em USDC → transação chama o programa de escrow, fundos ficam travados numa conta controlada pelo programa.
+2. Contratante pública vaga e deposita valor em USDC → transação chama o programa de escrow, fundos ficam travados numa conta controlada pelo programa.
 3. Estudante aceita a vaga (registro no backend comum, sem custo de blockchain).
 4. Trabalho é realizado.
 5. Conclusão é confirmada (ex: ambos confirmam no app, ou um QR code de check-out é escaneado).

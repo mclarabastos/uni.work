@@ -29,7 +29,7 @@ try {
   ({ chromium } = await import('playwright'))
 } catch {
   console.error(`
-  O Playwright nao esta instalado, entao o teste de navegador nao rodou.
+  O Playwright não esta instalado, então o teste de navegador não rodou.
 
   Para instalar:
 
@@ -76,7 +76,7 @@ const pagina = await contexto.newPage()
 
 // Qualquer erro de JavaScript no navegador derruba o teste. E o motivo
 // principal deste arquivo existir.
-pagina.on('pageerror', (err) => problemas.push(`erro na pagina: ${err.message}`))
+pagina.on('pageerror', (err) => problemas.push(`erro na página: ${err.message}`))
 pagina.on('console', (msg) => {
   if (msg.type() !== 'error') return
   const texto = msg.text()
@@ -162,7 +162,7 @@ try {
   await pagina.goto(base, { waitUntil: 'networkidle' })
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
   await capturar('porta-de-entrada')
-  conferir(await pagina.locator('text=Trabalhe hoje').isVisible(), 'a porta de entrada nao apareceu')
+  conferir(await pagina.locator('text=Trabalhe hoje').isVisible(), 'a porta de entrada não apareceu')
 
   // ─── 2. cadastro do contratante ────────────────────────────────────────────
   await pagina.click('[data-criar="company"]')
@@ -178,9 +178,9 @@ try {
   await pagina.click('#cta-botao')
   await pagina.waitForSelector('#form-vaga')
   await pagina.fill('#v-titulo', 'Staff de credenciamento no congresso de tecnologia')
-  await pagina.fill('#v-descricao', 'Recepcao e credenciamento dos participantes durante dois dias de congresso, com entrega de kits.')
+  await pagina.fill('#v-descricao', 'Recepção e credenciamento dos participantes durante dois dias de congresso, com entrega de kits.')
   await pagina.fill('#v-categoria', 'Eventos')
-  await pagina.fill('#v-local', 'Sao Paulo, SP')
+  await pagina.fill('#v-local', 'São Paulo, SP')
   await pagina.fill('#v-valor', '240')
   await pagina.fill('#v-horas', '12')
   await capturar('publicar-vaga')
@@ -197,7 +197,7 @@ try {
   await capturar('valor-reservado')
 
   const garantida = await pagina.locator('text=Pagamento reservado').first().isVisible()
-  conferir(garantida, 'a vaga nao mostrou o pagamento como garantido')
+  conferir(garantida, 'a vaga não mostrou o pagamento como garantido')
 
   await sair()
 
@@ -217,12 +217,12 @@ try {
   await abrirDoFeed()
   await pagina.waitForSelector('[data-acao-vaga="candidatar"]', { timeout: 15000 })
   const veGarantia = await pagina.locator('text=Pagamento reservado').first().isVisible()
-  conferir(veGarantia, 'a estudante nao ve a garantia antes de aceitar')
+  conferir(veGarantia, 'a estudante não ve a garantia antes de aceitar')
   await capturar('estudante-ve-a-garantia')
 
   await pagina.click('[data-acao-vaga="candidatar"]')
   await pagina.waitForSelector('#m-texto')
-  await pagina.fill('#m-texto', 'Ja trabalhei em tres congressos de tecnologia no ano passado.')
+  await pagina.fill('#m-texto', 'Já trabalhei em três congressos de tecnologia no ano passado.')
   await pagina.click('#m-ok')
   await pagina.waitForSelector('text=Candidatura enviada', { timeout: 15000 })
   await capturar('candidatura-enviada')
@@ -250,7 +250,7 @@ try {
 
   await pagina.click('[data-acao-vaga="entregar"]')
   await pagina.waitForSelector('#m-texto')
-  await pagina.fill('#m-texto', 'Credenciamento concluido nos dois dias, 480 participantes atendidos.')
+  await pagina.fill('#m-texto', 'Credenciamento concluído nos dois dias, 480 participantes atendidos.')
   await pagina.click('#m-ok')
   await pagina.waitForSelector('text=Entrega enviada', { timeout: 15000 })
   await capturar('entrega-enviada')
@@ -272,12 +272,12 @@ try {
   )
   conferir(certificado.rows.length === 1, 'nenhum certificado foi emitido')
   const codigo = certificado.rows[0]?.code
-  conferir(Number(certificado.rows[0]?.hours) === 12, 'o certificado nao tem as 12 horas da vaga')
+  conferir(Number(certificado.rows[0]?.hours) === 12, 'o certificado não tem as 12 horas da vaga')
 
   // ─── 10. verificacao publica, sem conta ────────────────────────────────────
   const anonimo = await contexto.browser().newContext({ viewport: { width: 1200, height: 1000 }, locale: 'pt-BR' })
   const paginaAnonima = await anonimo.newPage()
-  paginaAnonima.on('pageerror', (err) => problemas.push(`erro na verificacao publica: ${err.message}`))
+  paginaAnonima.on('pageerror', (err) => problemas.push(`erro na verificação pública: ${err.message}`))
   await paginaAnonima.goto(`${base}/verificar/${codigo}`, { waitUntil: 'networkidle' })
   await paginaAnonima.waitForSelector('text=Marina Alves', { timeout: 15000 })
 
@@ -285,8 +285,8 @@ try {
   await paginaAnonima.screenshot({ path: arquivo, fullPage: true })
   console.log(`  ${String(passo).padStart(2)}. verificacao-publica`)
 
-  conferir(await paginaAnonima.locator('text=12 horas').isVisible(), 'a verificacao publica nao mostra a carga horaria')
-  conferir(await paginaAnonima.locator('text=Certificado autentico').isVisible(), 'a verificacao publica nao confirmou o certificado')
+  conferir(await paginaAnonima.locator('text=12 horas').isVisible(), 'a verificação pública não mostra a carga horária')
+  conferir(await paginaAnonima.locator('text=Certificado autêntico').isVisible(), 'a verificação pública não confirmou o certificado')
   await anonimo.close()
 
   // ─── 11. a regra de ouro, no HTML renderizado ──────────────────────────────

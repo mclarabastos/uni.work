@@ -41,13 +41,13 @@ const OBRIGATORIOS = [
 
 const faltando = OBRIGATORIOS.filter((arquivo) => !fs.existsSync(path.join(rootDir, arquivo)))
 if (faltando.length) {
-  console.error(`\n  faltam arquivos no repositorio: ${faltando.join(', ')}\n`)
+  console.error(`\n  faltam arquivos no repositório: ${faltando.join(', ')}\n`)
   process.exit(1)
 }
 ok(`${OBRIGATORIOS.length} arquivos essenciais presentes`)
 
 // ─── 2. o clone limpo sobe? ──────────────────────────────────────────────────
-passo('subindo o servico com um banco descartavel…')
+passo('subindo o serviço com um banco descartável…')
 
 const bancoTemporario = process.env.PGLITE_DIR
 await fsp.rm(bancoTemporario, { recursive: true, force: true })
@@ -68,8 +68,8 @@ const base = `http://127.0.0.1:${servidor.address().port}`
 const conferencias = [
   { nome: 'interface', caminho: '/', esperado: 200, contem: 'Uni.work' },
   { nome: 'script da interface', caminho: '/app.js', esperado: 200 },
-  { nome: 'saude (vivo)', caminho: '/api/health/live', esperado: 200 },
-  { nome: 'saude (pronto)', caminho: '/api/health/ready', esperado: 200 },
+  { nome: 'saúde (vivo)', caminho: '/api/health/live', esperado: 200 },
+  { nome: 'saúde (pronto)', caminho: '/api/health/ready', esperado: 200 },
   { nome: 'busca de vagas', caminho: '/api/jobs/search', esperado: 200 },
   { nome: 'metricas', caminho: '/api/metrics', esperado: 200 },
   { nome: 'rota inexistente', caminho: '/api/nao-existe', esperado: 404 }
@@ -85,7 +85,7 @@ for (const conferencia of conferencias) {
     if (statusOk && conteudoOk) {
       ok(`${conferencia.nome} respondeu ${resposta.status}`)
     } else {
-      console.error(`  X    ${conferencia.nome}: status ${resposta.status}, esperado ${conferencia.esperado}${conteudoOk ? '' : ', e o conteudo nao confere'}`)
+      console.error(`  X    ${conferencia.nome}: status ${resposta.status}, esperado ${conferencia.esperado}${conteudoOk ? '' : ', e o conteúdo não confere'}`)
       falhou = true
     }
   } catch (err) {
@@ -114,7 +114,7 @@ await closeDb()
 await fsp.rm(bancoTemporario, { recursive: true, force: true })
 
 if (falhou) {
-  console.error('\n  o clone limpo NAO sobe. O artefato nao foi gerado.\n')
+  console.error('\n  o clone limpo NÃO sobe. O artefato não foi gerado.\n')
   process.exit(1)
 }
 

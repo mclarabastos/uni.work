@@ -69,8 +69,8 @@ async function vagaGarantida (partes, { comEstudante = false } = {}) {
     method: 'POST', token: partes.contratante.sessao.token,
     body: {
       titulo: 'Staff de credenciamento no congresso',
-      descricao: 'Recepcao e credenciamento dos participantes durante o evento.',
-      categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP',
+      descricao: 'Recepção e credenciamento dos participantes durante o evento.',
+      categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP',
       valorCentavos: 24000, horas: 12
     }
   })).corpo
@@ -107,7 +107,7 @@ test('o fluxo inteiro notifica a pessoa certa em cada etapa, e nunca a que causo
   assert.equal(
     (await notificacoesDe(idContratante)).filter((n) => n.type === 'vaga.garantida').length,
     0,
-    'quem reservou nao precisa ser avisado de que reservou'
+    'quem reservou não precisa ser avisado de que reservou'
   )
 
   // O estudante se candidata: o contratante e avisado.
@@ -118,7 +118,7 @@ test('o fluxo inteiro notifica a pessoa certa em cada etapa, e nunca a que causo
 
   const aposCandidatura = await notificacoesDe(idContratante)
   const candidatura = aposCandidatura.find((n) => n.type === 'vaga.candidatura')
-  assert.ok(candidatura, 'o contratante precisa saber que alguem se candidatou')
+  assert.ok(candidatura, 'o contratante precisa saber que alguém se candidatou')
   assert.equal(candidatura.title, 'Nova candidatura')
   assert.match(candidatura.body, /Staff de credenciamento/)
   assert.equal(candidatura.link, `/vaga/${vaga.id}`)
@@ -133,8 +133,8 @@ test('o fluxo inteiro notifica a pessoa certa em cada etapa, e nunca a que causo
 
   const escolhido = (await notificacoesDe(idEstudante)).find((n) => n.type === 'vaga.aceita')
   assert.ok(escolhido, 'o estudante precisa saber que foi escolhido')
-  assert.equal(escolhido.title, 'Voce foi escolhido')
-  assert.match(escolhido.body, /R\$/, 'a notificacao diz quanto esta reservado')
+  assert.equal(escolhido.title, 'Você foi escolhido')
+  assert.match(escolhido.body, /R\$/, 'a notificação diz quanto esta reservado')
 
   // O estudante entrega: o contratante e avisado.
   await pedir(`/api/jobs/${vaga.id}/start`, { method: 'POST', token: partes.estudante.sessao.token })
@@ -145,7 +145,7 @@ test('o fluxo inteiro notifica a pessoa certa em cada etapa, e nunca a que causo
 
   const entrega = (await notificacoesDe(idContratante)).find((n) => n.type === 'vaga.entregue')
   assert.ok(entrega, 'o contratante precisa saber que a entrega chegou')
-  assert.match(entrega.body, /confirme/i, 'a notificacao diz o que fazer em seguida')
+  assert.match(entrega.body, /confirme/i, 'a notificação diz o que fazer em seguida')
 
   // O contratante confirma: o estudante e avisado do pagamento e do certificado.
   await pedir(`/api/jobs/${vaga.id}/confirm`, { method: 'POST', token: partes.contratante.sessao.token })
@@ -161,11 +161,11 @@ test('o fluxo inteiro notifica a pessoa certa em cada etapa, e nunca a que causo
   const todas = [...(await notificacoesDe(idEstudante)), ...(await notificacoesDe(idContratante))]
   const texto = todas.map((n) => `${n.title} ${n.body}`).join(' ').toLowerCase()
   for (const jargao of ['wallet', 'blockchain', 'gas', 'transacao', 'token', 'cripto', 'assinar']) {
-    assert.ok(!texto.includes(jargao), `a notificacao vazou "${jargao}"`)
+    assert.ok(!texto.includes(jargao), `a notificação vazou "${jargao}"`)
   }
 })
 
-test('o mesmo evento reprocessado nao gera uma segunda notificacao', async () => {
+test('o mesmo evento reprocessado não gera uma segunda notificação', async () => {
   const partes = await duasPartes()
   const vaga = await vagaGarantida(partes)
 
@@ -183,15 +183,15 @@ test('o mesmo evento reprocessado nao gera uma segunda notificacao', async () =>
   // O worker reprocessa. Isso acontece de verdade quando a fila tenta de novo.
   for (let i = 0; i < 4; i += 1) {
     const repetida = await processarEvento(evento)
-    assert.equal(repetida.criadas, 0, 'reprocessar o mesmo evento nao pode notificar de novo')
+    assert.equal(repetida.criadas, 0, 'reprocessar o mesmo evento não pode notificar de novo')
   }
 
   const total = (await notificacoesDe(partes.contratante.usuario.id))
     .filter((n) => n.type === 'vaga.entregue')
-  assert.equal(total.length, 1, 'uma notificacao, e so uma')
+  assert.equal(total.length, 1, 'uma notificação, e só uma')
 })
 
-test('a unicidade vem do banco, entao nem chamadas simultaneas duplicam', async () => {
+test('a unicidade vem do banco, então nem chamadas simultaneas duplicam', async () => {
   const partes = await duasPartes()
   const chave = `teste:simultaneo:${Date.now()}`
 
@@ -207,13 +207,13 @@ test('a unicidade vem do banco, entao nem chamadas simultaneas duplicam', async 
   )
 
   const criadas = resultados.filter((r) => r.criada)
-  assert.equal(criadas.length, 1, 'so uma das dez chamadas simultaneas pode criar')
+  assert.equal(criadas.length, 1, 'só uma das dez chamadas simultaneas pode criar')
 
   const noBanco = await many('select id from notifications where dedupe_key = $1', [chave])
   assert.equal(noBanco.length, 1)
 })
 
-test('a conversa nao vira enxurrada: uma notificacao por vaga por janela', async () => {
+test('a conversa não vira enxurrada: uma notificação por vaga por janela', async () => {
   const partes = await duasPartes()
   const vaga = await vagaGarantida(partes, { comEstudante: true })
 
@@ -230,10 +230,10 @@ test('a conversa nao vira enxurrada: uma notificacao por vaga por janela', async
 
   const avisos = (await notificacoesDe(partes.estudante.usuario.id))
     .filter((n) => n.type === 'mensagem.enviada')
-  assert.equal(avisos.length, 1, 'cinco mensagens seguidas geram um aviso, nao cinco')
+  assert.equal(avisos.length, 1, 'cinco mensagens seguidas geram um aviso, não cinco')
 })
 
-test('a contestacao avisa a outra parte, nunca quem abriu', async () => {
+test('a contestação avisa a outra parte, nunca quem abriu', async () => {
   const partes = await duasPartes()
   const vaga = await vagaGarantida(partes, { comEstudante: true })
 
@@ -252,8 +252,8 @@ test('a contestacao avisa a outra parte, nunca quem abriu', async () => {
     .filter((n) => n.type === 'disputa.aberta')
 
   assert.equal(paraContratante.length, 1)
-  assert.equal(paraEstudante.length, 0, 'quem abriu ja sabe')
-  assert.match(paraContratante[0].body, /valor fica parado/i, 'a notificacao explica a consequencia')
+  assert.equal(paraEstudante.length, 0, 'quem abriu já sabe')
+  assert.match(paraContratante[0].body, /valor fica parado/i, 'a notificação explica a consequência')
 
   // A resolucao avisa os dois: os dois precisam saber do resultado.
   await processarEvento({
@@ -266,11 +266,11 @@ test('a contestacao avisa a outra parte, nunca quem abriu', async () => {
 
   for (const id of [partes.contratante.usuario.id, partes.estudante.usuario.id]) {
     const resolvida = (await notificacoesDe(id)).filter((n) => n.type === 'disputa.resolvida')
-    assert.equal(resolvida.length, 1, 'as duas partes sao avisadas do resultado')
+    assert.equal(resolvida.length, 1, 'as duas partes são avisadas do resultado')
   }
 })
 
-test('as preferencias mandam: quem desliga o e-mail continua vendo no aplicativo', async () => {
+test('as preferências mandam: quem desliga o e-mail continua vendo no aplicativo', async () => {
   const partes = await duasPartes()
   const token = partes.estudante.sessao.token
 
@@ -304,11 +304,11 @@ test('as preferencias mandam: quem desliga o e-mail continua vendo no aplicativo
 
   const noAplicativo = (await notificacoesDe(partes.estudante.usuario.id))
     .filter((n) => n.type === 'vaga.aceita')
-  assert.equal(noAplicativo.length, 1, 'o canal do aplicativo nao e desligavel')
+  assert.equal(noAplicativo.length, 1, 'o canal do aplicativo não e desligavel')
 
   const canais = typeof noAplicativo[0].channels === 'string'
     ? JSON.parse(noAplicativo[0].channels) : noAplicativo[0].channels
-  assert.deepEqual(canais, ['app'], 'so o aplicativo, porque o resto foi desligado')
+  assert.deepEqual(canais, ['app'], 'só o aplicativo, porque o resto foi desligado')
 
   // Valor invalido em digest e recusado com mensagem em portugues.
   const invalido = await pedir('/api/me/notification-preferences', {
@@ -318,7 +318,7 @@ test('as preferencias mandam: quem desliga o e-mail continua vendo no aplicativo
   assert.match(invalido.corpo.detalhes[0].mensagem, /resumo diario|na hora|desligado/i)
 })
 
-test('a central de notificacoes lista, conta e marca como lidas', async () => {
+test('a central de notificações lista, conta e marca como lidas', async () => {
   const partes = await duasPartes()
   const token = partes.estudante.sessao.token
   const id = partes.estudante.usuario.id
@@ -361,7 +361,7 @@ test('a central de notificacoes lista, conta e marca como lidas', async () => {
   assert.equal(apagando.status, 404)
 })
 
-test('o resumo diario nao sai sem servico de e-mail, e diz por que', async () => {
+test('o resumo diário não sai sem serviço de e-mail, e diz por que', async () => {
   const partes = await duasPartes()
   await atualizarPreferencias(partes.estudante.usuario.id, { digest: 'daily', email: true })
   await criar({
@@ -371,14 +371,14 @@ test('o resumo diario nao sai sem servico de e-mail, e diz por que', async () =>
 
   const resultado = await enviarResumosDiarios()
   assert.equal(resultado.enviados, 0)
-  assert.equal(resultado.motivo, 'email_nao_configurado', 'ele diz por que nao enviou, em vez de fingir')
+  assert.equal(resultado.motivo, 'email_nao_configurado', 'ele diz por que não enviou, em vez de fingir')
 
   // E a marca de ultimo resumo nao avanca: nada foi enviado.
   const prefs = await preferenciasDe(partes.estudante.usuario.id)
   assert.equal(prefs.ultimoResumo, null)
 })
 
-test('sem VAPID o push e recusado na inscricao, em vez de aceito e nunca enviado', async () => {
+test('sem VAPID o push e recusado na inscrição, em vez de aceito e nunca enviado', async () => {
   const partes = await duasPartes()
   const token = partes.estudante.sessao.token
 

@@ -34,8 +34,27 @@ before(async () => {
   try {
     provider = anchor.AnchorProvider.env()
     anchor.setProvider(provider)
-    programa = anchor.workspace.UniworkEscrow
-    if (!programa) throw new Error('o workspace nao expos UniworkEscrow (rode com anchor test)')
+    // A chave do workspace ja mudou de convencao entre versoes do Anchor
+    // (UniworkEscrow, uniworkEscrow, uniwork_escrow). Procurar so uma delas faz
+    // este arquivo inteiro virar skip em silencio quando a versao muda — que e
+    // exatamente o que o cabecalho aqui em cima diz para nao fazer. O acesso vai
+    // dentro de try porque o workspace e um Proxy: chave errada pode lancar em
+    // vez de devolver undefined.
+    for (const nome of ['UniworkEscrow', 'uniworkEscrow', 'uniwork_escrow', 'uniwork-escrow']) {
+      try {
+        programa = anchor.workspace[nome]
+      } catch {
+        programa = undefined
+      }
+      if (programa) break
+    }
+    if (!programa) {
+      let expostas = 'nenhuma'
+      try {
+        expostas = Object.keys(anchor.workspace).join(', ') || 'nenhuma'
+      } catch { /* o Proxy pode recusar ate a listagem */ }
+      throw new Error(`o workspace não expos o programa de escrow (rode com anchor test). Chaves disponíveis: ${expostas}`)
+    }
 
     plataforma = provider.wallet.payer ?? Keypair.generate()
     await provider.connection.getVersion()
@@ -150,9 +169,9 @@ async function precisaFalhar (fn, nomeDoErro) {
 }
 
 describe('programa de escrow', () => {
-  test('sem o toolchain Anchor estes testes nao rodam, e dizem isso', (t) => {
+  test('sem o toolchain Anchor estes testes não rodam, e dizem isso', (t) => {
     if (!disponivel) {
-      t.diagnostic(`toolchain indisponivel: ${motivoIndisponivel}`)
+      t.diagnostic(`toolchain indisponível: ${motivoIndisponivel}`)
       t.diagnostic('instale o Anchor e rode: anchor test')
       t.skip('precisa de anchor test')
       return
@@ -171,7 +190,7 @@ describe('programa de escrow', () => {
     const estado = await programa.account.escrow.fetch(ctx.escrow)
     assert.equal(estado.state, 0, 'estado financiado')
     assert.equal(estado.amount.toString(), VALOR.toString())
-    assert.equal(estado.feeBps, TAXA_BPS, 'a taxa fica gravada na rede, nao no servidor')
+    assert.equal(estado.feeBps, TAXA_BPS, 'a taxa fica gravada na rede, não no servidor')
     assert.ok(estado.company.equals(ctx.contratante.dono.publicKey))
     assert.ok(estado.student.equals(PublicKey.default), 'ainda sem estudante')
   })
@@ -208,7 +227,7 @@ describe('programa de escrow', () => {
     assert.equal(estado.state, 1, 'estado liberado')
   })
 
-  test('devolver funciona enquanto ninguem foi escolhido', async (t) => {
+  test('devolver funciona enquanto ninguém foi escolhido', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     const antes = await saldo(ctx.contratante.token)
@@ -233,7 +252,7 @@ describe('programa de escrow', () => {
 
   // ─── caminhos que precisam falhar ──────────────────────────────────────────
 
-  test('um terceiro nao consegue liberar o valor', async (t) => {
+  test('um terceiro não consegue liberar o valor', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -256,7 +275,7 @@ describe('programa de escrow', () => {
     assert.equal(await saldo(ctx.cofre), VALOR, 'o valor continua trancado')
   })
 
-  test('o proprio estudante nao consegue liberar para si', async (t) => {
+  test('o próprio estudante não consegue liberar para si', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -278,7 +297,7 @@ describe('programa de escrow', () => {
     assert.equal(await saldo(ctx.cofre), VALOR)
   })
 
-  test('liberar duas vezes nao paga duas vezes', async (t) => {
+  test('liberar duas vezes não paga duas vezes', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -299,7 +318,7 @@ describe('programa de escrow', () => {
     const depoisDaPrimeira = await saldo(ctx.estudante.token)
 
     await precisaFalhar(liberar, 'EstadoNaoPermiteEssaAcao')
-    assert.equal(await saldo(ctx.estudante.token), depoisDaPrimeira, 'nao pagou de novo')
+    assert.equal(await saldo(ctx.estudante.token), depoisDaPrimeira, 'não pagou de novo')
   })
 
   test('devolver depois de liberado e recusado', async (t) => {
@@ -331,7 +350,7 @@ describe('programa de escrow', () => {
       .rpc(), 'EstadoNaoPermiteEssaAcao')
   })
 
-  test('depois de escolher o estudante o contratante nao recupera o valor sozinho', async (t) => {
+  test('depois de escolher o estudante o contratante não recupera o valor sozinho', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -369,7 +388,7 @@ describe('programa de escrow', () => {
       .rpc(), 'ContaDeDestinoErrada')
   })
 
-  test('taxa acima do teto e recusada na criacao', async (t) => {
+  test('taxa acima do teto e recusada na criação', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const jobId = `job_${crypto.randomBytes(6).toString('hex')}`
     const { hash, endereco } = pdaDoEscrow(jobId)
@@ -393,7 +412,7 @@ describe('programa de escrow', () => {
 
   // ─── disputa ───────────────────────────────────────────────────────────────
 
-  test('qualquer uma das partes abre disputa, e isso trava a liberacao', async (t) => {
+  test('qualquer uma das partes abre disputa, e isso trava a liberação', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -421,10 +440,10 @@ describe('programa de escrow', () => {
       .signers([ctx.contratante.dono])
       .rpc(), 'EstadoNaoPermiteEssaAcao')
 
-    assert.equal(await saldo(ctx.cofre), VALOR, 'o valor fica parado ate a mediacao')
+    assert.equal(await saldo(ctx.cofre), VALOR, 'o valor fica parado até a mediação')
   })
 
-  test('um terceiro nao abre disputa em contrato que nao e dele', async (t) => {
+  test('um terceiro não abre disputa em contrato que não e dele', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -437,7 +456,7 @@ describe('programa de escrow', () => {
       .rpc(), 'SemAutoridade')
   })
 
-  test('so o mediador resolve a disputa, e a divisao bate centavo por centavo', async (t) => {
+  test('só o mediador resolve a disputa, e a divisão bate centavo por centavo', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const mediador = Keypair.generate()
     const txMediador = new anchor.web3.Transaction().add(
@@ -497,11 +516,11 @@ describe('programa de escrow', () => {
     assert.equal((await saldo(ctx.estudante.token)) - estudanteAntes, liquidoEstudante)
     assert.equal((await saldo(ctx.contratante.token)) - contratanteAntes, paraContratante)
     assert.equal((await saldo(ctx.plataformaToken)) - plataformaAntes, taxa)
-    assert.equal(await saldo(ctx.cofre), 0n, 'o cofre zera: nada fica preso na divisao')
+    assert.equal(await saldo(ctx.cofre), 0n, 'o cofre zera: nada fica preso na divisão')
     assert.equal((await programa.account.escrow.fetch(ctx.escrow)).state, 4)
   })
 
-  test('divisao acima de 10000 e recusada', async (t) => {
+  test('divisão acima de 10000 e recusada', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     await escolherEstudante(ctx)
@@ -567,7 +586,7 @@ describe('programa de escrow', () => {
     assert.equal((await programa.account.escrow.fetch(vencido.escrow)).state, 1)
   })
 
-  test('auto release nao atropela disputa aberta', async (t) => {
+  test('auto release não atropela disputa aberta', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const passado = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
     const ctx = await escrowFinanciado({ prazo: passado })
@@ -592,7 +611,7 @@ describe('programa de escrow', () => {
     assert.equal(await saldo(ctx.cofre), VALOR, 'a disputa continua segurando o valor')
   })
 
-  test('so o contratante escolhe o estudante, e so uma vez', async (t) => {
+  test('só o contratante escolhe o estudante, e só uma vez', async (t) => {
     if (!disponivel) return t.skip('precisa de anchor test')
     const ctx = await escrowFinanciado()
     const estranho = await conta()

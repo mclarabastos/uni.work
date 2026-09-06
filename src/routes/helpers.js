@@ -66,7 +66,7 @@ export function errorHandler (err, req, res, _next) {
   // O usuario nunca le o erro cru. Nem quando o erro cru veio da rede.
   // O requestId vai junto: e o que liga a queixa dele a linha do log.
   return res.status(500).json({
-    error: 'Nao conseguimos concluir agora, ja estamos tentando de novo.',
+    error: 'Não conseguimos concluir agora, já estamos tentando de novo.',
     codigo: 'tentando_novamente',
     detalhes: contextoAtual().requestId ? { referencia: contextoAtual().requestId } : null
   })

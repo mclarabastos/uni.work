@@ -75,11 +75,11 @@ export async function getAssetsByOwner (ownerPubkey, { page = 1, limit = 100 } =
  */
 export async function confirmCertificate ({ assetId, expectedOwner, expectedUri }) {
   if (!assetId) {
-    return { confirmado: false, motivo: 'sem_registro_no_indexador', detalhe: 'O certificado ainda esta sendo registrado.' }
+    return { confirmado: false, motivo: 'sem_registro_no_indexador', detalhe: 'O certificado ainda está sendo registrado.' }
   }
   const out = await getAsset(assetId)
   if (!out.available) {
-    return { confirmado: false, motivo: 'indexador_nao_configurado', detalhe: 'A confirmacao independente nao esta configurada neste ambiente.' }
+    return { confirmado: false, motivo: 'indexador_nao_configurado', detalhe: 'A confirmação independente não está configurada neste ambiente.' }
   }
   if (!out.ok || !out.result) {
     return { confirmado: false, motivo: 'indexador_indisponivel', detalhe: out.reason ?? 'sem resposta' }

@@ -39,7 +39,7 @@ async function pedir (caminho, { method = 'GET', body, token } = {}) {
   return { status: resposta.status, corpo: texto ? JSON.parse(texto) : null }
 }
 
-test('do cadastro a candidatura: o ciclo completo que nao depende da rede', async () => {
+test('do cadastro a candidatura: o ciclo completo que não depende da rede', async () => {
   // 1. Cadastro do estudante. A conta de rede nasce junto, sem passo extra.
   const cadastro = await pedir('/api/signup', {
     method: 'POST',
@@ -76,21 +76,21 @@ test('do cadastro a candidatura: o ciclo completo que nao depende da rede', asyn
     method: 'POST', token: contratante.sessao.token,
     body: {
       titulo: 'Staff de credenciamento no congresso',
-      descricao: 'Recepcao e credenciamento dos participantes durante dois dias de evento.',
-      categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP',
+      descricao: 'Recepção e credenciamento dos participantes durante dois dias de evento.',
+      categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP',
       valorCentavos: 24000, horas: 12
     }
   })
   assert.equal(publicacao.status, 201)
   const vaga = publicacao.corpo.vaga
   assert.equal(vaga.status, 'aberta')
-  assert.equal(vaga.pagamentoGarantido, false, 'recem publicada ainda nao tem garantia')
+  assert.equal(vaga.pagamentoGarantido, false, 'recem publicada ainda não tem garantia')
   assert.deepEqual(vaga.trilha, { etapa: 1, total: 6, cancelada: false })
 
   // 4. Um estudante nao consegue publicar vaga.
   const tentativa = await pedir('/api/jobs', {
     method: 'POST', token: estudante.sessao.token,
-    body: { titulo: 'Tentativa invalida', descricao: 'x'.repeat(30), categoria: 'Teste', modalidade: 'remoto', valorCentavos: 100, horas: 1 }
+    body: { titulo: 'Tentativa inválida', descricao: 'x'.repeat(30), categoria: 'Teste', modalidade: 'remoto', valorCentavos: 100, horas: 1 }
   })
   assert.equal(tentativa.status, 403)
 
@@ -110,7 +110,7 @@ test('do cadastro a candidatura: o ciclo completo que nao depende da rede', asyn
   // 7. Candidatura do estudante.
   const candidatura = await pedir(`/api/jobs/${vaga.id}/apply`, {
     method: 'POST', token: estudante.sessao.token,
-    body: { apresentacao: 'Ja trabalhei em tres congressos de tecnologia.' }
+    body: { apresentacao: 'Já trabalhei em três congressos de tecnologia.' }
   })
   assert.equal(candidatura.status, 201)
 
@@ -157,7 +157,7 @@ test('do cadastro a candidatura: o ciclo completo que nao depende da rede', asyn
   assert.equal(metricas.corpo.totais.contratantes, 1)
 })
 
-test('todo erro da API sai no formato de produto, em portugues, sem vazar detalhe tecnico', async () => {
+test('todo erro da API sai no formato de produto, em português, sem vazar detalhe técnico', async () => {
   const naoExiste = await pedir('/api/jobs/job_que_nao_existe')
   assert.equal(naoExiste.status, 404)
   assert.deepEqual(Object.keys(naoExiste.corpo).sort(), ['codigo', 'detalhes', 'error'])

@@ -26,54 +26,70 @@ const ok = (t) => console.log(`  ok   ${t}`)
 const passo = (t) => console.log(`  ${t}`)
 const aviso = (t) => console.log(`  !    ${t}`)
 
+/**
+ * Registra na camada tecnica o que o seed mandou para a rede.
+ *
+ * Sem isto, a gaveta tecnica mostraria vaga garantida sem nenhuma transacao
+ * atras dela — e e justamente ali que alguem vai conferir se o valor entrou.
+ */
+async function registrarTxDoSeed (jobId, tipo, resultado) {
+  await query(
+    `insert into chain_tx (id, job_id, kind, status, cluster, signature, instructions, detail, confirmed_at)
+     values ($1, $2, $3, 'confirmada', $4, $5, $6, $7, now())`,
+    [newId('ctx'), jobId, tipo, config.solana.cluster, resultado.signature,
+      JSON.stringify(resultado.instructionsDescribed ?? []),
+      JSON.stringify({ driver: resultado.driver, peloSeed: true })]
+  )
+}
+
 
 const VAGAS = [
   {
     contratante: 0, titulo: 'Staff de credenciamento no congresso de tecnologia',
-    descricao: 'Recepcao e credenciamento dos participantes durante dois dias de congresso. Voce vai operar o balcao de entrada, conferir inscricoes e entregar os kits. Procuramos gente comunicativa, pontual e confortavel com fila grande.',
-    categoria: 'Eventos', modalidade: 'presencial', local: 'Sao Paulo, SP',
+    descricao: 'Recepção e credenciamento dos participantes durante dois dias de congresso. Você vai operar o balcão de entrada, conferir inscrições e entregar os kits. Procuramos gente comunicativa, pontual e confortável com fila grande.',
+    categoria: 'Eventos', modalidade: 'presencial', local: 'São Paulo, SP',
     valorCentavos: 24000, horas: 12, estagio: 'garantida'
   },
   {
     contratante: 3, titulo: 'Redesenho da tela de assinatura de um aplicativo',
-    descricao: 'Precisamos repensar o fluxo de assinatura do nosso aplicativo, hoje com desistencia alta na terceira etapa. Entrega esperada: fluxo em Figma, com estados de erro e versao mobile.',
+    descricao: 'Precisamos repensar o fluxo de assinatura do nosso aplicativo, hoje com desistência alta na terceira etapa. Entrega esperada: fluxo em Figma, com estados de erro e versão mobile.',
     categoria: 'Design', modalidade: 'remoto', local: null,
     valorCentavos: 90000, horas: 24, estagio: 'aceita'
   },
   {
-    contratante: 1, titulo: 'Traducao de artigo cientifico de portugues para ingles',
-    descricao: 'Artigo de aproximadamente 4000 palavras sobre energia renovavel, para submissao internacional. Precisa de tradutor confortavel com vocabulario tecnico e norma de publicacao academica.',
-    categoria: 'Traducao', modalidade: 'remoto', local: null,
+    contratante: 1, titulo: 'Tradução de artigo científico de português para inglês',
+    descricao: 'Artigo de aproximadamente 4000 palavras sobre energia renovável, para submissão internacional. Precisa de tradutor confortável com vocabulário técnico e norma de publicação acadêmica.',
+    categoria: 'Tradução', modalidade: 'remoto', local: null,
     valorCentavos: 45000, horas: 10, estagio: 'entregue'
   },
   {
-    contratante: 2, titulo: 'Monitoria de calculo 1 para turma de engenharia',
-    descricao: 'Duas sessoes semanais de monitoria presencial ao longo do semestre, com preparacao de lista de exercicios e plantao de duvidas antes das provas.',
+    contratante: 2, titulo: 'Monitoria de cálculo 1 para turma de engenharia',
+    descricao: 'Duas sessões semanais de monitoria presencial ao longo do semestre, com preparação de lista de exercícios e plantão de dúvidas antes das provas.',
     categoria: 'Monitoria', modalidade: 'presencial', local: 'Campinas, SP',
     valorCentavos: 60000, horas: 20, estagio: 'concluida'
   },
   {
     contratante: 1, titulo: 'Pesquisa de campo sobre mobilidade urbana',
-    descricao: 'Aplicacao de questionario presencial em quatro pontos da cidade, ao longo de uma semana. Treinamento e material fornecidos. Ideal para quem estuda ciencias sociais ou urbanismo.',
+    descricao: 'Aplicação de questionário presencial em quatro pontos da cidade, ao longo de uma semana. Treinamento e material fornecidos. Ideal para quem estuda ciências sociais ou urbanismo.',
     categoria: 'Pesquisa', modalidade: 'presencial', local: 'Belo Horizonte, MG',
     valorCentavos: 36000, horas: 16, estagio: 'aberta'
   },
   {
-    contratante: 3, titulo: 'Componente de calendario em React para o nosso produto',
-    descricao: 'Implementar um seletor de intervalo de datas acessivel, com navegacao por teclado, em React e TypeScript. Testes inclusos na entrega. O design ja existe.',
+    contratante: 3, titulo: 'Componente de calendário em React para o nosso produto',
+    descricao: 'Implementar um seletor de intervalo de datas acessível, com navegação por teclado, em React e TypeScript. Testes inclusos na entrega. O design já existe.',
     categoria: 'Desenvolvimento', modalidade: 'remoto', local: null,
     valorCentavos: 120000, horas: 30, estagio: 'aberta'
   },
   {
     contratante: 0, titulo: 'Fotografia de formatura de engenharia',
-    descricao: 'Cobertura fotografica da colacao de grau e da festa, com entrega de 200 fotos tratadas em ate dez dias. Equipamento proprio necessario.',
-    categoria: 'Fotografia', modalidade: 'presencial', local: 'Sao Paulo, SP',
+    descricao: 'Cobertura fotográfica da colação de grau e da festa, com entrega de 200 fotos tratadas em até dez dias. Equipamento próprio necessário.',
+    categoria: 'Fotografia', modalidade: 'presencial', local: 'São Paulo, SP',
     valorCentavos: 80000, horas: 8, estagio: 'aberta'
   },
   {
-    contratante: 2, titulo: 'Producao de conteudo para o blog institucional',
-    descricao: 'Oito textos de 800 palavras sobre vida universitaria, ao longo de um mes, com pauta definida em conjunto. Revisao inclusa.',
-    categoria: 'Conteudo', modalidade: 'remoto', local: null,
+    contratante: 2, titulo: 'Produção de conteúdo para o blog institucional',
+    descricao: 'Oito textos de 800 palavras sobre vida universitária, ao longo de um mês, com pauta definida em conjunto. Revisão inclusa.',
+    categoria: 'Conteúdo', modalidade: 'remoto', local: null,
     valorCentavos: 64000, horas: 20, estagio: 'aberta'
   }
 ]
@@ -86,7 +102,7 @@ await migrar()
 
 const jaTem = await one('select count(*)::int as n from users')
 if (jaTem.n > 0 && !process.argv.includes('--forcar')) {
-  aviso(`o banco ja tem ${jaTem.n} conta(s). Nada a fazer.`)
+  aviso(`o banco já tem ${jaTem.n} conta(s). Nada a fazer.`)
   console.log('  Para recomecar do zero: npm run reset && npm run seed\n')
   await closeDb()
   process.exit(0)
@@ -158,14 +174,14 @@ for (const [indice, vaga] of VAGAS.entries()) {
     await query(
       'insert into applications (id, job_id, student_id, pitch, status) values ($1, $2, $3, $4, $5) on conflict do nothing',
       [newId('app'), id, candidato.id,
-        `Tenho experiencia com ${vaga.categoria.toLowerCase()} e disponibilidade para o periodo.`,
+        `Tenho experiência com ${vaga.categoria.toLowerCase()} e disponibilidade para o período.`,
         estudante ? 'recusada' : 'pendente']
     )
   }
   if (estudante) {
     await query(
       'insert into applications (id, job_id, student_id, pitch, status) values ($1, $2, $3, $4, $5) on conflict do nothing',
-      [newId('app'), id, estudante.id, 'Ja fiz um trabalho parecido no semestre passado.', 'aceita']
+      [newId('app'), id, estudante.id, 'Já fiz um trabalho parecido no semestre passado.', 'aceita']
     )
   }
 
@@ -183,7 +199,7 @@ for (const [indice, vaga] of VAGAS.entries()) {
     )
   }
 }
-ok(`${vagasCriadas.length} vagas em estagios diferentes da trilha`)
+ok(`${vagasCriadas.length} vagas em estágios diferentes da trilha`)
 
 // ─── certificado da vaga concluida ───────────────────────────────────────────
 const { buildContent, buildMetadata, contentHash } = await import('../src/services/certificate.js')
@@ -210,9 +226,9 @@ for (const vaga of vagasCriadas.filter((v) => v.estagio === 'concluida')) {
 // ─── mensagens e avaliacoes ──────────────────────────────────────────────────
 for (const vaga of vagasCriadas.filter((v) => v.estudante)) {
   await query('insert into messages (id, job_id, sender_id, body) values ($1, $2, $3, $4)',
-    [newId('msg'), vaga.id, vaga.contratante.id, 'Oi! Obrigado por topar. Alguma duvida sobre o combinado?'])
+    [newId('msg'), vaga.id, vaga.contratante.id, 'Oi! Obrigado por topar. Alguma dúvida sobre o combinado?'])
   await query('insert into messages (id, job_id, sender_id, body) values ($1, $2, $3, $4)',
-    [newId('msg'), vaga.id, vaga.estudante.id, 'Oi! Tudo claro por aqui. Ja comecei a me organizar.'])
+    [newId('msg'), vaga.id, vaga.estudante.id, 'Oi! Tudo claro por aqui. Já comecei a me organizar.'])
 }
 for (const vaga of vagasCriadas.filter((v) => v.estagio === 'concluida')) {
   await query('insert into reviews (id, job_id, author_id, target_id, rating, comment) values ($1, $2, $3, $4, 5, $5)',
@@ -220,12 +236,12 @@ for (const vaga of vagasCriadas.filter((v) => v.estagio === 'concluida')) {
   await query('insert into reviews (id, job_id, author_id, target_id, rating, comment) values ($1, $2, $3, $4, 5, $5)',
     [newId('rev'), vaga.id, vaga.estudante.id, vaga.contratante.id, 'Combinado claro e pagamento na hora.'])
 }
-ok('mensagens e avaliacoes de exemplo')
+ok('mensagens e avaliações de exemplo')
 
 // ─── distribuicao do token de teste, se a rede permitir ──────────────────────
 const estado = readPlatformState()
 if (!estado?.usdcMint) {
-  aviso('bootstrap ainda nao rodou, entao nao distribui o valor de teste.')
+  aviso('bootstrap ainda não rodou, então não distribui o valor de teste.')
   passo('     rode: npm run bootstrap && npm run seed --forcar')
 } else {
   passo('distribuindo o valor de teste para os contratantes de exemplo…')
@@ -246,15 +262,70 @@ if (!estado?.usdcMint) {
     }
     ok(`${distribuidos} contratantes com saldo para reservar valor de verdade`)
   } catch (err) {
-    aviso(`nao consegui distribuir agora: ${err.message}`)
-    passo('     as vagas continuam na tela; reservar valor vai falhar ate a rede voltar.')
+    aviso(`não consegui distribuir agora: ${err.message}`)
+    passo('     as vagas continuam na tela; reservar valor vai falhar até a rede voltar.')
+  }
+
+  // ─── cofre de verdade para as vagas que já nascem adiantadas ───────────────
+  //
+  // As vagas de exemplo entram no banco com funded_at preenchido, para a tela
+  // abrir com trampo em cada etapa. Sem reservar de fato, esse funded_at e uma
+  // mentira que só aparece no pior momento: quem clica em "confirmar a entrega"
+  // vê a liberação falhar, porque nunca houve valor no cofre.
+  //
+  // Aqui o dinheiro entra no cofre de verdade, com a chave do contratante de
+  // exemplo, do mesmo jeito que a interface faria.
+  const adiantadas = vagasCriadas.filter((v) => !['aberta', 'cancelada'].includes(v.estagio))
+  if (adiantadas.length) {
+    passo(`reservando o valor de ${adiantadas.length} vaga(s) adiantada(s) na rede…`)
+    const { fundEscrow, releaseEscrow } = await import('../src/services/escrow.js')
+    const { accountKeyFor } = await import('../src/domain/auth.js')
+    const { openAccount } = await import('../src/services/wallet.js')
+
+    let reservadas = 0
+    let liberadas = 0
+    for (const vaga of adiantadas) {
+      try {
+        const contaEmpresa = await accountKeyFor(vaga.contratante.id)
+        const chaveEmpresa = await openAccount(contaEmpresa.secret_cipher)
+        const reserva = await fundEscrow({
+          jobId: vaga.id,
+          companyPubkey: contaEmpresa.public_key,
+          companyKeypair: chaveEmpresa,
+          amountCents: vaga.valorCentavos,
+          feeBps: config.escrow.feeBps
+        })
+        await registrarTxDoSeed(vaga.id, 'escrow_fund', reserva)
+        reservadas += 1
+
+        // A vaga concluida precisa do outro lado: o valor tem de ter saido do
+        // cofre, senao ela mostra pagamento feito com o cofre ainda cheio.
+        if (vaga.estagio === 'concluida') {
+          const contaEstudante = await accountKeyFor(vaga.estudante.id)
+          const liberacao = await releaseEscrow({
+            jobId: vaga.id,
+            studentPubkey: contaEstudante.public_key,
+            companyPubkey: contaEmpresa.public_key,
+            companyKeypair: chaveEmpresa,
+            amountCents: vaga.valorCentavos,
+            feeBps: config.escrow.feeBps
+          })
+          await registrarTxDoSeed(vaga.id, 'escrow_release', liberacao)
+          liberadas += 1
+        }
+      } catch (err) {
+        aviso(`a vaga "${vaga.titulo.slice(0, 40)}" ficou sem cofre: ${err.message.slice(0, 90)}`)
+        passo('     confirmar a entrega dela vai falhar na liberação até isto ser resolvido.')
+      }
+    }
+    ok(`${reservadas} cofre(s) com valor de verdade${liberadas ? ` e ${liberadas} já liberado(s)` : ''}`)
   }
 }
 
 console.log(`
   pronto
 
-    entre com qualquer um destes e-mails (nao ha senha):
+    entre com qualquer um destes e-mails (não há senha):
 
       estudante     ${ESTUDANTES[0].email}
       contratante   ${CONTRATANTES[0].email}

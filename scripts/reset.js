@@ -15,7 +15,7 @@ const tudo = process.argv.includes('--tudo')
 console.log('\n  reset\n')
 
 if (config.db.url) {
-  console.log('  DATABASE_URL esta configurada, entao o banco e gerenciado e nao vou apaga-lo daqui.')
+  console.log('  DATABASE_URL está configurada, então o banco e gerenciado e não vou apaga-lo daqui.')
   console.log('  Para recomecar num banco gerenciado, apague o schema pelo painel do provedor')
   console.log('  e rode npm run migrate.\n')
 } else {
@@ -24,7 +24,7 @@ if (config.db.url) {
     fs.rmSync(dir, { recursive: true, force: true })
     console.log(`  ok   banco local apagado (${path.relative(process.cwd(), dir)})`)
   } else {
-    console.log('  ok   nao havia banco local para apagar')
+    console.log('  ok   não havia banco local para apagar')
   }
 }
 
@@ -33,12 +33,12 @@ if (tudo) {
   if (fs.existsSync(estado)) {
     fs.rmSync(estado, { force: true })
     console.log('  ok   estado de devnet apagado: a conta da plataforma, o token de teste e a')
-    console.log('       merkle tree vao ser recriados no proximo bootstrap')
+    console.log('       merkle tree vão ser recriados no próximo bootstrap')
   } else {
-    console.log('  ok   nao havia estado de devnet para apagar')
+    console.log('  ok   não havia estado de devnet para apagar')
   }
 } else if (fs.existsSync(estado)) {
-  console.log('  ok   estado de devnet preservado (use --tudo para apagar tambem)')
+  console.log('  ok   estado de devnet preservado (use --tudo para apagar também)')
 }
 
-console.log('\n  proximo passo: npm run setup\n')
+console.log('\n  próximo passo: npm run setup\n')

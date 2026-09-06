@@ -34,7 +34,7 @@ console.log(`\n  bootstrap de ${config.solana.cluster}\n`)
 
 if (config.solana.cluster !== 'devnet' && !process.env.UNIWORK_PERMITIR_OUTRA_REDE) {
   console.error(`  recusado: o cluster configurado e "${config.solana.cluster}".`)
-  console.error('  Este projeto e uma demonstracao e so opera em devnet.')
+  console.error('  Este projeto e uma demonstração e só opera em devnet.')
   console.error('  Para insistir, defina UNIWORK_PERMITIR_OUTRA_REDE=1.\n')
   process.exit(1)
 }
@@ -44,7 +44,7 @@ const conexao = getConnection()
 // ─── 1. conta da plataforma ──────────────────────────────────────────────────
 let estado = readPlatformState()
 if (estado?.secretKey) {
-  ok(`conta da plataforma ja existe: ${estado.publicKey}`)
+  ok(`conta da plataforma já existe: ${estado.publicKey}`)
 } else {
   const nova = Keypair.generate()
   estado = writePlatformState({
@@ -64,7 +64,7 @@ let saldo = 0
 try {
   saldo = await getSolBalance(estado.publicKey)
 } catch (err) {
-  console.error(`\n  nao consegui falar com a rede em ${config.solana.rpcUrl}`)
+  console.error(`\n  não consegui falar com a rede em ${config.solana.rpcUrl}`)
   console.error(`  ${err.message}\n`)
   process.exit(1)
 }
@@ -78,14 +78,14 @@ if (saldo >= SOL_ALVO * 0.5) {
     ok(`recebido pelo faucet (${resultado.source})`)
     saldo = await getSolBalance(estado.publicKey)
   } else {
-    aviso('os faucets automaticos recusaram. Isso acontece com frequencia em devnet.')
+    aviso('os faucets automáticos recusaram. Isso acontece com frequência em devnet.')
     for (const tentativa of resultado.attempts) {
       passo(`     ${tentativa.source}: ${tentativa.error}`)
     }
     console.log(`
   Pegue SOL de teste na mao e rode o bootstrap de novo:
 
-      endereco:  ${resultado.manual.address}
+      endereço:  ${resultado.manual.address}
       faucet:    ${resultado.manual.url}
 
   O bootstrap e idempotente: ele retoma daqui.
@@ -96,7 +96,7 @@ if (saldo >= SOL_ALVO * 0.5) {
 
 // ─── 3. token de teste que faz o papel do USDC ───────────────────────────────
 if (estado.usdcMint) {
-  ok(`token de pagamento ja existe: ${estado.usdcMint}`)
+  ok(`token de pagamento já existe: ${estado.usdcMint}`)
 } else {
   passo('criando o token de teste de 6 casas…')
   const mint = await createMint(
@@ -108,20 +108,20 @@ if (estado.usdcMint) {
   )
   estado = writePlatformState({ usdcMint: mint.toBase58() })
   ok(`token de pagamento criado: ${mint.toBase58()}`)
-  passo('     6 casas decimais, mesmo comportamento tecnico do USDC, zero valor financeiro')
+  passo('     6 casas decimais, mesmo comportamento técnico do USDC, zero valor financeiro')
 
-  passo('emitindo o suprimento de demonstracao para a plataforma…')
+  passo('emitindo o suprimento de demonstração para a plataforma…')
   const conta = await getOrCreateAssociatedTokenAccount(conexao, plataforma, mint, plataforma.publicKey)
   await mintTo(
     conexao, plataforma, mint, conta.address, plataforma,
     BigInt(SUPRIMENTO_DE_TESTE) * BigInt(10 ** TOKEN_DECIMALS)
   )
-  ok(`${SUPRIMENTO_DE_TESTE.toLocaleString('pt-BR')} unidades de teste disponiveis para o seed distribuir`)
+  ok(`${SUPRIMENTO_DE_TESTE.toLocaleString('pt-BR')} unidades de teste disponíveis para o seed distribuir`)
 }
 
 // ─── 4. merkle tree do Bubblegum ─────────────────────────────────────────────
 if (estado.merkleTree) {
-  ok(`merkle tree ja existe: ${estado.merkleTree} (${estado.treeCapacity ?? TREE_CAPACITY} certificados)`)
+  ok(`merkle tree já existe: ${estado.merkleTree} (${estado.treeCapacity ?? TREE_CAPACITY} certificados)`)
 } else {
   passo(`criando a merkle tree (profundidade ${TREE_DEPTH}, buffer ${TREE_BUFFER})…`)
   try {
@@ -153,8 +153,8 @@ if (estado.merkleTree) {
     ok(`merkle tree criada: ${arvore.publicKey.toString()}`)
     passo(`     capacidade de ${TREE_CAPACITY.toLocaleString('pt-BR')} certificados`)
   } catch (err) {
-    aviso(`nao consegui criar a merkle tree agora: ${err.message}`)
-    aviso('o certificado vai cair no registro de memo e entrar na fila ate a arvore existir.')
+    aviso(`não consegui criar a merkle tree agora: ${err.message}`)
+    aviso('o certificado vai cair no registro de memo e entrar na fila até a árvore existir.')
   }
 }
 
@@ -171,7 +171,7 @@ console.log(`
     saldo para taxas   ${saldoFinal.toFixed(3)} SOL
     token de pagamento ${estado.usdcMint ?? 'pendente'}
     merkle tree        ${estado.merkleTree ?? 'pendente'}
-    programa de escrow ${estado.escrowProgramId ?? 'nao deployado (driver vault)'}
+    programa de escrow ${estado.escrowProgramId ?? 'não deployado (driver vault)'}
 `)
 
 if (!estado.merkleTree) {

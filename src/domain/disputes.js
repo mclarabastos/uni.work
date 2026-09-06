@@ -28,10 +28,10 @@ export const DIAS_DE_PRAZO = 7
 export const DIAS_ATE_AUTO_CONFIRMAR = 7
 
 export const MOTIVOS = {
-  nao_entregue: 'O trabalho nao foi entregue',
-  fora_do_combinado: 'A entrega nao corresponde ao combinado',
+  nao_entregue: 'O trabalho não foi entregue',
+  fora_do_combinado: 'A entrega não corresponde ao combinado',
   atrasado: 'A entrega passou muito do prazo',
-  pagamento_travado: 'O contratante nao confirma a entrega',
+  pagamento_travado: 'O contratante não confirma a entrega',
   conduta: 'Problema de conduta',
   outro: 'Outro motivo'
 }
@@ -51,10 +51,10 @@ export const abrirSchema = z.object({
 
 export const resolverSchema = z.object({
   resultado: z.enum(['resolved_student', 'resolved_company', 'split'], {
-    errorMap: () => ({ message: 'Escolha como a contestacao foi resolvida.' })
+    errorMap: () => ({ message: 'Escolha como a contestação foi resolvida.' })
   }),
   divisaoBps: z.number().int().min(0).max(10000).optional().nullable(),
-  resolucao: z.string().trim().min(20, 'Explique a decisao, com pelo menos 20 caracteres.').max(2000)
+  resolucao: z.string().trim().min(20, 'Explique a decisão, com pelo menos 20 caracteres.').max(2000)
 })
 
 export function publicDispute (row) {
@@ -80,8 +80,8 @@ export function publicDispute (row) {
 }
 
 function rotuloDoStatus (row) {
-  if (row.status === 'open') return 'Aguardando mediacao'
-  if (row.status === 'in_review') return 'Em analise'
+  if (row.status === 'open') return 'Aguardando mediação'
+  if (row.status === 'in_review') return 'Em análise'
   if (row.status === 'resolved_student') return 'Resolvida: valor para o estudante'
   if (row.status === 'resolved_company') return 'Resolvida: valor devolvido'
   if (row.status === 'split') return 'Resolvida: valor dividido'
@@ -102,12 +102,12 @@ const DISPUTE_SELECT = `
 export async function abrirDisputa (usuario, jobId, input) {
   const dados = abrirSchema.parse(input)
   const vaga = await one('select * from jobs where id = $1', [jobId])
-  if (!vaga) throw notFound('Nao encontramos essa vaga.')
+  if (!vaga) throw notFound('Não encontramos essa vaga.')
 
   const ehContratante = vaga.company_id === usuario.id
   const ehEstudante = vaga.student_id === usuario.id
   if (!ehContratante && !ehEstudante) {
-    throw forbidden('So o contratante e o estudante desta vaga podem abrir uma contestacao.')
+    throw forbidden('Só o contratante e o estudante desta vaga podem abrir uma contestação.')
   }
 
   // So faz sentido contestar depois que ha trabalho combinado e valor reservado,
@@ -115,15 +115,15 @@ export async function abrirDisputa (usuario, jobId, input) {
   if (!['aceita', 'em_andamento', 'entregue'].includes(vaga.status)) {
     throw conflict(
       vaga.status === 'concluida'
-        ? 'Esta vaga ja foi concluida e paga. Fale com o suporte se algo deu errado.'
-        : 'Esta vaga ainda nao esta em um estagio que permita contestacao.',
+        ? 'Esta vaga já foi concluída e paga. Fale com o suporte se algo deu errado.'
+        : 'Esta vaga ainda não está em um estágio que permita contestação.',
       'estagio_nao_permite_contestacao'
     )
   }
 
   const existente = await one('select id, status from disputes where job_id = $1', [jobId])
   if (existente) {
-    throw conflict('Ja existe uma contestacao aberta para esta vaga.', 'contestacao_duplicada')
+    throw conflict('Já existe uma contestação aberta para esta vaga.', 'contestacao_duplicada')
   }
 
   const id = newId('dis')
@@ -162,7 +162,7 @@ export async function disputaDaVaga (jobId, usuario) {
 
 /** Fila de mediacao. So para a operacao. */
 export async function listarDisputas (usuario, { status = null, limite = 50 } = {}) {
-  if (!usuario?.is_admin) throw forbidden('Esta area e da equipe de mediacao.')
+  if (!usuario?.is_admin) throw forbidden('Esta área é da equipe de mediação.')
   const condicoes = []
   const params = []
   if (status === 'abertas') condicoes.push("d.status in ('open','in_review')")
@@ -180,12 +180,12 @@ export async function listarDisputas (usuario, { status = null, limite = 50 } = 
 }
 
 export async function assumirDisputa (usuario, disputeId) {
-  if (!usuario?.is_admin) throw forbidden('Esta area e da equipe de mediacao.')
+  if (!usuario?.is_admin) throw forbidden('Esta área é da equipe de mediação.')
   const { rowCount } = await query(
     "update disputes set status = 'in_review' where id = $1 and status = 'open'",
     [disputeId]
   )
-  if (rowCount === 0) throw conflict('Esta contestacao nao esta aguardando mediacao.', 'estado_invalido')
+  if (rowCount === 0) throw conflict('Esta contestação não está aguardando mediação.', 'estado_invalido')
   return publicDispute(await one(`${DISPUTE_SELECT} where d.id = $1`, [disputeId]))
 }
 
@@ -197,13 +197,13 @@ export async function assumirDisputa (usuario, disputeId) {
  * porque a rede estava fora do ar naquele segundo.
  */
 export async function resolverDisputa (usuario, disputeId, input) {
-  if (!usuario?.is_admin) throw forbidden('Esta area e da equipe de mediacao.')
+  if (!usuario?.is_admin) throw forbidden('Esta área é da equipe de mediação.')
   const dados = resolverSchema.parse(input)
 
   const disputa = await one(`${DISPUTE_SELECT} where d.id = $1`, [disputeId])
-  if (!disputa) throw notFound('Nao encontramos essa contestacao.')
+  if (!disputa) throw notFound('Não encontramos essa contestação.')
   if (!['open', 'in_review'].includes(disputa.status)) {
-    throw conflict('Esta contestacao ja foi resolvida.', 'contestacao_ja_resolvida')
+    throw conflict('Esta contestação já foi resolvida.', 'contestacao_ja_resolvida')
   }
 
   const divisaoBps = dados.resultado === 'resolved_student' ? 10000
@@ -215,17 +215,17 @@ export async function resolverDisputa (usuario, disputeId, input) {
   }
   if (dados.resultado === 'split' && (divisaoBps === 0 || divisaoBps === 10000)) {
     throw badRequest(
-      'Uma divisao de 0% ou 100% nao e uma divisao. Escolha o resultado integral correspondente.',
+      'Uma divisão de 0% ou 100% não é uma divisão. Escolha o resultado integral correspondente.',
       { campo: 'divisaoBps' }
     )
   }
 
   const vaga = await one('select * from jobs where id = $1', [disputa.job_id])
-  if (!vaga) throw notFound('Nao encontramos a vaga desta contestacao.')
+  if (!vaga) throw notFound('Não encontramos a vaga desta contestação.')
 
   const contaContratante = await accountKeyFor(vaga.company_id)
   const contaEstudante = vaga.student_id ? await accountKeyFor(vaga.student_id) : null
-  if (!contaEstudante) throw conflict('Esta vaga nao tem estudante.', 'sem_estudante')
+  if (!contaEstudante) throw conflict('Esta vaga não tem estudante.', 'sem_estudante')
 
   let movimentacao = null
   let enfileirado = false
@@ -332,7 +332,7 @@ export async function confirmarEntregasVencidas () {
     await emitEvent('vaga.auto_confirmada', { jobId: vaga.id, payload: {} })
     await registrarAuditoria({
       actorId: null, action: 'vaga.auto_confirmada', entity: 'job', entityId: vaga.id,
-      after: { motivo: 'prazo de confirmacao vencido' }
+      after: { motivo: 'prazo de confirmação vencido' }
     })
   }
 
