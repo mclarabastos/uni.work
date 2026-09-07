@@ -18,7 +18,7 @@ import { rootDir } from '../src/config.js'
 
 const PUBLIC_DIR = path.join(rootDir, 'public')
 const appJs = fs.readFileSync(path.join(PUBLIC_DIR, 'app.js'), 'utf8')
-const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
+const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'app.html'), 'utf8')
 
 /** Palavras que aparecem antes de "(" mas nao sao chamada de funcao. */
 const PALAVRAS_RESERVADAS = new Set([

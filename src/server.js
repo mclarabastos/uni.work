@@ -103,18 +103,18 @@ export function createApp () {
   // A verificacao publica e uma rota de leitura da interface: qualquer pessoa
   // abre o link e ve o certificado, sem conta.
   app.get('/verificar/:code', (_req, res) => {
-    res.sendFile(path.join(rootDir, 'public', 'index.html'))
+    res.sendFile(path.join(rootDir, 'public', 'app.html'))
   })
 
   // O link do e-mail cai aqui. A interface le o token da URL e troca por sessao.
   app.get('/entrar', (_req, res) => {
-    res.sendFile(path.join(rootDir, 'public', 'index.html'))
+    res.sendFile(path.join(rootDir, 'public', 'app.html'))
   })
 
   // O perfil publico e uma pagina que a pessoa manda para um contratante.
   // Precisa abrir direto pelo link, sem conta.
   app.get('/perfil/:id', (_req, res) => {
-    res.sendFile(path.join(rootDir, 'public', 'index.html'))
+    res.sendFile(path.join(rootDir, 'public', 'app.html'))
   })
 
   app.use('/api', (_req, res) => {

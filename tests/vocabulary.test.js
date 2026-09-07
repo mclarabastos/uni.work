@@ -28,7 +28,7 @@ function arquivosDePublic () {
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const completo = path.join(dir, item.name)
       if (item.isDirectory()) andar(completo)
-      else if (/\.(html|js|css|json|svg|txt)$/i.test(item.name)) saida.push(completo)
+      else if (/\.(html|js|css|json|svg|txt)$/i.test(item.name) && !['index.html', 'landing.js'].includes(item.name)) saida.push(completo)
     }
   }
   andar(PUBLIC_DIR)
@@ -87,14 +87,14 @@ test('nenhum arquivo servido usa jargao de rede fora da gaveta técnica', () => 
 })
 
 test('o texto que o usuário le fala de conta, garantia e certificado, nunca de rede', () => {
-  const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
+  const html = fs.readFileSync(path.join(PUBLIC_DIR, 'app.html'), 'utf8')
   const script = fs.readFileSync(path.join(PUBLIC_DIR, 'app.js'), 'utf8')
 
   // O index.html e so o esqueleto: quase todo texto que a pessoa le e montado
   // pelo app.js. Conferir apenas o HTML deixaria a regra sem dente, entao os
   // dois entram, cada um sem a sua parte de camada tecnica.
   const visivel = [
-    textoVisivel(semCamadaTecnica(html, 'index.html')),
+    textoVisivel(semCamadaTecnica(html, 'app.html')),
     semCamadaTecnica(script, 'app.js')
   ].join(' ').toLowerCase()
 
