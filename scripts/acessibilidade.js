@@ -103,9 +103,9 @@ const pagina = await contexto.newPage()
 async function entrar (email) {
   // A sessao sobrevive ao recarregamento, entao entrar como outra pessoa
   // exige limpar antes: senao a tela de entrada nem aparece.
-  await pagina.goto(base, { waitUntil: 'domcontentloaded' })
+  await pagina.goto(base + '/app', { waitUntil: 'domcontentloaded' })
   await pagina.evaluate(() => { try { localStorage.clear() } catch { /* sem armazenamento */ } })
-  await pagina.goto(base, { waitUntil: 'networkidle' })
+  await pagina.goto(base + '/app', { waitUntil: 'networkidle' })
   await pagina.waitForSelector('#form-entrar', { timeout: 15000 })
   await pagina.fill('#entrar-email', email)
   await pagina.click('#form-entrar button[type="submit"]')
@@ -179,7 +179,7 @@ console.log('\n  auditoria de acessibilidade\n')
 
 try {
   await passo('porta de entrada', async () => {
-    await pagina.goto(base, { waitUntil: 'networkidle' })
+    await pagina.goto(base + '/app', { waitUntil: 'networkidle' })
     await pagina.waitForSelector('#form-entrar', { timeout: 15000 })
   })
   await passo('criar conta', async () => {
