@@ -159,7 +159,7 @@ console.log('\n  fluxo completo no navegador\n')
 
 try {
   // ─── 1. a porta de entrada ─────────────────────────────────────────────────
-  await pagina.goto(base, { waitUntil: 'networkidle' })
+  await pagina.goto(base + '/app', { waitUntil: 'networkidle' })
   await pagina.waitForSelector('#app.ativo', { timeout: 15000 })
   await capturar('porta-de-entrada')
   conferir(await pagina.locator('text=Trabalhe hoje').isVisible(), 'a porta de entrada não apareceu')
@@ -291,7 +291,7 @@ try {
 
   // ─── 11. a regra de ouro, no HTML renderizado ──────────────────────────────
   // Nao adianta o codigo-fonte estar limpo se a tela montada mostra jargao.
-  await pagina.goto(base, { waitUntil: 'networkidle' })
+  await pagina.goto(base + '/app', { waitUntil: 'networkidle' })
   const textoDaTela = (await pagina.locator('body').innerText()).toLowerCase()
   for (const proibida of ['wallet', 'blockchain', 'carteira', 'chave privada', 'gas fee', 'cripto']) {
     conferir(!textoDaTela.includes(proibida), `a tela montada mostra "${proibida}"`)
