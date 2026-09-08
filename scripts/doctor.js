@@ -43,8 +43,8 @@ console.log('\n  diagnóstico do Uni.work\n')
 
 // ─── ambiente ────────────────────────────────────────────────────────────────
 const nodeMajor = Number(process.versions.node.split('.')[0])
-if (nodeMajor >= 20) registrar(OK, 'node', `${process.version}`)
-else registrar(ERRO, 'node', `${process.version} e antigo demais`, 'instale o Node 20 ou mais novo')
+if (nodeMajor >= 22) registrar(OK, 'node', `${process.version}`)
+else registrar(ERRO, 'node', `${process.version} e antigo demais`, 'instale o Node 22 ou mais novo: o PGlite travava no 20')
 
 if (fs.existsSync(path.join(rootDir, '.env'))) registrar(OK, 'env', '.env encontrado')
 else registrar(AVISO, 'env', '.env não existe, rodando só com os padroes', 'copie .env.example para .env')

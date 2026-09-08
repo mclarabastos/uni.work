@@ -1581,7 +1581,7 @@ const EXIGEM_SESSAO = ['minhas', 'certificados', 'conta', 'notificacoes', 'media
  *
  * O contratante vai para as vagas dele. Mandar quem paga para a lista de
  * trampos de outras empresas era o erro mais caro do painel: a pessoa que
- * pública não via o que precisava decidir.
+ * publica não via o que precisava decidir.
  */
 const viewInicial = () => (estado.usuario?.perfil === 'company' ? 'minhas' : 'feed')
 

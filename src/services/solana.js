@@ -10,6 +10,7 @@ import { getAccount, getAssociatedTokenAddress, createAssociatedTokenAccountInst
 import { config } from '../config.js'
 import { platformKeypair, readPlatformState } from './platform.js'
 import { contar, registrarDuracao } from '../lib/logger.js'
+import { ambienteIncompleto } from '../lib/errors.js'
 
 let connection = null
 
@@ -26,7 +27,7 @@ export function setConnection (fake) { connection = fake }
 export function paymentMint () {
   const state = readPlatformState()
   if (!state?.usdcMint) {
-    throw new Error('Token de pagamento ainda não existe. Rode: npm run bootstrap')
+    throw ambienteIncompleto('Token de pagamento ainda nao existe. Rode: npm run bootstrap')
   }
   return new PublicKey(state.usdcMint)
 }

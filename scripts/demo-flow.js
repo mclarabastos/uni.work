@@ -67,7 +67,7 @@ try {
   })
   detalhe(`${contratante.usuario.nome} entrou.`)
 
-  etapa(++passos, 'O contratante pública uma vaga')
+  etapa(++passos, 'O contratante publica uma vaga')
   const { vaga } = await api('/api/jobs', {
     method: 'POST',
     token: contratante.sessao.token,
