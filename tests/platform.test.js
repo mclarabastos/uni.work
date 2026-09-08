@@ -71,6 +71,46 @@ test('o estado e relido quando o bootstrap escreve o arquivo com o processo em p
   assert.equal(plataforma.readPlatformState(), null, 'apagar o estado tem de esquecer o que estava em memoria')
 })
 
+test('o resumo distingue variavel ausente de variavel mal colada', (t) => {
+  t.after(() => {
+    delete process.env.UNIWORK_PLATFORM_STATE
+    plataforma.clearPlatformStateCache()
+  })
+
+  // 1. Nada configurado, e nenhum arquivo no caminho: falta rodar o bootstrap.
+  delete process.env.UNIWORK_PLATFORM_STATE
+  plataforma.clearPlatformStateCache()
+  const ausente = plataforma.platformSummary()
+  assert.equal(ausente.ready, false)
+  assert.equal(ausente.reason, 'bootstrap_pendente')
+  assert.equal(ausente.fonte, 'ausente')
+
+  // 2. Variavel presente e ilegivel. Este e o caso que mais custa tempo: uma
+  //    variavel de ambiente atravessa painel e area de transferencia, e chega
+  //    com quebra de linha no meio. Antes, o JSON.parse estourava dentro da
+  //    checagem de saude — o endpoint devolvia erro em vez de dizer o motivo.
+  process.env.UNIWORK_PLATFORM_STATE = '{"cluster":"devnet", isto nao e json'
+  plataforma.clearPlatformStateCache()
+  const invalido = plataforma.platformSummary()
+  assert.equal(invalido.ready, false)
+  assert.equal(invalido.reason, 'estado_invalido', 'nao pode dizer bootstrap_pendente: o valor chegou')
+  assert.equal(invalido.fonte, 'variavel_invalida')
+  assert.ok(invalido.erro, 'o motivo do parse vai no resumo, para o log')
+  assert.equal(plataforma.readPlatformState(), null, 'estado ilegivel nao vira estado pela metade')
+
+  // 3. Variavel correta: pronto, e dizendo de onde veio.
+  process.env.UNIWORK_PLATFORM_STATE = JSON.stringify({
+    cluster: 'devnet',
+    publicKey: Keypair.generate().publicKey.toBase58(),
+    usdcMint: Keypair.generate().publicKey.toBase58(),
+    merkleTree: Keypair.generate().publicKey.toBase58()
+  })
+  plataforma.clearPlatformStateCache()
+  const pronto = plataforma.platformSummary()
+  assert.equal(pronto.ready, true)
+  assert.equal(pronto.fonte, 'variavel', 'o resumo diz que o estado veio do ambiente, e nao do disco')
+})
+
 test('falta de ambiente preparado e erro permanente, e nao ganha oito tentativas', async () => {
   const { ambienteIncompleto, networkTrouble } = await import('../src/lib/errors.js')
 
