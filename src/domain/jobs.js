@@ -318,6 +318,19 @@ export async function fundJob (company, jobId) {
       deadlineUnix: job.deadline_at ? Math.floor(new Date(job.deadline_at).getTime() / 1000) : 0
     })
   } catch (err) {
+    // Ambiente incompleto nao vai para a fila: nao ha o que tentar de novo
+    // enquanto o token de pagamento nao existir, e enfileirar so produziria a
+    // mesma falha repetida. A vaga fica aberta, e quem clicou recebe a frase
+    // que diz o que aconteceu em vez de "estamos tentando".
+    if (err?.permanente) {
+      await recordChainTx({
+        jobId, kind: 'escrow_fund', signature: null, status: 'falhou',
+        error: String(err.technicalDetail ?? err.message).slice(0, 500),
+        detail: { enfileirado: false, permanente: true }
+      })
+      throw err
+    }
+
     await recordChainTx({
       jobId, kind: 'escrow_fund', signature: null, status: 'falhou',
       error: String(err.message).slice(0, 500), detail: { enfileirado: true }

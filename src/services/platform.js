@@ -16,22 +16,46 @@ export const TREE_BUFFER = 64
 export const TREE_CAPACITY = 2 ** TREE_DEPTH // 16384 certificados
 
 let cached = null
+let cachedMtimeMs = null
 
 export function platformStatePath () {
   return config.solana.platformStateFile
 }
 
-/** Le o estado. Devolve null se o bootstrap ainda nao rodou. */
+/**
+ * Le o estado. Devolve null se o bootstrap ainda nao rodou.
+ *
+ * O cache e invalidado pela data de modificacao do arquivo, e nao guardado para
+ * sempre. Isto nao e detalhe de performance: o bootstrap roda em OUTRO processo
+ * e escreve o arquivo, entao um servidor que subiu antes dele guardaria a versao
+ * sem o token de pagamento pela vida inteira. O erro diz "rode npm run
+ * bootstrap", a pessoa roda, o bootstrap termina certo — e o servidor continua
+ * dizendo a mesma coisa, porque nunca releu. Com a data, a proxima operacao ja
+ * enxerga o ambiente pronto, sem reiniciar nada.
+ */
 export function readPlatformState () {
-  if (cached) return cached
   const fromSecret = process.env.UNIWORK_PLATFORM_STATE
   if (fromSecret) {
-    cached = JSON.parse(fromSecret)
+    cached ??= JSON.parse(fromSecret)
     return cached
   }
+
   const file = platformStatePath()
-  if (!fs.existsSync(file)) return null
+  let assinatura = null
+  try {
+    const info = fs.statSync(file)
+    assinatura = `${info.mtimeMs}:${info.size}`
+  } catch {
+    // Arquivo ausente: o bootstrap ainda nao rodou, ou o reset --tudo apagou.
+    // Esquecer o que estava em memoria e parte da resposta correta.
+    cached = null
+    cachedMtimeMs = null
+    return null
+  }
+
+  if (cached && cachedMtimeMs === assinatura) return cached
   cached = JSON.parse(fs.readFileSync(file, 'utf8'))
+  cachedMtimeMs = assinatura
   return cached
 }
 
@@ -45,7 +69,10 @@ export function writePlatformState (patch) {
   return next
 }
 
-export function clearPlatformStateCache () { cached = null }
+export function clearPlatformStateCache () {
+  cached = null
+  cachedMtimeMs = null
+}
 
 /** Keypair da plataforma. Ela e sempre a fee payer: ninguem mais precisa de SOL. */
 export function platformKeypair () {

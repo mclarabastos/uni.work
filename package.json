@@ -5,13 +5,13 @@
   "type": "module",
   "description": "Uni.work — marketplace de trampos curtos para universitarios, com escrow e certificado verificavel na Solana (devnet)",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "setup": "node scripts/setup.js",
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "test": "node --test --test-concurrency=4",
+    "test": "node --test --test-concurrency=4 \"tests/*.test.js\"",
     "migrate": "node scripts/migrate.js",
     "bootstrap": "node scripts/bootstrap.js",
     "seed": "node scripts/seed.js",

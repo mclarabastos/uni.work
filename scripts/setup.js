@@ -40,8 +40,8 @@ console.log('\n  setup do Uni.work')
 cabecalho('1. ambiente')
 
 const major = Number(process.versions.node.split('.')[0])
-if (major < 20) {
-  console.error(`\n  Node ${process.version} e antigo demais. Instale o Node 20 ou mais novo.\n`)
+if (major < 22) {
+  console.error(`\n  Node ${process.version} e antigo demais. Instale o Node 22 ou mais novo: o PGlite trava no 20.\n`)
   process.exit(1)
 }
 ok(`Node ${process.version}`)

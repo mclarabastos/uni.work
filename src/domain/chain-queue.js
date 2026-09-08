@@ -91,12 +91,19 @@ export async function marcarFalha (item, erro) {
   const maximo = Number(item.max_attempts ?? MAX_TENTATIVAS)
   const mensagem = String(erro?.message ?? erro).slice(0, 500)
 
-  if (tentativas >= maximo) {
+  // Erro permanente nao ganha oito tentativas. Falta de ambiente preparado nao
+  // melhora com o tempo: a decima tentativa falha igual a primeira, e o efeito
+  // de insistir e uma pilha de falhas identicas no lugar da causa. Desiste na
+  // hora, com o motivo registrado. Quando o ambiente ficar pronto, o operador
+  // devolve o item para a fila com reenfileirar().
+  const permanente = Boolean(erro?.permanente)
+
+  if (permanente || tentativas >= maximo) {
     await query(
       'update chain_jobs set attempts = $2, last_error = $3, failed_at = now(), locked_at = null where id = $1',
       [item.id, tentativas, mensagem]
     )
-    return { desistiu: true, tentativas }
+    return { desistiu: true, tentativas, permanente }
   }
 
   const espera = esperaPara(tentativas)

@@ -35,3 +35,22 @@ export function networkTrouble (technicalDetail) {
   err.technicalDetail = technicalDetail
   return err
 }
+
+/**
+ * O ambiente de demonstração não está preparado: falta o token de pagamento ou
+ * a árvore do certificado, que nascem no bootstrap.
+ *
+ * Marcado como permanente de propósito. Repetir não resolve: sem o ambiente
+ * pronto, a décima tentativa falha igual à primeira, e o que a pessoa vê é a
+ * mesma falha empilhada várias vezes no lugar da causa. Quem lê a tela recebe
+ * uma frase de produto; o comando que resolve fica no detalhe técnico.
+ */
+export function ambienteIncompleto (technicalDetail) {
+  const err = new AppError(
+    'O ambiente de demonstração ainda não foi preparado, então este valor não pode ser reservado agora.',
+    { status: 409, codigo: 'ambiente_incompleto' }
+  )
+  err.technicalDetail = technicalDetail
+  err.permanente = true
+  return err
+}
