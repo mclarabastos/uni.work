@@ -18,6 +18,12 @@ export const TREE_CAPACITY = 2 ** TREE_DEPTH // 16384 certificados
 let cached = null
 let cachedMtimeMs = null
 
+// De onde o estado veio, e por que ele nao veio. Isto existe para a checagem
+// de saude poder responder "a variavel nao chegou" em vez de deixar quem
+// configurou o servidor adivinhando entre tres causas parecidas.
+let fonte = 'ausente'
+let erroDeLeitura = null
+
 export function platformStatePath () {
   return config.solana.platformStateFile
 }
@@ -36,7 +42,22 @@ export function platformStatePath () {
 export function readPlatformState () {
   const fromSecret = process.env.UNIWORK_PLATFORM_STATE
   if (fromSecret) {
-    cached ??= JSON.parse(fromSecret)
+    if (!cached) {
+      try {
+        cached = JSON.parse(fromSecret)
+        fonte = 'variavel'
+        erroDeLeitura = null
+      } catch (erro) {
+        // Segredo mal colado nao pode derrubar a checagem de saude: e justamente
+        // ela que precisa continuar respondendo para alguem descobrir o motivo.
+        // Uma variavel de ambiente atravessa painel, formulario e area de
+        // transferencia antes de chegar aqui, e volta e meia chega com quebra de
+        // linha no meio ou aspas em volta.
+        fonte = 'variavel_invalida'
+        erroDeLeitura = erro.message
+        return null
+      }
+    }
     return cached
   }
 
@@ -50,12 +71,23 @@ export function readPlatformState () {
     // Esquecer o que estava em memoria e parte da resposta correta.
     cached = null
     cachedMtimeMs = null
+    fonte = 'ausente'
+    erroDeLeitura = null
     return null
   }
 
   if (cached && cachedMtimeMs === assinatura) return cached
-  cached = JSON.parse(fs.readFileSync(file, 'utf8'))
+
+  try {
+    cached = JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (erro) {
+    fonte = 'arquivo_invalido'
+    erroDeLeitura = erro.message
+    return null
+  }
   cachedMtimeMs = assinatura
+  fonte = 'arquivo'
+  erroDeLeitura = null
   return cached
 }
 
@@ -131,14 +163,39 @@ export async function abastecerContaDeDemonstracao (publicKeyBase58, centavos = 
   }
 }
 
+/**
+ * De onde o estado foi lido nesta ultima tentativa, e o erro se houve.
+ *
+ * Sem isto, "bootstrap_pendente" cobre tres situacoes muito diferentes: nao ha
+ * nada configurado, ha uma variavel que nao e JSON valido, ou ha um arquivo
+ * ilegivel. Quem esta configurando um servidor precisa saber qual das tres,
+ * porque a acao e diferente em cada uma.
+ */
+export function platformStateOrigin () {
+  readPlatformState()
+  return { fonte, erro: erroDeLeitura }
+}
+
 /** Resumo sem segredo, seguro para log, doctor e resposta de API. */
 export function platformSummary () {
   const state = readPlatformState()
   if (!state) {
-    return { ready: false, reason: 'bootstrap_pendente' }
+    return {
+      ready: false,
+      // O motivo diz o que fazer: colar a variavel, corrigir o que foi colado,
+      // ou rodar o bootstrap.
+      reason: fonte === 'variavel_invalida'
+        ? 'estado_invalido'
+        : fonte === 'arquivo_invalido'
+          ? 'arquivo_invalido'
+          : 'bootstrap_pendente',
+      fonte,
+      erro: erroDeLeitura
+    }
   }
   return {
     ready: Boolean(state.publicKey && state.usdcMint),
+    fonte,
     cluster: state.cluster ?? config.solana.cluster,
     publicKey: state.publicKey ?? null,
     paymentMint: state.usdcMint ?? null,

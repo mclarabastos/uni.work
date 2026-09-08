@@ -82,7 +82,15 @@ healthRouter.get('/ready', asyncRoute(async (_req, res) => {
   }
 
   const plataforma = platformSummary()
-  checagens.plataforma = { ok: plataforma.ready, motivo: plataforma.ready ? undefined : plataforma.reason }
+  // A origem entra na resposta de proposito: quem configura um servidor precisa
+  // saber se a variavel de ambiente chegou, e isso nao da para inferir de fora.
+  // Nao vaza segredo: sao os nomes "variavel", "arquivo" ou "ausente".
+  checagens.plataforma = {
+    ok: plataforma.ready,
+    motivo: plataforma.ready ? undefined : plataforma.reason,
+    fonte: plataforma.fonte,
+    erro: plataforma.erro ?? undefined
+  }
 
   res.status(pronto ? 200 : 503).json({ ok: pronto, checagens })
 }))
