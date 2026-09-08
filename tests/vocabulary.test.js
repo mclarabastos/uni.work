@@ -1,8 +1,17 @@
 // A regra de ouro, verificada por maquina.
 //
-// O usuario nunca ve blockchain. A unica excecao e a gaveta "camada tecnica",
-// que existe para demonstracao. Este teste le tudo que e servido em public/ e
-// falha se o jargao escapar da gaveta.
+// O usuario nunca ve blockchain. Este teste le o que e servido em public/ e
+// falha se o jargao escapar das duas excecoes declaradas:
+//
+//   1. a gaveta "camada tecnica", delimitada por marca no HTML e por um par
+//      de comentarios no JavaScript, que existe para demonstracao;
+//   2. a pagina de apresentacao (index.html e landing.js), que e divulgacao e
+//      nao tela de produto: ela nomeia a rede como credencial e usa o
+//      vocabulario para nega-lo ("sem carteira, sem chave, sem taxa de rede").
+//      Fica de fora por nome, e nao por acidente.
+//
+// Se a apresentacao um dia virar produto, tirar o nome dela de EXCLUIDAS e o
+// que faz a regra voltar a valer para ela.
 
 import './helpers.js'
 import test from 'node:test'
@@ -14,6 +23,9 @@ import { rootDir } from '../src/config.js'
 const PUBLIC_DIR = path.join(rootDir, 'public')
 
 // Lista da secao 9.1: verificada em todo arquivo servido.
+/** A pagina de apresentacao: divulgacao, e nao tela de produto. */
+const EXCLUIDAS = new Set(['index.html', 'landing.js'])
+
 const PROIBIDAS_EM_TODO_LUGAR = ['wallet', 'blockchain', 'gas', 'chave privada', 'assinar transação']
 
 // Lista da secao 11: verificada no texto que o usuario efetivamente le.
@@ -28,7 +40,7 @@ function arquivosDePublic () {
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const completo = path.join(dir, item.name)
       if (item.isDirectory()) andar(completo)
-      else if (/\.(html|js|css|json|svg|txt)$/i.test(item.name) && !['index.html', 'landing.js'].includes(item.name)) saida.push(completo)
+      else if (/\.(html|js|css|json|svg|txt)$/i.test(item.name) && !EXCLUIDAS.has(item.name)) saida.push(completo)
     }
   }
   andar(PUBLIC_DIR)
